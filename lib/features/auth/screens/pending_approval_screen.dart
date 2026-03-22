@@ -3,21 +3,15 @@ import 'package:get/get.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../../core/theme/app_theme.dart';
 import '../controllers/auth_controller.dart';
+import '../../../data/services/notification_service.dart';
 
-class PendingApprovalScreen extends StatefulWidget {
+class PendingApprovalScreen extends StatelessWidget {
   const PendingApprovalScreen({super.key});
 
   @override
-  State<PendingApprovalScreen> createState() => _PendingApprovalScreenState();
-}
-
-class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
-  @override
   Widget build(BuildContext context) {
-    final authController = Get.find<AuthController>();
-
     return Scaffold(
-      backgroundColor: AppTheme.darkBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           // خلفية زخرفية
@@ -62,7 +56,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                   const SizedBox(height: 24),
                   FadeInDown(
                     delay: const Duration(milliseconds: 200),
-                    child: const Text(
+                    child: Text(
                       'جارٍ مراجعة طلبك',
                       style: TextStyle(
                         fontSize: 24,
@@ -75,7 +69,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                   const SizedBox(height: 8),
                   FadeInDown(
                     delay: const Duration(milliseconds: 300),
-                    child: const Text(
+                    child: Text(
                       'سيتم إشعارك فور موافقة الإدارة على حسابك',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -94,7 +88,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                         children: [
                           const Icon(Icons.info_outline, color: AppTheme.primaryGreen),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Text(
                               'يمكنك طلب خدمة بدون حساب في الوقت الحالي',
                               style: TextStyle(
@@ -124,7 +118,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                   FadeInUp(
                     delay: const Duration(milliseconds: 600),
                     child: TextButton(
-                      onPressed: () => authController.logout(),
+                      onPressed: () => Get.find<AuthController>().logout(),
                       child: const Text(
                         'تسجيل الخروج',
                         style: TextStyle(
@@ -138,6 +132,38 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                 ],
               ),
             ),
+          ),
+          
+          // Notifications button for pending users
+          Positioned(
+            top: 40,
+            left: 16,
+            child: Obx(() {
+              final service = Get.find<NotificationService>();
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.notifications_outlined, color: AppTheme.textPrimary),
+                    onPressed: () => Get.toNamed('/notifications'),
+                  ),
+                  if (service.unreadCount.value > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(color: AppTheme.errorColor, shape: BoxShape.circle),
+                        constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
+                        child: Text(
+                          service.unreadCount.value.toString(),
+                          style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
+                ],
+              );
+            }),
           ),
         ],
       ),

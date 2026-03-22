@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import '../../../core/constants/app_constants.dart';
+import 'package:get/get.dart';
+import '../controllers/admin_controller.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -14,6 +14,7 @@ class ReportsScreen extends StatefulWidget {
 }
 
 class _ReportsScreenState extends State<ReportsScreen> {
+  final AdminController controller = Get.find<AdminController>();
   String _filter = 'شهري';
 
   Future<void> _exportToPdf() async {
@@ -56,110 +57,133 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _buildSummaryTable() {
-    return DataTable(
-      columns: const [
-        DataColumn(label: Text('المؤشر')),
-        DataColumn(label: Text('القيمة', textAlign: TextAlign.center)),
-      ],
-      rows: const [
-        DataRow(cells: [DataCell(Text('إجمالي التبرعات المحصلة')), DataCell(Text('1.5M دج'))]),
-        DataRow(cells: [DataCell(Text('إجمالي طلبات الخدمة المنجزة')), DataCell(Text('120 طلب'))]),
-        DataRow(cells: [DataCell(Text('نسبة النمو الشهري')), DataCell(Text('+15%', style: TextStyle(color: Colors.green)))]),
-      ],
-    );
+    return Obx(() {
+      final totalDons = controller.totalDonations.value;
+      final monthlyReqCount = controller.monthlyRequests.isEmpty ? 0 : controller.monthlyRequests.map((e) => e['count'] as int).fold(0, (a, b) => a + b);
+
+      return DataTable(
+        columns: const [
+          DataColumn(label: Text('المؤشر')),
+          DataColumn(label: Text('القيمة', textAlign: TextAlign.center)),
+        ],
+        rows: [
+          DataRow(cells: [const DataCell(Text('إجمالي التبرعات (المؤكدة)')), DataCell(Text('$totalDons دج'))]),
+          DataRow(cells: [const DataCell(Text('طلبات هذا الشهر')), DataCell(Text('$monthlyReqCount طلب'))]),
+          DataRow(cells: [const DataCell(Text('المشاريع النشطة')), DataCell(Text('${controller.activeProjects.value} مشروع'))]),
+        ],
+      );
+    });
   }
 
   Widget _buildBarChart() {
-    return SizedBox(
-      height: 200,
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: 20,
-          barTouchData: BarTouchData(enabled: false),
-          titlesData: FlTitlesData(
-            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 28)),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (double value, TitleMeta meta) {
-                  const style = TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10);
-                  String text;
-                  switch (value.toInt()) {
-                    case 0: text = 'جانفي'; break;
-                    case 1: text = 'فيفري'; break;
-                    case 2: text = 'مارس'; break;
-                    case 3: text = 'أفريل'; break;
-                    case 4: text = 'ماي'; break;
-                    case 5: text = 'جوان'; break;
-                    default: text = ''; break;
-                  }
-                  return SideTitleWidget(meta: meta, child: Text(text, style: style));
-                },
+    return Obx(() {
+      final data = controller.donationsLastSixMonths;
+      if (data.isEmpty) return const SizedBox(height: 200, child: Center(child: Text('لا توجد بيانات')));
+      
+      final maxYValue = data.isEmpty ? 20.0 : data.map((e) => (e['amount'] as num).toDouble()).fold(0.0, (a, b) => a > b ? a : b) * 1.2 + 1;
+
+      return SizedBox(
+        height: 200,
+        child: BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            maxY: maxYValue,
+            barTouchData: BarTouchData(enabled: false),
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 28)),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (double value, TitleMeta meta) {
+                    if (value.toInt() >= 0 && value.toInt() < data.length) {
+                      return SideTitleWidget(meta: meta, child: Text(data[data.length - 1 - value.toInt()]['month'], style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10)));
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
               ),
+              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             ),
+            borderData: FlBorderData(show: false),
+            barGroups: List.generate(data.length, (index) {
+              final reverseIndex = data.length - 1 - index;
+              return BarChartGroupData(
+                x: index,
+                barRods: [BarChartRodData(toY: (data[reverseIndex]['amount'] as num).toDouble(), color: Colors.blue, width: 15)],
+              );
+            }),
           ),
-          borderData: FlBorderData(show: false),
-          barGroups: [
-            BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: 8, color: Colors.blue, width: 15)]),
-            BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: 10, color: Colors.blue, width: 15)]),
-            BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: 14, color: Colors.blue, width: 15)]),
-            BarChartGroupData(x: 3, barRods: [BarChartRodData(toY: 15, color: Colors.blue, width: 15)]),
-            BarChartGroupData(x: 4, barRods: [BarChartRodData(toY: 13, color: Colors.blue, width: 15)]),
-            BarChartGroupData(x: 5, barRods: [BarChartRodData(toY: 18, color: Colors.blue, width: 15)]),
-          ],
         ),
-      ),
-    );
+      );
+    });
   }
 
   Widget _buildPieChart() {
-    return SizedBox(
-      height: 200,
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 2,
-          centerSpaceRadius: 40,
-          sections: [
-            PieChartSectionData(color: Colors.green, value: 40, title: 'غذائية', radius: 50, titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            PieChartSectionData(color: Colors.blue, value: 30, title: 'طبية', radius: 50, titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            PieChartSectionData(color: Colors.red, value: 15, title: 'جنائز', radius: 50, titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            PieChartSectionData(color: Colors.orange, value: 15, title: 'أخرى', radius: 50, titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ],
+    return Obx(() {
+      final data = controller.serviceTypeDistribution;
+      if (data.isEmpty) return const SizedBox(height: 200, child: Center(child: Text('لا توجد بيانات')));
+
+      return SizedBox(
+        height: 200,
+        child: PieChart(
+          PieChartData(
+            sectionsSpace: 2,
+            centerSpaceRadius: 40,
+            sections: data.map((e) {
+              return PieChartSectionData(
+                color: e['color'] as Color,
+                value: (e['count'] as num).toDouble(),
+                title: (e['percentage'] as num) > 0 ? '${e['name']}\n${e['percentage']}%' : '',
+                radius: 50,
+                titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
+              );
+            }).toList(),
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   Widget _buildLineChart() {
-    return SizedBox(
-      height: 200,
-      child: LineChart(
-        LineChartData(
-          gridData: FlGridData(show: true, drawVerticalLine: false),
-          titlesData: FlTitlesData(
-            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 30)),
-            bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          ),
-          borderData: FlBorderData(show: false),
-          minX: 0,
-          maxX: 5,
-          minY: 0,
-          maxY: 6,
-          lineBarsData: [
-            LineChartBarData(
-              spots: const [FlSpot(0, 1), FlSpot(1, 1.5), FlSpot(2, 2.8), FlSpot(3, 3.2), FlSpot(4, 4.5), FlSpot(5, 5)],
-              isCurved: true,
-              color: Colors.purple,
-              barWidth: 4,
-              isStrokeCapRound: true,
-              dotData: FlDotData(show: true),
-              belowBarData: BarAreaData(show: true, color: Colors.purple.withOpacity(0.2)),
+    return Obx(() {
+      final data = controller.monthlyRequests;
+      if (data.isEmpty) return const SizedBox(height: 200, child: Center(child: Text('لا توجد بيانات')));
+
+      final spots = data.map((e) => FlSpot((e['day'] as num).toDouble(), (e['count'] as num).toDouble())).toList();
+      final maxYValue = spots.isEmpty ? 5.0 : spots.map((e) => e.y).fold(0.0, (a, b) => a > b ? a : b) * 1.5 + 1;
+
+      return SizedBox(
+        height: 200,
+        child: LineChart(
+          LineChartData(
+            gridData: FlGridData(show: true, drawVerticalLine: false),
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 30)),
+              bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             ),
-          ],
+            borderData: FlBorderData(show: false),
+            minX: 1,
+            maxX: data.length.toDouble(),
+            minY: 0,
+            maxY: maxYValue,
+            lineBarsData: [
+              LineChartBarData(
+                spots: spots,
+                isCurved: true,
+                color: Colors.purple,
+                barWidth: 4,
+                isStrokeCapRound: true,
+                dotData: FlDotData(show: false),
+                belowBarData: BarAreaData(show: true, color: Colors.purple.withValues(alpha: 0.2)),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   @override

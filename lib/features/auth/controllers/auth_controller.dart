@@ -1,13 +1,12 @@
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../core/routes/app_routes.dart';
 
 class AuthController extends GetxController {
   final AuthService _authService = AuthService();
-  
+
   Rx<UserModel?> currentUser = Rx<UserModel?>(null);
   RxBool isLoading = false.obs;
 
@@ -21,6 +20,18 @@ class AuthController extends GetxController {
       }
     } catch (e) {
       Get.snackbar("خطأ", "فشل تسجيل الدخول: ${e.toString()}");
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> resetPassword(String email) async {
+    try {
+      isLoading.value = true;
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      Get.snackbar("✅ نجاح", "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني");
+    } catch (e) {
+      Get.snackbar("خطأ", "فشل إرسال الرابط: ${e.toString()}");
     } finally {
       isLoading.value = false;
     }
@@ -68,7 +79,7 @@ class AuthController extends GetxController {
   Future<void> checkAuthState() async {
     try {
       User? firebaseUser = FirebaseAuth.instance.currentUser;
-      
+
       if (firebaseUser != null) {
         UserModel? user = await _authService.getCurrentUserData().timeout(
           const Duration(seconds: 10),
@@ -113,5 +124,12 @@ class AuthController extends GetxController {
         Get.offAllNamed(AppRoutes.login);
         break;
     }
+  }
+
+  Future<void> refreshUser() async {
+    try {
+      final user = await _authService.getCurrentUserData();
+      if (user != null) currentUser.value = user;
+    } catch (_) {}
   }
 }

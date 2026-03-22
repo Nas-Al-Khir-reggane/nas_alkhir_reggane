@@ -4,6 +4,7 @@ class VehicleModel {
   final String id;
   final String plateNumber;
   final String type;
+  final String? model;
   final bool isAvailable;
   final GeoPoint? currentLocation;
   final int totalTrips;
@@ -14,6 +15,7 @@ class VehicleModel {
     required this.id,
     required this.plateNumber,
     required this.type,
+    this.model,
     this.isAvailable = true,
     this.currentLocation,
     this.totalTrips = 0,
@@ -26,6 +28,7 @@ class VehicleModel {
       'id': id,
       'plateNumber': plateNumber,
       'type': type,
+      'model': model,
       'isAvailable': isAvailable,
       'currentLocation': currentLocation,
       'totalTrips': totalTrips,
@@ -34,11 +37,12 @@ class VehicleModel {
     };
   }
 
-  factory VehicleModel.fromMap(Map<String, dynamic> map) {
+  factory VehicleModel.fromMap(Map<String, dynamic> map, [String? id]) {
     return VehicleModel(
-      id: map['id'] ?? '',
+      id: id ?? map['id'] ?? '',
       plateNumber: map['plateNumber'] ?? '',
       type: map['type'] ?? '',
+      model: map['model'],
       isAvailable: map['isAvailable'] ?? true,
       currentLocation: map['currentLocation'],
       totalTrips: map['totalTrips'] ?? 0,
@@ -51,6 +55,7 @@ class VehicleModel {
     String? id,
     String? plateNumber,
     String? type,
+    String? model,
     bool? isAvailable,
     GeoPoint? currentLocation,
     int? totalTrips,
@@ -61,6 +66,7 @@ class VehicleModel {
       id: id ?? this.id,
       plateNumber: plateNumber ?? this.plateNumber,
       type: type ?? this.type,
+      model: model ?? this.model,
       isAvailable: isAvailable ?? this.isAvailable,
       currentLocation: currentLocation ?? this.currentLocation,
       totalTrips: totalTrips ?? this.totalTrips,

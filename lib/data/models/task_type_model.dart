@@ -20,9 +20,9 @@ class TaskTypeModel {
     };
   }
 
-  factory TaskTypeModel.fromMap(Map<String, dynamic> map) {
+  factory TaskTypeModel.fromMap(Map<String, dynamic> map, [String? id]) {
     return TaskTypeModel(
-      id: map['id'] ?? '',
+      id: id ?? map['id'] ?? '',
       name: map['name'] ?? '',
       description: map['description'] ?? '',
       isActive: map['isActive'] ?? true,

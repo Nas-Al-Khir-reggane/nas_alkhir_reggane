@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../controllers/admin_controller.dart';
-import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../data/models/vehicle_model.dart';
 
 class VehiclesScreen extends StatefulWidget {
@@ -18,129 +18,124 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
   void _showAddVehicleDialog() {
     final typeCtl = TextEditingController();
     final plateCtl = TextEditingController();
-    final driverCtl = TextEditingController();
+    final modelCtl = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    Get.defaultDialog(
-      title: "إضافة سيارة جديدة",
-      content: Form(
-        key: formKey,
-        child: Column(
-          children: [
-            TextFormField(
-              controller: plateCtl,
-              decoration: const InputDecoration(labelText: "رقم اللوحة", border: OutlineInputBorder()),
-              validator: (v) => v!.isEmpty ? 'مطلوب' : null,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: typeCtl,
-              decoration: const InputDecoration(labelText: "نوع السيارة (إسعاف، شاحنة...)", border: OutlineInputBorder()),
-              validator: (v) => v!.isEmpty ? 'مطلوب' : null,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: driverCtl,
-              decoration: const InputDecoration(labelText: "اسم السائق (المسؤول)", border: OutlineInputBorder()),
-              validator: (v) => v!.isEmpty ? 'مطلوب' : null,
-            ),
-          ],
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppTheme.darkSurface,
+        title: Text("إضافة سيارة جديدة", style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal')),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: plateCtl,
+                style: TextStyle(color: AppTheme.textPrimary),
+                decoration: AppTheme.inputDecoration("رقم اللوحة", Icons.tag),
+                validator: (v) => v!.isEmpty ? 'مطلوب' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: typeCtl,
+                style: TextStyle(color: AppTheme.textPrimary),
+                decoration: AppTheme.inputDecoration("نوع السيارة", Icons.airport_shuttle),
+                validator: (v) => v!.isEmpty ? 'مطلوب' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: modelCtl,
+                style: TextStyle(color: AppTheme.textPrimary),
+                decoration: AppTheme.inputDecoration("الموديل", Icons.calendar_today),
+              ),
+            ],
+          ),
         ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: Text("إلغاء", style: TextStyle(color: AppTheme.textSecondary))),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                FirebaseFirestore.instance.collection('vehicles').add({
+                  'plateNumber': plateCtl.text.trim(),
+                  'type': typeCtl.text.trim(),
+                  'model': modelCtl.text.trim(),
+                  'status': 'ready',
+                  'isAvailable': true,
+                  'totalTrips': 0,
+                  'totalKm': 0,
+                  'createdAt': FieldValue.serverTimestamp(),
+                });
+                Get.back();
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+            child: const Text("حفظ", style: TextStyle(color: Colors.black)),
+          ),
+        ],
       ),
-      textConfirm: "حفظ",
-      textCancel: "إلغاء",
-      confirmTextColor: Colors.white,
-      onConfirm: () {
-        if (formKey.currentState!.validate()) {
-          VehicleModel vehicle = VehicleModel(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            plateNumber: plateCtl.text.trim(),
-            type: typeCtl.text.trim(),
-            assignedDriverId: driverCtl.text.trim(),
-            isAvailable: true,
-            totalKm: 0.0,
-            totalTrips: 0,
-          );
-          _adminCtl.addVehicle(vehicle);
-          Get.back();
-        }
-      },
     );
-  }
-
-  void _changeVehicleStatus(VehicleModel v) {
-    bool newStatus = !v.isAvailable;
-    _adminCtl.updateVehicle(v.copyWith(isAvailable: newStatus));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
         title: const Text("إدارة السيارات"),
-        actions: [
-          IconButton(
-            icon: Icon(Get.isDarkMode ? Icons.light_mode : Icons.dark_mode),
-            onPressed: () => AppConstants.toggleTheme(),
-          ),
-        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection(AppConstants.vehiclesCollection).snapshots(),
+        stream: FirebaseFirestore.instance.collection('vehicles').snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const Center(child: Text("لا توجد سيارات مسجلة"));
+          if (snapshot.connectionState == ConnectionState.waiting) return AppTheme.loadingState();
+          if (snapshot.hasError) return AppTheme.errorState('حدث خطأ في تحميل البيانات');
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return AppTheme.emptyState('لا توجد سيارات مسجلة');
 
           var docs = snapshot.data!.docs;
 
-          return ListView.builder(
+          return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: docs.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              VehicleModel v = VehicleModel.fromMap(docs[index].data() as Map<String, dynamic>);
-              bool isAvailable = v.isAvailable;
+              var data = docs[index].data() as Map<String, dynamic>;
+              VehicleModel v = VehicleModel.fromMap(data, docs[index].id);
 
-              return Card(
-                elevation: 3,
-                margin: const EdgeInsets.only(bottom: 16),
+              return Container(
+                decoration: AppTheme.cardDecoration,
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text("${v.type} | ${v.plateNumber}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(color: (isAvailable ? Colors.green : Colors.orange).withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
-                            child: Text(isAvailable ? "متاحة" : "في مهمة", style: TextStyle(color: isAvailable ? Colors.green : Colors.orange, fontWeight: FontWeight.bold)),
-                          ),
+                          Text("${v.type} | ${v.plateNumber}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary)),
+                          AppTheme.statusBadge(v.isAvailable ? 'normal' : 'urgent'), // Using 'normal' for available, 'urgent' for busy as placeholder
                         ],
                       ),
-                      const Divider(),
+                      const Divider(color: AppTheme.glassBorder),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(child: Text("السائق: ${v.assignedDriverId ?? 'غير محدد'}", style: const TextStyle(fontWeight: FontWeight.w500))),
-                          Row(
-                            children: [
-                              const Icon(Icons.speed, size: 16, color: Colors.grey),
-                              const SizedBox(width: 4),
-                              Text("${v.totalKm} كم", style: const TextStyle(color: Colors.grey)),
-                            ],
-                          ),
+                          Text("الموديل: ${v.model ?? 'غير محدد'}", style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                          Text("${v.totalTrips} رحلة", style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: OutlinedButton.icon(
-                          onPressed: () => _changeVehicleStatus(v),
-                          icon: const Icon(Icons.sync_alt),
-                          label: Text(isAvailable ? "تحويل إلى في مهمة" : "تحويل إلى متاحة"),
-                        ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                FirebaseFirestore.instance.collection('vehicles').doc(v.id).update({'isAvailable': !v.isAvailable});
+                              },
+                              style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.primaryGreen)),
+                              child: Text(v.isAvailable ? "تعيين كـ مشغول" : "تعيين كـ متاح", style: const TextStyle(color: AppTheme.primaryGreen)),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -152,7 +147,8 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddVehicleDialog,
-        child: const Icon(Icons.add),
+        backgroundColor: AppTheme.primaryGreen,
+        child: const Icon(Icons.add, color: Colors.black),
       ),
     );
   }

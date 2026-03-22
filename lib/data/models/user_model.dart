@@ -33,6 +33,18 @@ class UserModel {
   final bool isApproved;
   final DateTime createdAt;
   final String? profileImage;
+  
+  // Worker specific fields
+  final String? workerRole;
+  final bool isAvailable;
+  final bool isActive;
+  final int completedTasks;
+  final int totalTrips;
+  final double rating;
+  final int ratingCount;
+  final DateTime? lastActivity;
+  final int currentTasksCount;
+  final String? notes;
 
   UserModel({
     required this.id,
@@ -46,6 +58,16 @@ class UserModel {
     this.isApproved = false,
     required this.createdAt,
     this.profileImage,
+    this.workerRole,
+    this.isAvailable = true,
+    this.isActive = true,
+    this.completedTasks = 0,
+    this.totalTrips = 0,
+    this.rating = 0.0,
+    this.ratingCount = 0,
+    this.lastActivity,
+    this.currentTasksCount = 0,
+    this.notes,
   });
 
   Map<String, dynamic> toMap() {
@@ -61,12 +83,22 @@ class UserModel {
       'isApproved': isApproved,
       'createdAt': Timestamp.fromDate(createdAt),
       'profileImage': profileImage,
+      'workerRole': workerRole,
+      'isAvailable': isAvailable,
+      'isActive': isActive,
+      'completedTasks': completedTasks,
+      'totalTrips': totalTrips,
+      'rating': rating,
+      'ratingCount': ratingCount,
+      'lastActivity': lastActivity != null ? Timestamp.fromDate(lastActivity!) : null,
+      'currentTasksCount': currentTasksCount,
+      'notes': notes,
     };
   }
 
-  factory UserModel.fromMap(Map<String, dynamic> map) {
+  factory UserModel.fromMap(Map<String, dynamic> map, [String? docId]) {
     return UserModel(
-      id: map['id'] ?? '',
+      id: docId ?? map['id'] ?? '',
       name: map['name'] ?? '',
       email: map['email'] ?? '',
       phone: map['phone'] ?? '',
@@ -75,8 +107,18 @@ class UserModel {
       role: UserRole.values.firstWhere((e) => e.name == map['role'], orElse: () => UserRole.guest),
       permissions: List<String>.from(map['permissions'] ?? []),
       isApproved: map['isApproved'] ?? false,
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       profileImage: map['profileImage'],
+      workerRole: map['workerRole'],
+      isAvailable: map['isAvailable'] ?? true,
+      isActive: map['isActive'] ?? true,
+      completedTasks: map['completedTasks'] ?? 0,
+      totalTrips: map['totalTrips'] ?? 0,
+      rating: (map['rating'] ?? 0.0).toDouble(),
+      ratingCount: map['ratingCount'] ?? 0,
+      lastActivity: (map['lastActivity'] as Timestamp?)?.toDate(),
+      currentTasksCount: map['currentTasksCount'] ?? 0,
+      notes: map['notes'],
     );
   }
 
@@ -92,6 +134,16 @@ class UserModel {
     bool? isApproved,
     DateTime? createdAt,
     String? profileImage,
+    String? workerRole,
+    bool? isAvailable,
+    bool? isActive,
+    int? completedTasks,
+    int? totalTrips,
+    double? rating,
+    int? ratingCount,
+    DateTime? lastActivity,
+    int? currentTasksCount,
+    String? notes,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -105,6 +157,16 @@ class UserModel {
       isApproved: isApproved ?? this.isApproved,
       createdAt: createdAt ?? this.createdAt,
       profileImage: profileImage ?? this.profileImage,
+      workerRole: workerRole ?? this.workerRole,
+      isAvailable: isAvailable ?? this.isAvailable,
+      isActive: isActive ?? this.isActive,
+      completedTasks: completedTasks ?? this.completedTasks,
+      totalTrips: totalTrips ?? this.totalTrips,
+      rating: rating ?? this.rating,
+      ratingCount: ratingCount ?? this.ratingCount,
+      lastActivity: lastActivity ?? this.lastActivity,
+      currentTasksCount: currentTasksCount ?? this.currentTasksCount,
+      notes: notes ?? this.notes,
     );
   }
 }

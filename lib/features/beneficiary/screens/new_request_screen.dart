@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:animate_do/animate_do.dart';
+import '../../../core/theme/app_theme.dart';
 import '../controllers/beneficiary_controller.dart';
-import '../../auth/controllers/auth_controller.dart';
-import '../../../data/models/service_request_model.dart';
 import '../../../data/models/service_type_model.dart';
-import 'package:intl/intl.dart';
 
 class NewRequestScreen extends StatefulWidget {
   const NewRequestScreen({super.key});
@@ -14,184 +13,280 @@ class NewRequestScreen extends StatefulWidget {
 }
 
 class _NewRequestScreenState extends State<NewRequestScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final BeneficiaryController _controller = Get.find<BeneficiaryController>();
-  final AuthController _authController = Get.find<AuthController>();
-
-  ServiceTypeModel? _selectedServiceType;
-  String _urgency = 'normal';
-  final _notesCtl = TextEditingController();
-
-  // Funeral fields
-  final _deceasedNameCtl = TextEditingController();
-  final _pickupLocCtl = TextEditingController();
-  final _dropoffLocCtl = TextEditingController();
-  DateTime? _funeralDate;
-
-  bool _isLoading = false;
+  final BeneficiaryController controller = Get.find<BeneficiaryController>();
+  
+  ServiceTypeModel? selectedService;
+  String selectedUrgency = 'normal';
+  final TextEditingController descriptionController = TextEditingController();
+  final TextEditingController deceasedNameController = TextEditingController();
+  final TextEditingController pickupController = TextEditingController();
+  final TextEditingController deliveryController = TextEditingController();
+  DateTime? selectedDateTime;
 
   @override
   void dispose() {
-    _notesCtl.dispose();
-    _deceasedNameCtl.dispose();
-    _pickupLocCtl.dispose();
-    _dropoffLocCtl.dispose();
+    descriptionController.dispose();
+    deceasedNameController.dispose();
+    pickupController.dispose();
+    deliveryController.dispose();
     super.dispose();
   }
 
-  void _submit() async {
-    if (_formKey.currentState!.validate() && _selectedServiceType != null) {
-      if ((_selectedServiceType!.name.contains('جنازة') || _selectedServiceType!.name.contains('جنازات')) && _funeralDate == null) {
-        Get.snackbar('تنبيه', 'يرجى تحديد وقت وتاريخ الجنازة');
+  void _submitRequest() {
+    if (selectedService == null) {
+      Get.snackbar('تنبيه', 'يرجى اختيار نوع الخدمة', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+      return;
+    }
+
+    Map<String, dynamic> requestData = {
+      'type': selectedService!.id,
+      'typeName': selectedService!.name,
+      'urgency': selectedUrgency,
+      'description': descriptionController.text,
+      'details': {},
+    };
+
+    if (selectedService!.id == 'funeral_transport') {
+      if (deceasedNameController.text.isEmpty || pickupController.text.isEmpty || deliveryController.text.isEmpty || selectedDateTime == null) {
+        Get.snackbar('تنبيه', 'يرجى ملء جميع الحقول المطلوبة', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
         return;
       }
-
-      setState(() => _isLoading = true);
-      final user = _authController.currentUser.value!;
-
-      Map<String, dynamic> details = {};
-      if (_selectedServiceType!.name.contains('جنازة') || _selectedServiceType!.name.contains('جنازات')) {
-        details = {
-          'deceasedName': _deceasedNameCtl.text.trim(),
-          'pickupLocation': _pickupLocCtl.text.trim(),
-          'dropoffLocation': _dropoffLocCtl.text.trim(),
-          'datetime': _funeralDate?.toIso8601String(),
-        };
-      }
-
-      ServiceRequestModel request = ServiceRequestModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        type: _selectedServiceType!.name,
-        requesterId: user.id,
-        requesterName: user.name,
-        phone: user.phone,
-        wilaya: user.wilaya,
-        address: user.address,
-        description: _notesCtl.text.trim(),
-        urgency: _urgency,
-        status: 'pending',
-        details: details,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
-      await _controller.submitRequest(request);
-      setState(() => _isLoading = false);
-    } else if (_selectedServiceType == null) {
-      Get.snackbar('تنبيه', 'يرجى اختيار نوع الخدمة');
-    }
-  }
-
-  Future<void> _pickDateTime() async {
-    DateTime? d = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 30)),
-    );
-    if (d != null) {
-      TimeOfDay? t = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.now(),
-      );
-      if (t != null) {
-        setState(() {
-          _funeralDate = DateTime(d.year, d.month, d.day, t.hour, t.minute);
-        });
+      requestData['details'] = {
+        'deceasedName': deceasedNameController.text,
+        'pickupLocation': pickupController.text,
+        'deliveryLocation': deliveryController.text,
+        'requestedTime': selectedDateTime,
+      };
+    } else {
+      if (descriptionController.text.isEmpty) {
+        Get.snackbar('تنبيه', 'يرجى وصف الطلب', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+        return;
       }
     }
+
+    controller.submitRequest(requestData);
   }
 
   @override
   Widget build(BuildContext context) {
-    bool isFuneral = _selectedServiceType != null &&
-        (_selectedServiceType!.name.contains('جنازة') || _selectedServiceType!.name.contains('جنازات'));
-
     return Scaffold(
-      appBar: AppBar(title: const Text("طلب خدمة جديدة")),
+      backgroundColor: AppTheme.darkBg,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('طلب خدمة جديدة'),
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text("اختر نوع الخدمة", style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Obx(() => DropdownButtonFormField<ServiceTypeModel>(
-                    decoration: const InputDecoration(border: OutlineInputBorder()),
-                    value: _selectedServiceType,
-                    items: _controller.availableServices
-                        .map((t) => DropdownMenuItem(value: t, child: Text(t.name)))
-                        .toList(),
-                    onChanged: (val) => setState(() => _selectedServiceType = val),
-                    validator: (v) => v == null ? 'الرجاء اختيار نوع الخدمة' : null,
-                  )),
-              const SizedBox(height: 24),
-              if (isFuneral) ...[
-                const Text("تفاصيل الجنازة", style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _deceasedNameCtl,
-                  decoration: const InputDecoration(labelText: "اسم المتوفى", border: OutlineInputBorder()),
-                  validator: (v) => v!.isEmpty ? 'مطلوب' : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _pickupLocCtl,
-                  decoration: const InputDecoration(labelText: "مكان الاستلام", border: OutlineInputBorder()),
-                  validator: (v) => v!.isEmpty ? 'مطلوب' : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _dropoffLocCtl,
-                  decoration: const InputDecoration(labelText: "مكان التسليم", border: OutlineInputBorder()),
-                  validator: (v) => v!.isEmpty ? 'مطلوب' : null,
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  shape: RoundedRectangleBorder(
-                    side: BorderSide(color: Colors.grey.shade400),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  title: Text(_funeralDate == null
-                      ? "تحديد الوقت والتاريخ"
-                      : DateFormat('yyyy-MM-dd HH:mm').format(_funeralDate!)),
-                  trailing: const Icon(Icons.calendar_month),
-                  onTap: _pickDateTime,
-                ),
-                const SizedBox(height: 24),
-              ],
-              const Text("درجة الاستعجال", style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(border: OutlineInputBorder()),
-                value: _urgency,
-                items: const [
-                  DropdownMenuItem(value: 'normal', child: Text("عادي (أخضر)", style: TextStyle(color: Colors.green))),
-                  DropdownMenuItem(value: 'urgent', child: Text("مستعجل (برتقالي)", style: TextStyle(color: Colors.orange))),
-                  DropdownMenuItem(value: 'emergency', child: Text("طارئ (أحمر)", style: TextStyle(color: Colors.red))),
-                ],
-                onChanged: (val) => setState(() => _urgency = val ?? 'normal'),
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _notesCtl,
-                maxLines: 4,
-                decoration: const InputDecoration(labelText: "ملاحظات إضافية (اختياري)", border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 32),
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ElevatedButton(
-                      style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-                      onPressed: _submit,
-                      child: const Text("إرسال الطلب"),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('طلب خدمة جديدة', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+            Text('اختر نوع الخدمة المطلوبة', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+            const SizedBox(height: 20),
+
+            Text('نوع الخدمة *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            const SizedBox(height: 8),
+            Obx(() => GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: 1.3,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              children: controller.availableServices.map((service) {
+                final isSelected = selectedService?.id == service.id;
+                // لون أيقونة افتراضي
+                Color serviceColor = AppTheme.primaryGreen;
+                if (service.id == 'funeral_transport') serviceColor = Colors.deepPurpleAccent;
+
+                return GestureDetector(
+                  onTap: () => setState(() => selectedService = service),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      color: isSelected ? serviceColor.withValues(alpha: 0.2) : AppTheme.darkCard,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: isSelected ? serviceColor : AppTheme.glassBorder,
+                        width: isSelected ? 2 : 1
+                      ),
+                      boxShadow: isSelected ? AppTheme.cardShadow : null
                     ),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(_getIconData(service.id), color: isSelected ? serviceColor : AppTheme.textHint, size: 28),
+                        const SizedBox(height: 8),
+                        Text(service.name,
+                          style: TextStyle(
+                            color: isSelected ? serviceColor : AppTheme.textSecondary,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                            fontSize: 13
+                          ),
+                          textAlign: TextAlign.center),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            )),
+
+            const SizedBox(height: 20),
+
+            if (selectedService != null)
+              FadeInUp(
+                duration: const Duration(milliseconds: 300),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('تفاصيل الطلب', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 12),
+                    
+                    if (selectedService!.id == 'funeral_transport')
+                      _buildFuneralFields()
+                    else
+                      _buildGeneralFields(),
+                    
+                    const SizedBox(height: 20),
+                    Text('درجة الاستعجال *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _buildUrgencyOption('normal', 'عادي', Icons.check_circle_outline, AppTheme.successColor),
+                        _buildUrgencyOption('urgent', 'مستعجل', Icons.warning_outlined, AppTheme.urgentColor),
+                        _buildUrgencyOption('emergency', 'طارئ', Icons.emergency_outlined, AppTheme.emergencyColor),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 24),
+
+            Obx(() => controller.isLoading.value
+              ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
+              : AppTheme.gradientButton(
+                  text: 'إرسال الطلب',
+                  icon: Icons.send,
+                  onPressed: _submitRequest,
+                )
+            ),
+
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFuneralFields() {
+    return Column(
+      children: [
+        _buildLabeledField('اسم المتوفى *', Icons.person_off_outlined, deceasedNameController),
+        const SizedBox(height: 12),
+        _buildLabeledField('مكان الاستلام *', Icons.place_outlined, pickupController, hint: 'المستشفى/البيت...'),
+        const SizedBox(height: 12),
+        _buildLabeledField('مكان التسليم (المقبرة) *', Icons.flag_outlined, deliveryController),
+        const SizedBox(height: 12),
+        Text('التاريخ والوقت المطلوب *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () async {
+            final date = await showDatePicker(
+              context: context,
+              initialDate: DateTime.now(),
+              firstDate: DateTime.now(),
+              lastDate: DateTime.now().add(const Duration(days: 7)),
+            );
+            if (date != null) {
+              final time = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay.now(),
+              );
+              if (time != null) {
+                setState(() {
+                  selectedDateTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+                });
+              }
+            }
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppTheme.darkCard,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppTheme.glassBorder)
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                const Icon(Icons.schedule, color: AppTheme.primaryGreen),
+                const SizedBox(width: 12),
+                Text(
+                  selectedDateTime != null 
+                    ? selectedDateTime.toString().substring(0, 16) 
+                    : 'اختر التاريخ والوقت',
+                  style: TextStyle(color: selectedDateTime != null ? AppTheme.textPrimary : AppTheme.textHint)
+                ),
+                const Spacer(),
+                const Icon(Icons.arrow_drop_down, color: AppTheme.textHint)
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGeneralFields() {
+    return _buildLabeledField('وصف الطلب *', Icons.description_outlined, descriptionController, maxLines: 3);
+  }
+
+  Widget _buildUrgencyOption(String id, String name, IconData icon, Color color) {
+    final isSelected = selectedUrgency == id;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => selectedUrgency = id),
+        child: Container(
+          margin: const EdgeInsets.only(right: 6),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withValues(alpha: 0.2) : AppTheme.darkCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isSelected ? color : AppTheme.glassBorder, width: isSelected ? 2 : 1)
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: isSelected ? color : AppTheme.textHint, size: 20),
+              const SizedBox(height: 4),
+              Text(name, style: TextStyle(color: isSelected ? color : AppTheme.textHint, fontSize: 11), textAlign: TextAlign.center),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildLabeledField(String label, IconData icon, TextEditingController controller, {String? hint, int maxLines = 1}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          maxLines: maxLines,
+          style: TextStyle(color: AppTheme.textPrimary),
+          decoration: AppTheme.inputDecoration(hint ?? label, icon),
+        ),
+      ],
+    );
+  }
+
+  IconData _getIconData(String serviceId) {
+    if (serviceId == 'funeral_transport') return Icons.airport_shuttle;
+    return Icons.help_outline;
   }
 }

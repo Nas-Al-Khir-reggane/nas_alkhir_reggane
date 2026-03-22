@@ -31,7 +31,9 @@ class ProjectUpdate {
       title: map['title'] ?? '',
       description: map['description'] ?? '',
       images: List<String>.from(map['images'] ?? []),
-      date: (map['date'] as Timestamp).toDate(),
+      date: map['date'] is Timestamp 
+          ? (map['date'] as Timestamp).toDate() 
+          : DateTime.now(),
     );
   }
 }
@@ -48,6 +50,8 @@ class ProjectModel {
   final List<ProjectUpdate> updates;
   final DateTime createdAt;
   final String createdBy;
+  final int donorsCount;
+  final List<String> assignedWorkers;
 
   ProjectModel({
     required this.id,
@@ -61,7 +65,11 @@ class ProjectModel {
     this.updates = const [],
     required this.createdAt,
     required this.createdBy,
+    this.donorsCount = 0,
+    this.assignedWorkers = const [],
   });
+
+  double get progressPercentage => budget > 0 ? (collected / budget * 100).clamp(0, 100) : 0;
 
   Map<String, dynamic> toMap() {
     return {
@@ -76,12 +84,14 @@ class ProjectModel {
       'updates': updates.map((x) => x.toMap()).toList(),
       'createdAt': Timestamp.fromDate(createdAt),
       'createdBy': createdBy,
+      'donorsCount': donorsCount,
+      'assignedWorkers': assignedWorkers,
     };
   }
 
-  factory ProjectModel.fromMap(Map<String, dynamic> map) {
+  factory ProjectModel.fromMap(Map<String, dynamic> map, [String? docId]) {
     return ProjectModel(
-      id: map['id'] ?? '',
+      id: docId ?? map['id'] ?? '',
       name: map['name'] ?? '',
       description: map['description'] ?? '',
       category: map['category'] ?? '',
@@ -90,8 +100,12 @@ class ProjectModel {
       deadline: map['deadline'] != null ? (map['deadline'] as Timestamp).toDate() : null,
       status: map['status'] ?? 'active',
       updates: List<ProjectUpdate>.from(map['updates']?.map((x) => ProjectUpdate.fromMap(x)) ?? []),
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      createdAt: map['createdAt'] is Timestamp 
+          ? (map['createdAt'] as Timestamp).toDate() 
+          : DateTime.now(),
       createdBy: map['createdBy'] ?? '',
+      donorsCount: map['donorsCount'] ?? 0,
+      assignedWorkers: List<String>.from(map['assignedWorkers'] ?? []),
     );
   }
 
@@ -107,6 +121,8 @@ class ProjectModel {
     List<ProjectUpdate>? updates,
     DateTime? createdAt,
     String? createdBy,
+    int? donorsCount,
+    List<String>? assignedWorkers,
   }) {
     return ProjectModel(
       id: id ?? this.id,
@@ -120,6 +136,8 @@ class ProjectModel {
       updates: updates ?? this.updates,
       createdAt: createdAt ?? this.createdAt,
       createdBy: createdBy ?? this.createdBy,
+      donorsCount: donorsCount ?? this.donorsCount,
+      assignedWorkers: assignedWorkers ?? this.assignedWorkers,
     );
   }
 }

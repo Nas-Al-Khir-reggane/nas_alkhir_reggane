@@ -44,7 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final authController = Get.find<AuthController>();
 
     return Scaffold(
-      backgroundColor: AppTheme.darkBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           // خلفية زخرفية
@@ -83,7 +83,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 16),
                   FadeInDown(
                     delay: const Duration(milliseconds: 200),
-                    child: const Text(
+                    child: Text(
                       'إنشاء حساب جديد',
                       style: TextStyle(
                         fontSize: 22,
@@ -103,6 +103,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: Column(
                           children: [
                             _buildTextField(
+                              context,
                               controller: _nameController,
                               label: 'اسم المستخدم',
                               icon: Icons.person_outline,
@@ -110,6 +111,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             const SizedBox(height: 14),
                             _buildTextField(
+                              context,
                               controller: _phoneController,
                               label: 'رقم الهاتف',
                               icon: Icons.phone_outlined,
@@ -118,6 +120,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             const SizedBox(height: 14),
                             _buildTextField(
+                              context,
                               controller: _emailController,
                               label: 'البريد الإلكتروني',
                               icon: Icons.email_outlined,
@@ -126,6 +129,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             const SizedBox(height: 14),
                             _buildTextField(
+                              context,
                               controller: _passwordController,
                               label: 'كلمة المرور',
                               icon: Icons.lock_outline,
@@ -138,6 +142,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             const SizedBox(height: 14),
                             _buildTextField(
+                              context,
                               controller: _confirmPasswordController,
                               label: 'تأكيد كلمة المرور',
                               icon: Icons.lock_outline,
@@ -158,11 +163,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               items: AppConstants.algeriaWilayas.map((w) => DropdownMenuItem(value: w, child: Text(w))).toList(),
                               onChanged: (v) => setState(() => _selectedWilaya = v),
                               validator: (v) => v == null ? 'يرجى اختيار الولاية' : null,
-                              dropdownColor: AppTheme.darkSurface,
-                              style: const TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
+                              dropdownColor: Theme.of(context).colorScheme.surface,
+                              style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
                             ),
                             const SizedBox(height: 14),
                             _buildTextField(
+                              context,
                               controller: _addressController,
                               label: 'العنوان التفصيلي',
                               icon: Icons.home_outlined,
@@ -182,8 +188,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 const DropdownMenuItem(value: UserRole.beneficiary, child: Text('مستفيد')),
                               ],
                               onChanged: (v) => setState(() => _selectedRole = v!),
-                              dropdownColor: AppTheme.darkSurface,
-                              style: const TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
+                              dropdownColor: Theme.of(context).colorScheme.surface,
+                              style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
                             ),
                             const SizedBox(height: 24),
                             Obx(() => authController.isLoading.value
@@ -211,7 +217,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             const SizedBox(height: 16),
                             TextButton(
                               onPressed: () => Get.back(),
-                              child: const Text(
+                              child: Text(
                                 'لديك حساب؟ سجل دخول',
                                 style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'Tajawal'),
                               ),
@@ -231,7 +237,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildTextField({
+  Widget _buildTextField(
+    BuildContext context, {
     required TextEditingController controller,
     required String label,
     required IconData icon,
@@ -246,7 +253,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       keyboardType: keyboardType,
       obscureText: obscureText,
       maxLines: maxLines,
-      style: const TextStyle(color: AppTheme.textPrimary),
+      style: TextStyle(color: AppTheme.textPrimary),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppTheme.primaryGreen),

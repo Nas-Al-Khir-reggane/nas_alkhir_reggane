@@ -7,13 +7,18 @@ import 'core/routes/app_routes.dart';
 import 'core/bindings/initial_binding.dart';
 import 'firebase_options.dart';
 import 'core/constants/app_constants.dart';
+import 'data/services/notification_service.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  timeago.setLocaleMessages('ar', timeago.ArMessages());
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
   
+  await NotificationService.init();
+
   runApp(const NasAlKheirApp());
 }
 
@@ -27,7 +32,7 @@ class NasAlKheirApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.dark, // جعل الوضع المظلم هو الافتراضي
+      themeMode: ThemeMode.system,
       locale: const Locale('ar'),
       fallbackLocale: const Locale('ar'),
       supportedLocales: const [

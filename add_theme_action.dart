@@ -3,7 +3,7 @@ import 'dart:io';
 void main() {
   final dir = Directory('lib');
   if (!dir.existsSync()) {
-    print('lib directory not found');
+    stdout.writeln('lib directory not found');
     return;
   }
 
@@ -17,7 +17,7 @@ void main() {
 
     // Add imports if they don't exist
     if (!content.contains("import 'package:get/get.dart';")) {
-      content = "import 'package:get/get.dart';\n" + content;
+      content = "import 'package:get/get.dart';\n$content";
     }
 
     // Determine path back to lib/core/constants/app_constants.dart
@@ -62,6 +62,6 @@ void main() {
     }
 
     file.writeAsStringSync(content);
-    print('Updated ${file.path}');
+    stdout.writeln('Updated ${file.path}');
   }
 }

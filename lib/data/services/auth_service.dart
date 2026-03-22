@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../../core/constants/app_constants.dart';
@@ -18,7 +19,7 @@ class AuthService {
         return await getCurrentUserData();
       }
     } catch (e) {
-      print("Error in signIn: $e");
+      debugPrint("Error in signIn: $e");
       rethrow;
     }
     return null;
@@ -37,7 +38,7 @@ class AuthService {
         return newUser;
       }
     } catch (e) {
-      print("Error in signUp: $e");
+      debugPrint("Error in signUp: $e");
       rethrow;
     }
     return null;

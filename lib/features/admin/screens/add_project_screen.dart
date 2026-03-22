@@ -125,7 +125,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
 
   Widget _buildDropdown() {
     return DropdownButtonFormField<String>(
-      value: _selectedCategory,
+      initialValue: _selectedCategory,
       decoration: InputDecoration(
         labelText: "الفئة",
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),

@@ -32,8 +32,8 @@ class _SplashScreenState extends State<SplashScreen> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: AppTheme.darkBgGradient,
+        decoration: BoxDecoration(
+          gradient: Get.isDarkMode ? AppTheme.darkBgGradient : LinearGradient(colors: [AppTheme.primaryGreen.withValues(alpha: 0.05), Colors.white]),
         ),
         child: Stack(
           children: [
@@ -46,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 height: 300,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppTheme.primaryGreen.withAlpha(13), // 0.05 * 255 ≈ 13
+                  color: AppTheme.primaryGreen.withAlpha(13), 
                   border: Border.all(color: AppTheme.glassBorder),
                 ),
               ),
@@ -77,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   const SizedBox(height: 24),
                   FadeInUp(
                     delay: const Duration(milliseconds: 400),
-                    child: const Text(
+                    child: Text(
                       'جمعية ناس الخير',
                       style: TextStyle(
                         fontFamily: 'Tajawal',
@@ -103,7 +103,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   const SizedBox(height: 12),
                   FadeInUp(
                     delay: const Duration(milliseconds: 800),
-                    child: const Text(
+                    child: Text(
                       'معاً نبني .. معاً نرحم .. معاً نُغيّر',
                       style: TextStyle(
                         fontFamily: 'Tajawal',
@@ -122,7 +122,7 @@ class _SplashScreenState extends State<SplashScreen> {
               bottom: 40,
               left: 0,
               right: 0,
-              child: Center(
+              child: const Center(
                 child: CircularProgressIndicator(
                   color: AppTheme.primaryGreen,
                   strokeWidth: 2,

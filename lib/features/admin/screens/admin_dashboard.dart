@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart' as intl;
 import '../../../core/theme/app_theme.dart';
@@ -8,6 +9,12 @@ import '../../../core/constants/app_constants.dart';
 import '../controllers/admin_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/models/service_request_model.dart';
+import '../../../data/models/user_model.dart';
+import '../../../data/services/notification_service.dart';
+import 'service_requests_screen.dart' as real_requests;
+import 'projects_screen.dart';
+import 'workers_screen.dart';
+import '../../shared/screens/profile_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -20,27 +27,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
   int _currentIndex = 0;
   final AdminController controller = Get.put(AdminController());
   final AuthController authController = Get.find<AuthController>();
+  final NotificationService notificationService = Get.find<NotificationService>();
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> screens = [
       _buildHomeTab(),
-      const ServiceRequestsScreen(),
-      const ProjectsScreen(),
+      const real_requests.ServiceRequestsScreen(),
+      ProjectsScreen(),
       const WorkersScreen(),
-      _buildSettingsTab(),
+      _buildManagementTab(),
     ];
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.darkBg,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: IndexedStack(
           index: _currentIndex,
           children: screens,
         ),
         bottomNavigationBar: _buildBottomBar(),
-        floatingActionButton: _buildFAB(),
+        floatingActionButton: _currentIndex == 4 ? null : _buildFAB(),
       ),
     );
   }
@@ -48,7 +56,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget _buildBottomBar() {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.darkSurface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: AppTheme.darkShadow,
       ),
@@ -65,11 +73,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           selectedLabelStyle: const TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold, fontSize: 12),
           unselectedLabelStyle: const TextStyle(fontFamily: 'Tajawal', fontSize: 11),
           items: [
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined),
-              activeIcon: Icon(Icons.dashboard),
-              label: 'الرئيسية',
-            ),
+            const BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard), label: 'الرئيسية'),
             BottomNavigationBarItem(
               icon: Obx(() => Badge(
                     label: Text(controller.urgentRequests.length.toString()),
@@ -77,23 +81,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     child: const Icon(Icons.assignment_outlined),
                   )),
               activeIcon: const Icon(Icons.assignment),
-              label: 'الطلبات',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.folder_outlined),
-              activeIcon: Icon(Icons.folder),
-              label: 'المشاريع',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.group_outlined),
-              activeIcon: Icon(Icons.group),
-              label: 'الفريق',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              activeIcon: Icon(Icons.settings),
-              label: 'الإعدادات',
-            ),
+              label: 'الطلبات'),
+            const BottomNavigationBarItem(icon: Icon(Icons.folder_outlined), activeIcon: Icon(Icons.folder), label: 'المشاريع'),
+            const BottomNavigationBarItem(icon: Icon(Icons.group_outlined), activeIcon: Icon(Icons.group), label: 'الفريق'),
+            const BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings_outlined), activeIcon: Icon(Icons.admin_panel_settings), label: 'الإدارة'),
           ],
         ),
       ),
@@ -112,36 +103,151 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: AppTheme.darkSurface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 24),
             _buildActionItem(Icons.volunteer_activism, 'تسجيل تبرع جديد', () {
               Get.back();
-              Get.toNamed('/admin/add-donation');
+              _showAdminDonationDialog();
             }),
             _buildActionItem(Icons.add_task, 'إضافة طلب خدمة', () {
               Get.back();
-              Get.toNamed('/admin/requests');
-            }),
-            _buildActionItem(Icons.create_new_folder, 'إضافة مشروع', () {
-              Get.back();
-              // Implement project creation dialog/screen
-            }),
-            _buildActionItem(Icons.assignment_ind, 'إسناد مهمة', () {
-              Get.back();
               setState(() => _currentIndex = 1);
+            }),
+            _buildActionItem(Icons.create_new_folder, 'إضافة مشروع جديد', () {
+              Get.back();
+              setState(() => _currentIndex = 2);
+            }),
+            _buildActionItem(Icons.person_add, 'إضافة عامل جديد', () {
+              Get.back();
+              setState(() => _currentIndex = 3);
             }),
           ],
         ),
       ),
     );
   }
+
+  void _showAdminDonationDialog() {
+    final donorNameCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    String selectedMethod = 'cash';
+    String selectedProject = 'general';
+    String selectedProjectName = 'تبرع عام للجمعية';
+
+    Get.dialog(
+      StatefulBuilder(builder: (context, setDialogState) {
+        return AlertDialog(
+          backgroundColor: AppTheme.darkSurface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('تسجيل تبرع جديد',
+              style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: donorNameCtrl,
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  decoration: AppTheme.inputDecoration('اسم المتبرع *', Icons.person_outline),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: amountCtrl,
+                  keyboardType: TextInputType.number,
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  decoration: AppTheme.inputDecoration('المبلغ (دج) *', Icons.attach_money),
+                ),
+                const SizedBox(height: 12),
+                Obx(() {
+                  final projects = controller.activeProjectsList;
+                  return DropdownButtonFormField<String>(
+                    dropdownColor: AppTheme.darkCard,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: AppTheme.inputDecoration('المشروع', Icons.folder_outlined),
+                    value: selectedProject,
+                    items: [
+                      const DropdownMenuItem(value: 'general', child: Text('تبرع عام للجمعية')),
+                      ...projects.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() {
+                          selectedProject = val;
+                          selectedProjectName = val == 'general'
+                              ? 'تبرع عام للجمعية'
+                              : projects.firstWhere((p) => p.id == val).name;
+                        });
+                      }
+                    },
+                  );
+                }),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  dropdownColor: AppTheme.darkCard,
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  decoration: AppTheme.inputDecoration('طريقة الدفع', Icons.payment),
+                  value: selectedMethod,
+                  items: const [
+                    DropdownMenuItem(value: 'cash', child: Text('نقداً')),
+                    DropdownMenuItem(value: 'bank', child: Text('تحويل بنكي')),
+                    DropdownMenuItem(value: 'online', child: Text('دفع إلكتروني')),
+                  ],
+                  onChanged: (val) => setDialogState(() => selectedMethod = val!),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
+            AppTheme.gradientButton(
+              text: 'تسجيل',
+              icon: Icons.save,
+              onPressed: () async {
+                final amount = double.tryParse(amountCtrl.text) ?? 0;
+                if (donorNameCtrl.text.isEmpty || amount <= 0) {
+                  Get.snackbar('تنبيه', 'يرجى ملء جميع الحقول');
+                  return;
+                }
+                try {
+                  await FirebaseFirestore.instance.collection('donations').add({
+                    'donorName': donorNameCtrl.text,
+                    'amount': amount,
+                    'projectId': selectedProject,
+                    'projectName': selectedProjectName,
+                    'method': selectedMethod,
+                    'isAnonymous': false,
+                    'status': 'confirmed',
+                    'registeredByAdmin': true,
+                    'date': FieldValue.serverTimestamp(),
+                  });
+                  if (selectedProject != 'general') {
+                    await FirebaseFirestore.instance
+                        .collection('projects')
+                        .doc(selectedProject)
+                        .update({'collected': FieldValue.increment(amount)});
+                  }
+                  Get.back();
+                  Get.snackbar('✅ تم', 'تم تسجيل التبرع بنجاح',
+                      backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
+                      colorText: AppTheme.successColor);
+                } catch (e) {
+                  Get.snackbar('خطأ', 'فشل تسجيل التبرع: $e');
+                }
+              },
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
 
   Widget _buildActionItem(IconData icon, String title, VoidCallback onTap) {
     return ListTile(
@@ -150,7 +256,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
         child: Icon(icon, color: AppTheme.primaryGreen),
       ),
-      title: Text(title, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontFamily: 'Tajawal')),
+      title: Text(title, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontFamily: 'Tajawal')),
       onTap: onTap,
     );
   }
@@ -159,7 +265,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return RefreshIndicator(
       onRefresh: () => controller.loadDashboardData(),
       color: AppTheme.primaryGreen,
-      backgroundColor: AppTheme.darkSurface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -167,43 +273,55 @@ class _AdminDashboardState extends State<AdminDashboard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 40),
-            // 1. AppBar مخصص
             Row(
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('مرحباً،', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                    Text('مرحباً،', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
                     Obx(() => Text(
                           authController.currentUser.value?.name ?? 'المدير',
-                          style: const TextStyle(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w700),
+                          style: TextStyle(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w700),
                         )),
+                    Obx(() => Text(
+                      authController.currentUser.value?.role.displayName ?? '',
+                      style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12, fontWeight: FontWeight.w600),
+                    )),
                   ],
                 ),
                 const Spacer(),
                 IconButton(
+                  onPressed: () => Get.toNamed('/profile'),
+                  icon: const Icon(Icons.person_outline, color: AppTheme.primaryGreen, size: 28),
+                ),
+                IconButton(
                   onPressed: () => AppConstants.toggleTheme(),
-                  icon: const Icon(Icons.light_mode, color: AppTheme.primaryGreen),
+                  icon: Icon(Get.isDarkMode ? Icons.light_mode : Icons.dark_mode, color: AppTheme.primaryGreen),
                 ),
-                Stack(
+                Obx(() => Stack(
                   children: [
-                    IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_none, color: AppTheme.textPrimary)),
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                        child: const Text('2', style: TextStyle(color: Colors.white, fontSize: 8)),
-                      ),
+                    IconButton(
+                      onPressed: () => Get.toNamed('/notifications'), 
+                      icon: Icon(Icons.notifications_none, color: AppTheme.textPrimary)
                     ),
+                    if (notificationService.unreadCount.value > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                          child: Text(
+                            notificationService.unreadCount.value.toString(),
+                            style: const TextStyle(color: Colors.white, fontSize: 8),
+                          ),
+                        ),
+                      ),
                   ],
-                ),
+                )),
               ],
             ),
             const SizedBox(height: 20),
-
-            // 2. بنر الطلبات الطارئة
             Obx(() => controller.urgentRequests.isNotEmpty
                 ? FadeIn(
                     child: GestureDetector(
@@ -236,9 +354,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   )
                 : const SizedBox.shrink()),
             const SizedBox(height: 20),
-
-            // 3. KPI Cards - GridView 2x3
-            const Text('نظرة عامة', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+            Text('نظرة عامة', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 12),
             GridView.count(
               shrinkWrap: true,
@@ -261,8 +377,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ],
             ),
             const SizedBox(height: 24),
-
-            // 4. الطلبات الطارئة والمستعجلة
             Obx(() => controller.urgentRequests.isNotEmpty
                 ? Column(
                     children: [
@@ -278,8 +392,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   )
                 : const SizedBox.shrink()),
             const SizedBox(height: 24),
-
-            // 5. الرسوم البيانية
             _buildSectionHeader('📈 التبرعات آخر 6 أشهر', ''),
             const SizedBox(height: 12),
             Container(
@@ -341,7 +453,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     )),
             ),
             const SizedBox(height: 16),
-
             _buildSectionHeader('🥧 توزيع الخدمات', ''),
             const SizedBox(height: 12),
             Container(
@@ -377,7 +488,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 children: [
                                   Container(width: 12, height: 12, decoration: BoxDecoration(color: item['color'], borderRadius: BorderRadius.circular(3))),
                                   const SizedBox(width: 8),
-                                  Text(item['name'], style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                                  Text(item['name'], style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
                                 ],
                               ),
                             ))
@@ -387,7 +498,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
             ),
             const SizedBox(height: 16),
-
             _buildSectionHeader('📊 طلبات هذا الشهر', ''),
             const SizedBox(height: 12),
             Container(
@@ -430,7 +540,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ))),
             ),
             const SizedBox(height: 16),
-
             _buildSectionHeader('📁 تقدم المشاريع', 'عرض الكل', onTap: () => setState(() => _currentIndex = 2)),
             const SizedBox(height: 12),
             Obx(() => Column(
@@ -438,7 +547,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       .take(3)
                       .map((project) => Container(
                             margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(16)),
+                            decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16)),
                             padding: const EdgeInsets.all(16),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,7 +556,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   children: [
                                     Expanded(
                                         child: Text(project.name,
-                                            style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                                            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis)),
                                     Text('${project.budget > 0 ? ((project.collected / project.budget) * 100).toInt() : 0}%',
@@ -459,7 +568,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   borderRadius: BorderRadius.circular(10),
                                   child: LinearProgressIndicator(
                                     value: project.budget > 0 ? project.collected / project.budget : 0,
-                                    backgroundColor: AppTheme.darkSurface,
+                                    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                                     valueColor: AlwaysStoppedAnimation(
                                       (project.budget > 0 && (project.collected / project.budget) > 0.75)
                                           ? AppTheme.successColor
@@ -473,7 +582,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    Text('${project.collected.toInt()} دج', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                                    Text('${project.collected.toInt()} دج', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                                     const Spacer(),
                                     Text('من ${project.budget.toInt()} دج', style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
                                   ],
@@ -484,7 +593,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       .toList(),
                 )),
             const SizedBox(height: 16),
-
             _buildSectionHeader('🔧 تحديثات ميدانية', ''),
             const SizedBox(height: 12),
             Obx(() => Column(
@@ -493,7 +601,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       .map((update) => Container(
                             margin: const EdgeInsets.only(bottom: 10),
                             decoration: BoxDecoration(
-                                color: AppTheme.darkCard,
+                                color: Theme.of(context).cardColor,
                                 borderRadius: BorderRadius.circular(14),
                                 border: const Border(right: BorderSide(color: AppTheme.primaryGreen, width: 3))),
                             padding: const EdgeInsets.all(14),
@@ -509,8 +617,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(update.workerName, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
-                                      Text(update.description, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12), maxLines: 2),
+                                      Text(update.workerName, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                                      Text(update.description, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12), maxLines: 2),
                                       Text(_timeAgo(update.createdAt), style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
                                     ],
                                   ),
@@ -525,7 +633,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       .toList(),
                 )),
             const SizedBox(height: 16),
-
             _buildSectionHeader('💚 آخر التبرعات', ''),
             const SizedBox(height: 12),
             Obx(() => Column(
@@ -539,8 +646,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 decoration: const BoxDecoration(gradient: AppTheme.goldGradient, shape: BoxShape.circle),
                                 child: const Icon(Icons.volunteer_activism, color: Colors.black, size: 20),
                               ),
-                              title: Text(donation.donorName, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
-                              subtitle: Text(donation.projectName, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                              title: Text(donation.donorName, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+                              subtitle: Text(donation.projectName, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                               trailing: Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -549,7 +656,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   Text(intl.DateFormat('MM/dd').format(donation.date), style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
                                 ],
                               ),
-                              tileColor: AppTheme.darkCard,
+                              tileColor: Theme.of(context).cardColor,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                           ))
@@ -599,7 +706,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-          color: AppTheme.darkCard,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
           boxShadow: [BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 10)]),
@@ -617,17 +724,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
               children: [
                 Row(
                   children: [
-                    Text(request.type, style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                    Text(request.type, style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
                     const Spacer(),
                     AppTheme.statusBadge(request.urgency),
                   ],
                 ),
-                Text(request.requesterName, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                Text(request.requesterName, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                 Text('${request.wilaya} - ${_timeAgo(request.createdAt)}', style: const TextStyle(color: AppTheme.textHint, fontSize: 11)),
               ],
             ),
           ),
-          IconButton(icon: const Icon(Icons.arrow_forward_ios, color: AppTheme.primaryGreen, size: 16), onPressed: () {})
+          IconButton(
+            icon: const Icon(Icons.arrow_forward_ios, color: AppTheme.primaryGreen, size: 16),
+            onPressed: () => Get.toNamed('/admin/request-detail', arguments: request)
+          )
         ],
       ),
     );
@@ -636,7 +746,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget _buildSectionHeader(String title, String actionText, {VoidCallback? onTap}) {
     return Row(
       children: [
-        Text(title, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+        Text(title, style: TextStyle(color: AppTheme.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
         const Spacer(),
         if (actionText.isNotEmpty)
           TextButton(onPressed: onTap, child: Text(actionText, style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12))),
@@ -652,7 +762,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return 'الآن';
   }
 
-  Widget _buildSettingsTab() {
+  Widget _buildManagementTab() {
     final user = authController.currentUser.value;
 
     return ListView(
@@ -660,9 +770,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         Container(
           padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
-          decoration: const BoxDecoration(
-            gradient: AppTheme.darkBgGradient,
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+          decoration: BoxDecoration(
+            gradient: Get.isDarkMode ? AppTheme.darkBgGradient : LinearGradient(colors: [AppTheme.primaryGreen.withValues(alpha: 0.1), AppTheme.lightBg]),
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
           ),
           child: Row(
             children: [
@@ -673,28 +783,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 28, fontWeight: FontWeight.w800)),
               ),
               const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(user?.name ?? 'المدير', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
-                  Text(user?.role.name == 'superAdmin' ? 'المدير الرئيسي' : 'مدير', style: const TextStyle(color: AppTheme.primaryGreen)),
-                  Text(user?.email ?? '', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(user?.name ?? 'المدير', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                    Text(user?.role.displayName ?? '', style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w600)),
+                    Text(user?.email ?? '', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => Get.toNamed('/profile'),
+                icon: const Icon(Icons.edit_outlined, color: AppTheme.primaryGreen),
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
-        _buildSettingsTile(Icons.people, 'إدارة المستخدمين', 'موافقة وإدارة الحسابات', () => Get.toNamed('/admin/users')),
+        if (user?.role == UserRole.superAdmin)
+          _buildSettingsTile(Icons.people, 'إدارة المستخدمين', 'موافقة وإدارة الحسابات', () => Get.toNamed('/admin/users')),
+        _buildSettingsTile(Icons.group, 'فريق العمل', 'إدارة العمال والمتطوعين', () => setState(() => _currentIndex = 3)),
         _buildSettingsTile(Icons.miscellaneous_services, 'أنواع الخدمات', 'إضافة وتعديل أنواع الخدمات', () => Get.toNamed('/admin/service-types')),
         _buildSettingsTile(Icons.task, 'أنواع المهام', 'إضافة وتعديل أنواع المهام', () => Get.toNamed('/admin/task-types')),
         _buildSettingsTile(Icons.airport_shuttle, 'سيارات الجنازة', 'إدارة الأسطول', () => Get.toNamed('/admin/vehicles')),
         _buildSettingsTile(Icons.bar_chart, 'التقارير', 'تقارير شهرية وسنوية PDF', () => Get.toNamed('/admin/reports')),
-        _buildSettingsTile(Icons.chat, 'الدردشة مع الفريق', 'التواصل مع العمال', () => Get.toNamed('/admin/chat')),
+        _buildSettingsTile(Icons.chat, 'الدردشة مع الفريق', 'التواصل مع العمال', () => Get.toNamed('/chat/group')),
         const Divider(color: AppTheme.glassBorder, indent: 24, endIndent: 24),
+        _buildSettingsTile(Icons.person, 'حسابي (الملف الشخصي)', 'تعديل البيانات والصورة', () => Get.toNamed('/profile')),
         _buildSettingsTile(Icons.dark_mode, 'الوضع الداكن/النهاري', 'تبديل المظهر', () => AppConstants.toggleTheme(), showToggle: true),
         const Divider(color: AppTheme.glassBorder, indent: 24, endIndent: 24),
-        _buildSettingsTile(Icons.logout, 'تسجيل الخروج', '', () => authController.logout(), isDestructive: true),
+        _buildSettingsTile(Icons.logout, 'تسجيل الخروج', 'الخروج من الحساب', () => authController.logout(), isDestructive: true),
         const SizedBox(height: 50),
       ],
     );
@@ -705,7 +824,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final color = isDestructive ? AppTheme.errorColor : AppTheme.primaryGreen;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14)),
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(10),
@@ -719,43 +838,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
             : Icon(Icons.arrow_forward_ios, color: AppTheme.textHint.withValues(alpha: 0.5), size: 14),
         onTap: onTap,
       ),
-    );
-  }
-}
-
-// === Placeholder Screens ===
-class ServiceRequestsScreen extends StatelessWidget {
-  const ServiceRequestsScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.darkBg,
-      appBar: AppBar(title: const Text('طلبات الخدمة')),
-      body: const Center(child: Text('قائمة الطلبات هنا', style: TextStyle(color: Colors.white))),
-    );
-  }
-}
-
-class ProjectsScreen extends StatelessWidget {
-  const ProjectsScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.darkBg,
-      appBar: AppBar(title: const Text('المشاريع')),
-      body: const Center(child: Text('قائمة المشاريع هنا', style: TextStyle(color: Colors.white))),
-    );
-  }
-}
-
-class WorkersScreen extends StatelessWidget {
-  const WorkersScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.darkBg,
-      appBar: AppBar(title: const Text('فريق العمل')),
-      body: const Center(child: Text('قائمة العمال هنا', style: TextStyle(color: Colors.white))),
     );
   }
 }

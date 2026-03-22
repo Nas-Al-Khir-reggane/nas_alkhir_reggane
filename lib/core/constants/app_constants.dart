@@ -1,15 +1,15 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../theme/app_theme.dart';
 
 class AppConstants {
   static const String appName = "جمعية ناس الخير رقان";
 
-  // للتبديل بين الوضعين يدوياً
+  // للتبديل بين الوضعين يدوياً بشكل صحيح
   static void toggleTheme() {
     if (Get.isDarkMode) {
-      Get.changeTheme(AppTheme.lightTheme);
+      Get.changeThemeMode(ThemeMode.light);
     } else {
-      Get.changeTheme(AppTheme.darkTheme);
+      Get.changeThemeMode(ThemeMode.dark);
     }
   }
 

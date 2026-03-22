@@ -23,9 +23,9 @@ class ServiceTypeModel {
     };
   }
 
-  factory ServiceTypeModel.fromMap(Map<String, dynamic> map) {
+  factory ServiceTypeModel.fromMap(Map<String, dynamic> map, [String? id]) {
     return ServiceTypeModel(
-      id: map['id'] ?? '',
+      id: id ?? map['id'] ?? '',
       name: map['name'] ?? '',
       icon: map['icon'] ?? '',
       isActive: map['isActive'] ?? true,
