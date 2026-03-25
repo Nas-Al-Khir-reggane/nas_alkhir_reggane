@@ -286,7 +286,14 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   }
 
   IconData _getIconData(String serviceId) {
-    if (serviceId == 'funeral_transport') return Icons.airport_shuttle;
-    return Icons.help_outline;
+    switch (serviceId) {
+      case 'funeral_transport': return Icons.airport_shuttle;
+      case 'food_aid': return Icons.fastfood;
+      case 'financial_aid': return Icons.attach_money;
+      case 'medical_aid': return Icons.local_hospital;
+      case 'education': return Icons.school;
+      case 'construction': return Icons.construction;
+      default: return Icons.volunteer_activism;
+    }
   }
 }

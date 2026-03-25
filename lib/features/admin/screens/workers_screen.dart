@@ -9,6 +9,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../data/models/user_model.dart';
 import '../controllers/worker_management_controller.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../chat/screens/chat_screen.dart'; // استيراد شاشة الدردشة
 
 class WorkersScreen extends StatelessWidget {
   const WorkersScreen({super.key});
@@ -18,7 +19,7 @@ class WorkersScreen extends StatelessWidget {
     final controller = Get.put(WorkerManagementController());
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: AppTheme.backgroundColor,
       body: Column(
         children: [
           // AppBar مخصص
@@ -76,49 +77,64 @@ class WorkersScreen extends StatelessWidget {
   }
 
   Widget _buildAppBar(BuildContext context, WorkerManagementController controller) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: Get.isDarkMode ? AppTheme.darkBgGradient : LinearGradient(colors: [AppTheme.primaryGreen.withValues(alpha: 0.1), AppTheme.lightBg]),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('👥 فريق العمل',
+                      style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.textPrimary,
+                          fontFamily: 'Tajawal')),
+                  Obx(() => Text(
+                      '${controller.totalWorkers} عضو | ${controller.availableWorkers} متاح',
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 13))),
+                ],
+              ),
+            ),
+            // زر دردشة الفريق السرية
+            GestureDetector(
+              onTap: () => Get.to(() => const ChatScreen(isGroupChat: true)),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceColor,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.glassBorder),
+                ),
+                child: const Icon(Icons.groups_rounded, color: AppTheme.primaryGreen, size: 22),
+              ),
+            ),
+            const SizedBox(width: 10),
+            GestureDetector(
+              onTap: () => showAddWorkerSheet(context),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: AppTheme.greenGlow,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: const Row(
                   children: [
-                    Text('فريق العمل',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
-                    Obx(() => Text('${controller.totalWorkers} عضو | ${controller.availableWorkers} متاح',
-                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 13))),
+                    Icon(Icons.person_add, color: Colors.black, size: 20),
+                    SizedBox(width: 8),
+                    Text('إضافة عامل',
+                        style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13)),
                   ],
                 ),
               ),
-              GestureDetector(
-                onTap: () => _showAddWorkerSheet(context),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: AppTheme.greenGlow,
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.person_add, color: Colors.black, size: 20),
-                      SizedBox(width: 6),
-                      Text('إضافة عامل',
-                          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 13)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -235,7 +251,7 @@ class WorkersScreen extends StatelessWidget {
                   margin: const EdgeInsets.symmetric(horizontal: 3),
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    color: isSelected ? activeColor.withValues(alpha: 0.2) : Theme.of(context).cardColor,
+                    color: isSelected ? activeColor.withOpacity(0.2) : Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: isSelected ? activeColor : AppTheme.glassBorder),
                   ),
@@ -292,7 +308,7 @@ class WorkersScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: AppTheme.cardShadow,
           border: Border.all(
-              color: worker.isAvailable ? AppTheme.glassBorder : AppTheme.warningColor.withValues(alpha: 0.3)),
+              color: worker.isAvailable ? AppTheme.glassBorder : AppTheme.warningColor.withOpacity(0.3)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -304,9 +320,14 @@ class WorkersScreen extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundColor: roleColor.withValues(alpha: 0.2),
-                    child: Text(worker.name.isNotEmpty ? worker.name.substring(0, 1) : '?',
-                        style: TextStyle(color: roleColor, fontSize: 22, fontWeight: FontWeight.w700)),
+                    backgroundColor: roleColor.withOpacity(0.2),
+                    backgroundImage: (worker.profileImage != null && worker.profileImage!.isNotEmpty)
+                        ? NetworkImage(worker.profileImage!)
+                        : null,
+                    child: (worker.profileImage == null || worker.profileImage!.isEmpty)
+                        ? Text(worker.name.isNotEmpty ? worker.name.substring(0, 1) : '?',
+                            style: TextStyle(color: roleColor, fontSize: 22, fontWeight: FontWeight.w700))
+                        : null,
                   ),
                   Positioned(
                     bottom: 0,
@@ -349,7 +370,7 @@ class WorkersScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      decoration: BoxDecoration(color: roleColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(color: roleColor.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -466,7 +487,7 @@ class WorkersScreen extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -498,7 +519,7 @@ class WorkersScreen extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.people_outline, size: 80, color: AppTheme.textHint.withValues(alpha: 0.3)),
+          Icon(Icons.people_outline, size: 80, color: AppTheme.textHint.withOpacity(0.3)),
           const SizedBox(height: 16),
           Text('لا يوجد عمال مطابقين للبحث', style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
         ],
@@ -506,8 +527,10 @@ class WorkersScreen extends StatelessWidget {
     );
   }
 
-  void _showAddWorkerSheet(BuildContext context) {
-    final controller = Get.find<WorkerManagementController>();
+  static void showAddWorkerSheet(BuildContext context) {
+    final controller = Get.isRegistered<WorkerManagementController>()
+        ? Get.find<WorkerManagementController>()
+        : Get.put(WorkerManagementController());
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
     final emailController = TextEditingController();
@@ -584,7 +607,7 @@ class WorkersScreen extends StatelessWidget {
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           decoration: BoxDecoration(
-                            color: isSelected ? color.withValues(alpha: 0.2) : Theme.of(context).cardColor,
+                            color: isSelected ? color.withOpacity(0.2) : Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                                 color: isSelected ? color : AppTheme.glassBorder, width: isSelected ? 2 : 1),
@@ -645,7 +668,7 @@ class WorkersScreen extends StatelessWidget {
                               emailController.text.isEmpty ||
                               passwordController.text.isEmpty) {
                             Get.snackbar('تنبيه', 'يرجى ملء جميع الحقول المطلوبة',
-                                backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+                                backgroundColor: AppTheme.warningColor.withOpacity(0.2));
                             return;
                           }
                           controller.addWorker({
@@ -669,7 +692,7 @@ class WorkersScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLabel(String text) {
+  static Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(text, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
@@ -720,7 +743,7 @@ class WorkersScreen extends StatelessWidget {
                           leading: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                                color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                                color: AppTheme.primaryGreen.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(10)),
                             child: const Icon(Icons.volunteer_activism, color: AppTheme.primaryGreen, size: 20),
                           ),
@@ -769,20 +792,7 @@ class WorkersScreen extends StatelessWidget {
             children: [
               Text('اختر التقييم المناسب لأداء العامل', style: TextStyle(color: AppTheme.textSecondary)),
               const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) {
-                  final star = index + 1;
-                  return GestureDetector(
-                    onTap: () => setDialogState(() => selectedRating = star.toDouble()),
-                    child: Icon(
-                      star <= selectedRating ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
-                      size: 36,
-                    ),
-                  );
-                }),
-              ),
+              _buildRatingStars(selectedRating, (rating) => setDialogState(() => selectedRating = rating)),
               const SizedBox(height: 12),
               Text(
                 selectedRating >= 5 ? 'ممتاز' : selectedRating >= 4 ? 'جيد جداً' : selectedRating >= 3 ? 'جيد' : 'مقبول',
@@ -797,6 +807,23 @@ class WorkersScreen extends StatelessWidget {
               onPressed: () => controller.rateWorker(worker.id, selectedRating),
             ),
           ],
+        );
+      }),
+    );
+  }
+
+  static Widget _buildRatingStars(double currentRating, Function(double) onRatingChanged) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(5, (index) {
+        final star = index + 1;
+        return GestureDetector(
+          onTap: () => onRatingChanged(star.toDouble()),
+          child: Icon(
+            star <= currentRating ? Icons.star : Icons.star_border,
+            color: Colors.amber,
+            size: 36,
+          ),
         );
       }),
     );

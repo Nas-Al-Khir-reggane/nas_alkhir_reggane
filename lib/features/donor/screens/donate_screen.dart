@@ -400,7 +400,7 @@ class ThankYouDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            Text('"من تصدق بصدقة من كسب طيب..."',
+            Text('"عطاءٌ من كسبٍ طيب، يربو عند الله حتى يكون كالجبل.. جزاك الله خيرًا"',
                 style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontStyle: FontStyle.italic),
                 textAlign: TextAlign.center),
             const SizedBox(height: 20),

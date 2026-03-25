@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -20,6 +21,10 @@ class WorkerController extends GetxController {
   RxBool isAvailable = true.obs;
   Rx<ChatMessageModel?> lastAdminMessage = Rx<ChatMessageModel?>(null);
 
+  StreamSubscription? _myTasksSub;
+  StreamSubscription? _completedTasksSub;
+  StreamSubscription? _adminMessageSub;
+
   @override
   void onInit() {
     super.onInit();
@@ -33,7 +38,7 @@ class WorkerController extends GetxController {
     if (currentWorker.value == null) return;
 
     // الطلبات الحالية
-    _firestore
+    _myTasksSub = _firestore
         .collection('service_requests')
         .where('assignedTo', isEqualTo: currentWorker.value?.id)
         .where('status', whereIn: ['in_progress', 'pending'])
@@ -48,7 +53,7 @@ class WorkerController extends GetxController {
     });
 
     // الطلبات المنجزة
-    _firestore
+    _completedTasksSub = _firestore
         .collection('service_requests')
         .where('assignedTo', isEqualTo: currentWorker.value?.id)
         .where('status', isEqualTo: 'completed')
@@ -65,9 +70,9 @@ class WorkerController extends GetxController {
   void loadLastAdminMessage() {
     if (currentWorker.value == null) return;
 
-    _firestore
+    _adminMessageSub = _firestore
         .collection('chats')
-        .doc('group_${currentWorker.value?.id}')
+        .doc('group_team')
         .collection('messages')
         .orderBy('createdAt', descending: true)
         .limit(1)
@@ -171,6 +176,9 @@ class WorkerController extends GetxController {
 
   @override
   void onClose() {
+    _myTasksSub?.cancel();
+    _completedTasksSub?.cancel();
+    _adminMessageSub?.cancel();
     super.onClose();
   }
 }

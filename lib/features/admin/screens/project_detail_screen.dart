@@ -165,7 +165,7 @@ class ProjectDetailScreen extends StatelessWidget {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: LinearProgressIndicator(
-                              value: project.collected / project.budget,
+                              value: project.budget > 0 ? project.collected / project.budget : 0,
                               minHeight: 16,
                               backgroundColor: AppTheme.darkSurface,
                               valueColor: AlwaysStoppedAnimation(_getProgressColor(project.progressPercentage)),
@@ -261,13 +261,13 @@ class ProjectDetailScreen extends StatelessWidget {
                           child: AppTheme.gradientButton(
                             text: 'إضافة تبرع',
                             icon: Icons.volunteer_activism,
-                            onPressed: () {},
+                            onPressed: () => Get.toNamed('/donor/donate', arguments: project),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () {},
+                            onPressed: () => _showAssignWorkerSheet(context),
                             icon: const Icon(Icons.person_add),
                             label: const Text('إسناد عامل'),
                             style: OutlinedButton.styleFrom(
@@ -312,12 +312,24 @@ class ProjectDetailScreen extends StatelessWidget {
                               );
                               return ListTile(
                                 contentPadding: EdgeInsets.zero,
-                                leading: CircleAvatar(
-                                  backgroundColor: AppTheme.goldAccent.withValues(alpha: 0.2),
-                                  child: Text(
-                                    donation.donorName.isNotEmpty ? donation.donorName[0] : '?',
-                                    style: const TextStyle(color: AppTheme.goldAccent),
-                                  ),
+                                leading: StreamBuilder<DocumentSnapshot>(
+                                  stream: FirebaseFirestore.instance.collection(AppConstants.usersCollection).doc(donation.donorId).snapshots(),
+                                  builder: (context, userSnap) {
+                                    String? imageUrl;
+                                    if (userSnap.hasData && userSnap.data!.exists) {
+                                      imageUrl = (userSnap.data!.data() as Map<String, dynamic>)['profileImage'];
+                                    }
+                                    return CircleAvatar(
+                                      backgroundColor: AppTheme.goldAccent.withValues(alpha: 0.2),
+                                      backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
+                                      child: (imageUrl == null || imageUrl.isEmpty)
+                                          ? Text(
+                                              donation.donorName.isNotEmpty ? donation.donorName[0] : '?',
+                                              style: const TextStyle(color: AppTheme.goldAccent),
+                                            )
+                                          : null,
+                                    );
+                                  }
                                 ),
                                 title: Text(donation.donorName, style: TextStyle(color: AppTheme.textPrimary)),
                                 subtitle: Text(
@@ -378,11 +390,23 @@ class ProjectDetailScreen extends StatelessWidget {
                                   children: [
                                     Row(
                                       children: [
-                                        CircleAvatar(
-                                          radius: 16,
-                                          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
-                                          child: Text(update.workerName.isNotEmpty ? update.workerName[0] : 'W',
-                                              style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12)),
+                                        StreamBuilder<DocumentSnapshot>(
+                                          stream: FirebaseFirestore.instance.collection(AppConstants.usersCollection).doc(update.workerId).snapshots(),
+                                          builder: (context, userSnap) {
+                                            String? imageUrl;
+                                            if (userSnap.hasData && userSnap.data!.exists) {
+                                              imageUrl = (userSnap.data!.data() as Map<String, dynamic>)['profileImage'];
+                                            }
+                                            return CircleAvatar(
+                                              radius: 16,
+                                              backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                                              backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
+                                              child: (imageUrl == null || imageUrl.isEmpty)
+                                                  ? Text(update.workerName.isNotEmpty ? update.workerName[0] : 'W',
+                                                      style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12))
+                                                  : null,
+                                            );
+                                          }
                                         ),
                                         const SizedBox(width: 8),
                                         Column(
@@ -487,5 +511,61 @@ class ProjectDetailScreen extends StatelessWidget {
     if (percentage >= 75) return AppTheme.primaryGreen;
     if (percentage >= 40) return AppTheme.warningColor;
     return AppTheme.errorColor;
+  }
+
+  void _showAssignWorkerSheet(BuildContext context) {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppTheme.darkBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('إسناد عامل للمشروع', 
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection(AppConstants.usersCollection)
+                    .where('role', isEqualTo: 'worker')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  return ListView.builder(
+                    itemCount: snapshot.data!.docs.length,
+                    itemBuilder: (context, index) {
+                      var worker = snapshot.data!.docs[index];
+                      bool isAssigned = project.assignedWorkers.contains(worker.id);
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                          child: Text(worker['name'][0], style: const TextStyle(color: AppTheme.primaryGreen)),
+                        ),
+                        title: Text(worker['name'], style: TextStyle(color: AppTheme.textPrimary)),
+                        trailing: isAssigned 
+                          ? const Icon(Icons.check_circle, color: AppTheme.primaryGreen)
+                          : const Icon(Icons.add_circle_outline, color: AppTheme.textHint),
+                        onTap: () {
+                          if (isAssigned) {
+                            projectController.unassignWorkerFromProject(project.id, worker.id);
+                          } else {
+                            projectController.assignWorkerToProject(project.id, worker.id);
+                          }
+                          Get.back();
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

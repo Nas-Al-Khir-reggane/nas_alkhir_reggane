@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:share_plus/share_plus.dart';
@@ -22,49 +23,94 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
   final NotificationService notificationService = Get.find<NotificationService>();
   int _currentIndex = 0;
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.darkBg,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          _buildHomeTab(),
-          const NewRequestScreen(),
-          _buildActivitiesTab(),
+  Future<bool> _onWillPop() async {
+    final result = await Get.dialog<bool>(
+      AlertDialog(
+        backgroundColor: AppTheme.darkSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('تأكيد الخروج',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+        content: Text('هل أنت متأكد من أنك تريد الخروج من التطبيق؟',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'Tajawal')),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Get.back(result: false),
+                  child: const Text('إلغاء', style: TextStyle(color: AppTheme.textHint, fontFamily: 'Tajawal')),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: AppTheme.gradientButton(
+                  text: 'خروج',
+                  onPressed: () => Get.back(result: true),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.darkSurface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: AppTheme.darkShadow,
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          selectedItemColor: AppTheme.primaryGreen,
-          unselectedItemColor: AppTheme.textHint,
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'الرئيسية',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.add_circle_outline),
-              activeIcon: Icon(Icons.add_circle),
-              label: 'طلب جديد',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.newspaper_outlined),
-              activeIcon: Icon(Icons.newspaper),
-              label: 'الأنشطة',
-            ),
+    );
+    return result ?? false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppTheme.darkBg,
+        body: IndexedStack(
+          index: _currentIndex,
+          children: [
+            _buildHomeTab(),
+            const NewRequestScreen(),
+            _buildActivitiesTab(),
           ],
+        ),
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.darkSurface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: AppTheme.darkShadow,
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) => setState(() => _currentIndex = index),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            selectedItemColor: AppTheme.primaryGreen,
+            unselectedItemColor: AppTheme.textHint,
+            type: BottomNavigationBarType.fixed,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home),
+                label: 'الرئيسية',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.add_circle_outline),
+                activeIcon: Icon(Icons.add_circle),
+                label: 'طلب جديد',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.newspaper_outlined),
+                activeIcon: Icon(Icons.newspaper),
+                label: 'الأنشطة',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -765,4 +811,3 @@ class _BenefArcPainter extends CustomPainter {
   @override
   bool shouldRepaint(_BenefArcPainter old) => old.progress != progress;
 }
-

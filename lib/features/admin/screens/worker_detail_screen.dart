@@ -52,8 +52,13 @@ class WorkerDetailScreen extends StatelessWidget {
                                 CircleAvatar(
                                   radius: 45,
                                   backgroundColor: roleColor.withValues(alpha: 0.3),
-                                  child: Text(worker.name.isNotEmpty ? worker.name[0] : '?',
-                                      style: TextStyle(color: roleColor, fontSize: 36, fontWeight: FontWeight.w800)),
+                                  backgroundImage: (worker.profileImage != null && worker.profileImage!.isNotEmpty)
+                                      ? NetworkImage(worker.profileImage!)
+                                      : null,
+                                  child: (worker.profileImage == null || worker.profileImage!.isEmpty)
+                                      ? Text(worker.name.isNotEmpty ? worker.name[0] : '?',
+                                          style: TextStyle(color: roleColor, fontSize: 36, fontWeight: FontWeight.w800))
+                                      : null,
                                 ),
                                 Positioned(
                                   bottom: 2,

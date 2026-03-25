@@ -37,6 +37,13 @@ class AppConstants {
     "بناء وتعمير"
   ];
 
+  static const String serviceFuneralTransport = 'funeral_transport';
+  static const String serviceFoodAid = 'food_aid';
+  static const String serviceFinancialAid = 'financial_aid';
+  static const String serviceMedicalAid = 'medical_aid';
+  static const String serviceEducation = 'education';
+  static const String serviceConstruction = 'construction';
+
   static const List<String> defaultTaskTypes = [
     "توصيل أمانة",
     "زيارة ميدانية",

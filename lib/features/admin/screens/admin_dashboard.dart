@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,6 +16,8 @@ import 'service_requests_screen.dart' as real_requests;
 import 'projects_screen.dart';
 import 'workers_screen.dart';
 import '../../shared/screens/profile_screen.dart';
+import 'project_detail_screen.dart';
+import 'request_detail_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -29,6 +32,41 @@ class _AdminDashboardState extends State<AdminDashboard> {
   final AuthController authController = Get.find<AuthController>();
   final NotificationService notificationService = Get.find<NotificationService>();
 
+  Future<bool> _onWillPop() async {
+    final result = await Get.dialog<bool>(
+      AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('تأكيد الخروج',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+        content: Text('هل أنت متأكد من أنك تريد الخروج من التطبيق؟',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'Tajawal')),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Get.back(result: false),
+                  child: Text('إلغاء', style: TextStyle(color: AppTheme.textHint, fontFamily: 'Tajawal')),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: AppTheme.gradientButton(
+                  text: 'خروج',
+                  onPressed: () => Get.back(result: true),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<Widget> screens = [
@@ -39,18 +77,34 @@ class _AdminDashboardState extends State<AdminDashboard> {
       _buildManagementTab(),
     ];
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: IndexedStack(
-          index: _currentIndex,
-          children: screens,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          body: IndexedStack(
+            index: _currentIndex,
+            children: screens,
+          ),
+          bottomNavigationBar: _buildBottomBar(),
+          floatingActionButton: _shouldShowFAB() ? _buildFAB() : null,
         ),
-        bottomNavigationBar: _buildBottomBar(),
-        floatingActionButton: _currentIndex == 4 ? null : _buildFAB(),
       ),
     );
+  }
+
+  bool _shouldShowFAB() {
+    if (_currentIndex != 0) return false;
+    final role = authController.currentUser.value?.role;
+    return role == UserRole.superAdmin || role == UserRole.admin;
   }
 
   Widget _buildBottomBar() {
@@ -92,10 +146,41 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildFAB() {
-    return FloatingActionButton(
-      onPressed: () => _showActionMenu(),
-      backgroundColor: AppTheme.primaryGreen,
-      child: const Icon(Icons.add, color: Colors.black, size: 30),
+    return FadeInUp(
+      duration: const Duration(milliseconds: 400),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: AppTheme.primaryGradient,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryGreen.withValues(alpha: 0.3),
+              blurRadius: 12,
+              spreadRadius: 2,
+              offset: const Offset(0, 4),
+            )
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: () => _showActionMenu(),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          highlightElevation: 0,
+          hoverElevation: 0,
+          focusElevation: 0,
+          extendedPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          icon: const Icon(Icons.add_box_rounded, color: Colors.black, size: 22),
+          label: const Text(
+            'إجراء سريع',
+            style: TextStyle(
+              fontFamily: 'Tajawal',
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              color: Colors.black,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -111,22 +196,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+            Text('إجراءات سريعة', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w800, fontFamily: 'Tajawal')),
+            const SizedBox(height: 16),
             _buildActionItem(Icons.volunteer_activism, 'تسجيل تبرع جديد', () {
               Get.back();
               _showAdminDonationDialog();
             }),
             _buildActionItem(Icons.add_task, 'إضافة طلب خدمة', () {
               Get.back();
-              setState(() => _currentIndex = 1);
+              Get.toNamed('/beneficiary/new-request');
             }),
             _buildActionItem(Icons.create_new_folder, 'إضافة مشروع جديد', () {
               Get.back();
-              setState(() => _currentIndex = 2);
+              ProjectsScreen.showAddProjectSheet(context);
             }),
             _buildActionItem(Icons.person_add, 'إضافة عامل جديد', () {
               Get.back();
-              setState(() => _currentIndex = 3);
+              WorkersScreen.showAddWorkerSheet(context);
             }),
           ],
         ),
@@ -290,10 +377,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ],
                 ),
                 const Spacer(),
-                IconButton(
-                  onPressed: () => Get.toNamed('/profile'),
-                  icon: const Icon(Icons.person_outline, color: AppTheme.primaryGreen, size: 28),
-                ),
+                Obx(() {
+                  final user = authController.currentUser.value;
+                  return GestureDetector(
+                    onTap: () => Get.toNamed('/profile'),
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppTheme.primaryGreen, width: 1),
+                      ),
+                      child: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                        backgroundImage: (user?.profileImage != null && user!.profileImage!.isNotEmpty)
+                            ? NetworkImage(user.profileImage!)
+                            : null,
+                        child: (user?.profileImage == null || user!.profileImage!.isEmpty)
+                            ? Icon(Icons.person, color: AppTheme.primaryGreen, size: 20)
+                            : null,
+                      ),
+                    ),
+                  );
+                }),
                 IconButton(
                   onPressed: () => AppConstants.toggleTheme(),
                   icon: Icon(Get.isDarkMode ? Icons.light_mode : Icons.dark_mode, color: AppTheme.primaryGreen),
@@ -364,16 +470,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
               children: [
-                _buildKPICard('إجمالي التبرعات', controller.totalDonations, Icons.volunteer_activism, AppTheme.goldGradient, 'دج'),
+                _buildKPICard('إجمالي التبرعات', controller.totalDonations, Icons.volunteer_activism, AppTheme.goldGradient, 'دج', onTap: () {}),
                 _buildKPICard('الطلبات المعلقة', controller.pendingRequests, Icons.pending_actions,
-                    const LinearGradient(colors: [Colors.orange, Colors.deepOrange]), ''),
-                _buildKPICard('المشاريع النشطة', controller.activeProjects, Icons.folder_open, AppTheme.primaryGradient, ''),
+                    const LinearGradient(colors: [Colors.orange, Colors.deepOrange]), '', onTap: () => setState(() => _currentIndex = 1)),
+                _buildKPICard('المشاريع النشطة', controller.activeProjects, Icons.folder_open, AppTheme.primaryGradient, '', onTap: () => setState(() => _currentIndex = 2)),
                 _buildKPICard('العمال المتاحون', controller.availableWorkers, Icons.engineering,
-                    const LinearGradient(colors: [Colors.blue, Colors.indigo]), ''),
+                    const LinearGradient(colors: [Colors.blue, Colors.indigo]), '', onTap: () => setState(() => _currentIndex = 3)),
                 _buildKPICard('السيارات المتاحة', controller.availableVehicles, Icons.airport_shuttle,
-                    const LinearGradient(colors: [Colors.teal, Colors.cyan]), ''),
+                    const LinearGradient(colors: [Colors.teal, Colors.cyan]), '', onTap: () => Get.toNamed('/admin/vehicles')),
                 _buildKPICard('المستفيدون', controller.totalBeneficiaries, Icons.people,
-                    const LinearGradient(colors: [Colors.purple, Colors.deepPurple]), ''),
+                    const LinearGradient(colors: [Colors.purple, Colors.deepPurple]), '', onTap: () => Get.toNamed('/admin/users')),
               ],
             ),
             const SizedBox(height: 24),
@@ -394,150 +500,159 @@ class _AdminDashboardState extends State<AdminDashboard> {
             const SizedBox(height: 24),
             _buildSectionHeader('📈 التبرعات آخر 6 أشهر', ''),
             const SizedBox(height: 12),
-            Container(
-              decoration: AppTheme.glassDecoration,
-              padding: const EdgeInsets.all(16),
-              height: 200,
-              child: Obx(() => controller.donationsLastSixMonths.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
-                  : LineChart(
-                      LineChartData(
-                        gridData: FlGridData(
-                            show: true, drawVerticalLine: false, getDrawingHorizontalLine: (_) => FlLine(color: AppTheme.glassBorder, strokeWidth: 1)),
-                        titlesData: FlTitlesData(
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (v, _) => Text(
-                                  controller.donationsLastSixMonths[v.toInt() % controller.donationsLastSixMonths.length]['month'],
-                                  style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
+            GestureDetector(
+              onTap: () => Get.toNamed('/admin/reports'),
+              child: Container(
+                decoration: AppTheme.glassDecoration,
+                padding: const EdgeInsets.all(16),
+                height: 200,
+                child: Obx(() => controller.donationsLastSixMonths.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : LineChart(
+                        LineChartData(
+                          gridData: FlGridData(
+                              show: true, drawVerticalLine: false, getDrawingHorizontalLine: (_) => FlLine(color: AppTheme.glassBorder, strokeWidth: 1)),
+                          titlesData: FlTitlesData(
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (v, _) => Text(
+                                    controller.donationsLastSixMonths[v.toInt() % controller.donationsLastSixMonths.length]['month'],
+                                    style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
+                              ),
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 30,
+                                getTitlesWidget: (v, _) => Text('${v.toInt()}k', style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
+                              ),
+                            ),
+                            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          ),
+                          borderData: FlBorderData(show: false),
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: controller.donationsLastSixMonths
+                                  .asMap()
+                                  .entries
+                                  .map((e) => FlSpot(e.key.toDouble(), e.value['amount']))
+                                  .toList(),
+                              isCurved: true,
+                              color: AppTheme.primaryGreen,
+                              barWidth: 3,
+                              belowBarData: BarAreaData(show: true, color: AppTheme.primaryGreen.withValues(alpha: 0.15)),
+                              dotData: FlDotData(
+                                  show: true,
+                                  getDotPainter: (spot, percent, bar, index) =>
+                                      FlDotCirclePainter(radius: 4, color: AppTheme.primaryGreen, strokeColor: Colors.white, strokeWidth: 2)),
+                            )
+                          ],
+                          lineTouchData: LineTouchData(
+                            touchTooltipData: LineTouchTooltipData(
+                              getTooltipItems: (spots) => spots
+                                  .map((s) => LineTooltipItem('${s.y.toInt()} دج',
+                                      const TextStyle(color: AppTheme.primaryGreen, fontFamily: 'Tajawal', fontWeight: FontWeight.w600)))
+                                  .toList(),
                             ),
                           ),
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 30,
-                              getTitlesWidget: (v, _) => Text('${v.toInt()}k', style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
-                            ),
-                          ),
-                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                         ),
-                        borderData: FlBorderData(show: false),
-                        lineBarsData: [
-                          LineChartBarData(
-                            spots: controller.donationsLastSixMonths
-                                .asMap()
-                                .entries
-                                .map((e) => FlSpot(e.key.toDouble(), e.value['amount']))
-                                .toList(),
-                            isCurved: true,
-                            color: AppTheme.primaryGreen,
-                            barWidth: 3,
-                            belowBarData: BarAreaData(show: true, color: AppTheme.primaryGreen.withValues(alpha: 0.15)),
-                            dotData: FlDotData(
-                                show: true,
-                                getDotPainter: (spot, percent, bar, index) =>
-                                    FlDotCirclePainter(radius: 4, color: AppTheme.primaryGreen, strokeColor: Colors.white, strokeWidth: 2)),
-                          )
-                        ],
-                        lineTouchData: LineTouchData(
-                          touchTooltipData: LineTouchTooltipData(
-                            getTooltipItems: (spots) => spots
-                                .map((s) => LineTooltipItem('${s.y.toInt()} دج',
-                                    const TextStyle(color: AppTheme.primaryGreen, fontFamily: 'Tajawal', fontWeight: FontWeight.w600)))
-                                .toList(),
-                          ),
-                        ),
-                      ),
-                    )),
+                      )),
+              ),
             ),
             const SizedBox(height: 16),
             _buildSectionHeader('🥧 توزيع الخدمات', ''),
             const SizedBox(height: 12),
-            Container(
-              decoration: AppTheme.glassDecoration,
-              padding: const EdgeInsets.all(16),
-              height: 220,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Obx(() => PieChart(PieChartData(
-                          sections: controller.serviceTypeDistribution
-                              .map((item) => PieChartSectionData(
-                                    value: item['count'].toDouble(),
-                                    color: item['color'],
-                                    title: '${item['percentage']}%',
-                                    radius: 60,
-                                    titleStyle: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'Tajawal'),
-                                  ))
-                              .toList(),
-                          centerSpaceRadius: 40,
-                          sectionsSpace: 3,
-                          pieTouchData: PieTouchData(enabled: true),
-                        ))),
-                  ),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: controller.serviceTypeDistribution
-                        .map((item) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8.0),
-                              child: Row(
-                                children: [
-                                  Container(width: 12, height: 12, decoration: BoxDecoration(color: item['color'], borderRadius: BorderRadius.circular(3))),
-                                  const SizedBox(width: 8),
-                                  Text(item['name'], style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-                                ],
-                              ),
-                            ))
-                        .toList(),
-                  )
-                ],
+            GestureDetector(
+              onTap: () => setState(() => _currentIndex = 1),
+              child: Container(
+                decoration: AppTheme.glassDecoration,
+                padding: const EdgeInsets.all(16),
+                height: 220,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Obx(() => PieChart(PieChartData(
+                            sections: controller.serviceTypeDistribution
+                                .map((item) => PieChartSectionData(
+                                      value: item['count'].toDouble(),
+                                      color: item['color'],
+                                      title: '${item['percentage']}%',
+                                      radius: 60,
+                                      titleStyle: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'Tajawal'),
+                                    ))
+                                .toList(),
+                            centerSpaceRadius: 40,
+                            sectionsSpace: 3,
+                            pieTouchData: PieTouchData(enabled: true),
+                          ))),
+                    ),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: controller.serviceTypeDistribution
+                          .map((item) => Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: Row(
+                                  children: [
+                                    Container(width: 12, height: 12, decoration: BoxDecoration(color: item['color'], borderRadius: BorderRadius.circular(3))),
+                                    const SizedBox(width: 8),
+                                    Text(item['name'], style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                    )
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
             _buildSectionHeader('📊 طلبات هذا الشهر', ''),
             const SizedBox(height: 12),
-            Container(
-              decoration: AppTheme.glassDecoration,
-              padding: const EdgeInsets.all(16),
-              height: 180,
-              child: Obx(() => BarChart(BarChartData(
-                    alignment: BarChartAlignment.spaceAround,
-                    barGroups: controller.monthlyRequests
-                        .where((item) => item['day'] % 5 == 0)
-                        .map((item) => BarChartGroupData(
-                              x: item['day'],
-                              barRods: [
-                                BarChartRodData(
-                                  toY: item['count'].toDouble(),
-                                  gradient: AppTheme.primaryGradient,
-                                  width: 8,
-                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                                )
-                              ],
-                            ))
-                        .toList(),
-                    gridData: const FlGridData(show: false),
-                    borderData: FlBorderData(show: false),
-                    titlesData: FlTitlesData(
-                      bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (v, meta) => Text('${v.toInt()}', style: const TextStyle(color: AppTheme.textHint, fontSize: 9)))),
-                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    ),
-                    barTouchData: BarTouchData(
-                      touchTooltipData: BarTouchTooltipData(
-                        getTooltipItem: (group, groupIndex, rod, rodIndex) => BarTooltipItem(
-                            '${rod.toY.toInt()} طلب', const TextStyle(color: AppTheme.primaryGreen, fontFamily: 'Tajawal', fontWeight: FontWeight.w600)),
+            GestureDetector(
+              onTap: () => setState(() => _currentIndex = 1),
+              child: Container(
+                decoration: AppTheme.glassDecoration,
+                padding: const EdgeInsets.all(16),
+                height: 180,
+                child: Obx(() => BarChart(BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      barGroups: controller.monthlyRequests
+                          .where((item) => item['day'] % 5 == 0)
+                          .map((item) => BarChartGroupData(
+                                x: item['day'],
+                                barRods: [
+                                  BarChartRodData(
+                                    toY: item['count'].toDouble(),
+                                    gradient: AppTheme.primaryGradient,
+                                    width: 8,
+                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                                  )
+                                ],
+                              ))
+                          .toList(),
+                      gridData: const FlGridData(show: false),
+                      borderData: FlBorderData(show: false),
+                      titlesData: FlTitlesData(
+                        bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (v, meta) => Text('${v.toInt()}', style: const TextStyle(color: AppTheme.textHint, fontSize: 9)))),
+                        leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                       ),
-                    ),
-                  ))),
+                      barTouchData: BarTouchData(
+                        touchTooltipData: BarTouchTooltipData(
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) => BarTooltipItem(
+                              '${rod.toY.toInt()} طلب', const TextStyle(color: AppTheme.primaryGreen, fontFamily: 'Tajawal', fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ))),
+              ),
             ),
             const SizedBox(height: 16),
             _buildSectionHeader('📁 تقدم المشاريع', 'عرض الكل', onTap: () => setState(() => _currentIndex = 2)),
@@ -545,49 +660,52 @@ class _AdminDashboardState extends State<AdminDashboard> {
             Obx(() => Column(
                   children: controller.activeProjectsList
                       .take(3)
-                      .map((project) => Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16)),
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                        child: Text(project.name,
-                                            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis)),
-                                    Text('${project.budget > 0 ? ((project.collected / project.budget) * 100).toInt() : 0}%',
-                                        style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w700)),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: LinearProgressIndicator(
-                                    value: project.budget > 0 ? project.collected / project.budget : 0,
-                                    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                                    valueColor: AlwaysStoppedAnimation(
-                                      (project.budget > 0 && (project.collected / project.budget) > 0.75)
-                                          ? AppTheme.successColor
-                                          : (project.budget > 0 && (project.collected / project.budget) > 0.4)
-                                              ? AppTheme.primaryGreen
-                                              : AppTheme.warningColor,
-                                    ),
-                                    minHeight: 8,
+                      .map((project) => GestureDetector(
+                            onTap: () => Get.to(() => ProjectDetailScreen(project: project)),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16)),
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                          child: Text(project.name,
+                                              style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis)),
+                                      Text('${project.budget > 0 ? ((project.collected / project.budget) * 100).toInt() : 0}%',
+                                          style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w700)),
+                                    ],
                                   ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Text('${project.collected.toInt()} دج', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                                    const Spacer(),
-                                    Text('من ${project.budget.toInt()} دج', style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
-                                  ],
-                                ),
-                              ],
+                                  const SizedBox(height: 8),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: LinearProgressIndicator(
+                                      value: project.budget > 0 ? project.collected / project.budget : 0,
+                                      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                                      valueColor: AlwaysStoppedAnimation(
+                                        (project.budget > 0 && (project.collected / project.budget) > 0.75)
+                                            ? AppTheme.successColor
+                                            : (project.budget > 0 && (project.collected / project.budget) > 0.4)
+                                                ? AppTheme.primaryGreen
+                                                : AppTheme.warningColor,
+                                      ),
+                                      minHeight: 8,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Text('${project.collected.toInt()} دج', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                                      const Spacer(),
+                                      Text('من ${project.budget.toInt()} دج', style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ))
                       .toList(),
@@ -598,36 +716,61 @@ class _AdminDashboardState extends State<AdminDashboard> {
             Obx(() => Column(
                   children: controller.fieldUpdates
                       .take(5)
-                      .map((update) => Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            decoration: BoxDecoration(
-                                color: Theme.of(context).cardColor,
-                                borderRadius: BorderRadius.circular(14),
-                                border: const Border(right: BorderSide(color: AppTheme.primaryGreen, width: 3))),
-                            padding: const EdgeInsets.all(14),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                    backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
-                                    radius: 20,
-                                    child: Text(update.workerName.isNotEmpty ? update.workerName[0] : '?',
-                                        style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w700))),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(update.workerName, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
-                                      Text(update.description, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12), maxLines: 2),
-                                      Text(_timeAgo(update.createdAt), style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
-                                    ],
+                      .map((update) => GestureDetector(
+                            onTap: () {
+                               if (update.projectId != null) {
+                                  try {
+                                    final project = controller.activeProjectsList.firstWhere((p) => p.id == update.projectId);
+                                    Get.to(() => ProjectDetailScreen(project: project));
+                                  } catch (e) {}
+                               } else if (update.requestId != null) {
+                                  Get.toNamed('/admin/request-detail', arguments: update.requestId);
+                               }
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                  color: Theme.of(context).cardColor,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: const Border(right: BorderSide(color: AppTheme.primaryGreen, width: 3))),
+                              padding: const EdgeInsets.all(14),
+                              child: Row(
+                                children: [
+                                  StreamBuilder<DocumentSnapshot>(
+                                    stream: FirebaseFirestore.instance.collection(AppConstants.usersCollection).doc(update.workerId).snapshots(),
+                                    builder: (context, userSnap) {
+                                      String? imageUrl;
+                                      if (userSnap.hasData && userSnap.data!.exists) {
+                                        imageUrl = (userSnap.data!.data() as Map<String, dynamic>)['profileImage'];
+                                      }
+                                      return CircleAvatar(
+                                        radius: 20,
+                                        backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                                        backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
+                                        child: (imageUrl == null || imageUrl.isEmpty) 
+                                          ? Text(update.workerName.isNotEmpty ? update.workerName[0] : '?',
+                                              style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w700))
+                                          : null,
+                                      );
+                                    }
                                   ),
-                                ),
-                                if (update.imageUrl != null)
-                                  ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Image.network(update.imageUrl!, width: 50, height: 50, fit: BoxFit.cover)),
-                              ],
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(update.workerName, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                                        Text(update.description, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12), maxLines: 2),
+                                        Text(_timeAgo(update.createdAt), style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
+                                      ],
+                                    ),
+                                  ),
+                                  if (update.imageUrl != null)
+                                    ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(update.imageUrl!, width: 50, height: 50, fit: BoxFit.cover)),
+                                ],
+                              ),
                             ),
                           ))
                       .toList(),
@@ -641,11 +784,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       .map((donation) => Container(
                             margin: const EdgeInsets.only(bottom: 8),
                             child: ListTile(
-                              leading: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: const BoxDecoration(gradient: AppTheme.goldGradient, shape: BoxShape.circle),
-                                child: const Icon(Icons.volunteer_activism, color: Colors.black, size: 20),
-                              ),
+                              onTap: () {
+                                try {
+                                  final project = controller.activeProjectsList.firstWhere((p) => p.id == donation.projectId);
+                                  Get.to(() => ProjectDetailScreen(project: project));
+                                } catch (e) {}
+                              },
+                              leading: donation.donorId.isEmpty || donation.donorId == 'anonymous'
+                                  ? Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.goldGradient),
+                                      child: const CircleAvatar(
+                                        radius: 20,
+                                        backgroundColor: Colors.black,
+                                        child: Icon(Icons.volunteer_activism, color: AppTheme.goldAccent, size: 20),
+                                      ),
+                                    )
+                                  : StreamBuilder<DocumentSnapshot>(
+                                      stream: FirebaseFirestore.instance.collection(AppConstants.usersCollection).doc(donation.donorId).snapshots(),
+                                      builder: (context, userSnap) {
+                                        String? imageUrl;
+                                        if (userSnap.hasData && userSnap.data!.exists) {
+                                          imageUrl = (userSnap.data!.data() as Map<String, dynamic>)['profileImage'];
+                                        }
+                                        return Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.goldGradient),
+                                          child: CircleAvatar(
+                                            radius: 20,
+                                            backgroundColor: Colors.black,
+                                            backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
+                                            child: (imageUrl == null || imageUrl.isEmpty) 
+                                              ? const Icon(Icons.volunteer_activism, color: AppTheme.goldAccent, size: 20)
+                                              : null,
+                                          ),
+                                        );
+                                      }
+                                    ),
                               title: Text(donation.donorName, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
                               subtitle: Text(donation.projectName, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                               trailing: Column(
@@ -669,79 +844,131 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildKPICard(String label, RxInt value, IconData icon, Gradient gradient, String suffix) {
-    return Container(
-      decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(20), boxShadow: AppTheme.darkShadow),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(12)),
-                child: Icon(icon, color: Colors.white, size: 20),
-              ),
-              const Spacer(),
-              if (suffix.isNotEmpty) Text(suffix, style: const TextStyle(color: Colors.white70, fontSize: 10)),
-            ],
-          ),
-          const Spacer(),
-          Obx(() => Text(
-              value.value >= 1000000
-                  ? '${(value.value / 1000000).toStringAsFixed(1)}M'
-                  : value.value >= 1000
-                      ? '${(value.value / 1000).toStringAsFixed(1)}k'
-                      : value.value.toString(),
-              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800))),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
-        ],
+  Widget _buildKPICard(String label, RxInt value, IconData icon, Gradient gradient, String suffix, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(20), boxShadow: AppTheme.darkShadow),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(12)),
+                  child: Icon(icon, color: Colors.white, size: 20),
+                ),
+                const Spacer(),
+                if (suffix.isNotEmpty) Text(suffix, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+              ],
+            ),
+            const Spacer(),
+            Obx(() => Text(
+                value.value >= 1000000
+                    ? '${(value.value / 1000000).toStringAsFixed(1)}M'
+                    : value.value >= 1000
+                        ? '${(value.value / 1000).toStringAsFixed(1)}k'
+                        : value.value.toString(),
+                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800))),
+            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildUrgentRequestCard(ServiceRequestModel request) {
     final color = request.urgency == 'emergency' ? AppTheme.emergencyColor : AppTheme.urgentColor;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
-          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 10)]),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.2), shape: BoxShape.circle),
-              child: Icon(Icons.emergency_outlined, color: color, size: 24)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(request.type, style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
-                    const Spacer(),
-                    AppTheme.statusBadge(request.urgency),
-                  ],
-                ),
-                Text(request.requesterName, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                Text('${request.wilaya} - ${_timeAgo(request.createdAt)}', style: const TextStyle(color: AppTheme.textHint, fontSize: 11)),
-              ],
+    return GestureDetector(
+      onTap: () => Get.toNamed('/admin/request-detail', arguments: request),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
+            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 10)]),
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.2), shape: BoxShape.circle),
+                child: Icon(Icons.emergency_outlined, color: color, size: 24)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(request.type, style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                      const Spacer(),
+                      AppTheme.statusBadge(request.urgency),
+                    ],
+                  ),
+                  Text(request.requesterName, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                  Text('${request.wilaya} - ${_timeAgo(request.createdAt)}', style: const TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                ],
+              ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.arrow_forward_ios, color: AppTheme.primaryGreen, size: 16),
-            onPressed: () => Get.toNamed('/admin/request-detail', arguments: request)
-          )
-        ],
+            IconButton(
+              icon: const Icon(Icons.arrow_forward_ios, color: AppTheme.primaryGreen, size: 16),
+              onPressed: () => Get.toNamed('/admin/request-detail', arguments: request)
+            )
+          ],
+        ),
       ),
     );
   }
+
+  Widget _buildUrgentRequestCardShort(ServiceRequestModel request) {
+    final color = request.urgency == 'emergency' ? AppTheme.emergencyColor : AppTheme.urgentColor;
+    return GestureDetector(
+      onTap: () => Get.toNamed('/admin/request-detail', arguments: request),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
+            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 10)]),
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.2), shape: BoxShape.circle),
+                child: Icon(Icons.emergency_outlined, color: color, size: 24)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(request.type, style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                      const Spacer(),
+                      AppTheme.statusBadge(request.urgency),
+                    ],
+                  ),
+                  Text(request.requesterName, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                  Text('${request.wilaya} - ${_timeAgo(request.createdAt)}', style: const TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.arrow_forward_ios, color: AppTheme.primaryGreen, size: 16),
+              onPressed: () => Get.toNamed('/admin/request-detail', arguments: request)
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildSectionHeader(String title, String actionText, {VoidCallback? onTap}) {
     return Row(
@@ -779,8 +1006,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
               CircleAvatar(
                 radius: 35,
                 backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.3),
-                child: Text(user != null && user.name.isNotEmpty ? user.name[0] : 'A',
-                    style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 28, fontWeight: FontWeight.w800)),
+                backgroundImage: (user?.profileImage != null && user!.profileImage!.isNotEmpty)
+                    ? NetworkImage(user.profileImage!)
+                    : null,
+                child: (user?.profileImage == null || user!.profileImage!.isEmpty)
+                    ? Text(user != null && user.name.isNotEmpty ? user.name[0] : 'A',
+                        style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 28, fontWeight: FontWeight.w800))
+                    : null,
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -831,7 +1063,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
           child: Icon(icon, color: color, size: 22),
         ),
-        title: Text(title, style: TextStyle(color: isDestructive ? color : AppTheme.textPrimary, fontWeight: FontWeight.w500)),
+        title: Text(title, style: TextStyle(color: isDestructive ? color : AppTheme.textPrimary, fontWeight: FontWeight.w600)),
         subtitle: subtitle.isNotEmpty ? Text(subtitle, style: const TextStyle(color: AppTheme.textHint, fontSize: 11)) : null,
         trailing: showToggle
             ? Switch(value: Get.isDarkMode, onChanged: (v) => AppConstants.toggleTheme())

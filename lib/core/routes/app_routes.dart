@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -15,6 +16,7 @@ import '../../features/admin/screens/workers_screen.dart';
 import '../../features/admin/screens/worker_detail_screen.dart';
 import '../../features/admin/screens/vehicles_screen.dart';
 import '../../features/admin/screens/reports_screen.dart';
+import '../../features/admin/screens/add_project_screen.dart';
 import '../../features/worker/screens/worker_dashboard.dart';
 import '../../features/worker/screens/update_task_screen.dart';
 import '../../features/donor/screens/donor_dashboard.dart';
@@ -25,11 +27,12 @@ import '../../features/beneficiary/screens/request_status_screen.dart';
 import '../../features/guest/screens/guest_request_screen.dart';
 import '../../features/guest/screens/guest_success_screen.dart';
 import '../../features/shared/screens/notifications_screen.dart';
-import '../../features/shared/screens/chat_screen.dart';
+import '../../features/chat/screens/chat_screen.dart';
 import '../../features/shared/screens/profile_screen.dart';
 import '../../data/models/service_request_model.dart';
 import '../../data/models/project_model.dart';
 import '../../data/models/user_model.dart';
+import 'auth_middleware.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -45,6 +48,7 @@ class AppRoutes {
   static const String adminRequestDetail = '/admin/request-detail';
   static const String adminProjects = '/admin/projects';
   static const String adminProjectDetail = '/admin/project-detail';
+  static const String adminAddProject = '/admin/add-project';
   static const String adminWorkers = '/admin/workers';
   static const String adminWorkerDetail = '/admin/worker-detail';
   static const String adminVehicles = '/admin/vehicles';
@@ -75,61 +79,95 @@ class AppRoutes {
     GetPage(name: register, page: () => const RegisterScreen()),
     GetPage(name: pending, page: () => const PendingApprovalScreen()),
     
-    GetPage(name: adminDashboard, page: () => const AdminDashboard()),
-    GetPage(name: adminUsers, page: () => const ManageUsersScreen()),
-    GetPage(name: adminServiceTypes, page: () => const ManageServiceTypesScreen()),
-    GetPage(name: adminTaskTypes, page: () => const ManageTaskTypesScreen()),
-    GetPage(name: adminRequests, page: () => const ServiceRequestsScreen()),
+    // Admin Routes
+    GetPage(name: adminDashboard, page: () => const AdminDashboard(), middlewares: [AuthMiddleware()]),
+    GetPage(name: adminUsers, page: () => const ManageUsersScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(name: adminServiceTypes, page: () => const ManageServiceTypesScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(name: adminTaskTypes, page: () => const ManageTaskTypesScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(name: adminRequests, page: () => const ServiceRequestsScreen(), middlewares: [AuthMiddleware()]),
     GetPage(
       name: adminRequestDetail, 
-      page: () => RequestDetailScreen(request: Get.arguments as ServiceRequestModel)
+      page: () {
+        final req = Get.arguments;
+        if (req is! ServiceRequestModel) return const Scaffold(body: Center(child: Text('خطأ في البيانات')));
+        return RequestDetailScreen(request: req);
+      },
+      middlewares: [AuthMiddleware()]
     ),
-    GetPage(name: adminProjects, page: () => ProjectsScreen()),
+    GetPage(name: adminProjects, page: () => ProjectsScreen(), middlewares: [AuthMiddleware()]),
     GetPage(
       name: adminProjectDetail, 
-      page: () => ProjectDetailScreen(project: Get.arguments as ProjectModel)
+      page: () {
+        final proj = Get.arguments;
+        if (proj is! ProjectModel) return const Scaffold(body: Center(child: Text('خطأ في البيانات')));
+        return ProjectDetailScreen(project: proj);
+      },
+      middlewares: [AuthMiddleware()]
     ),
-    GetPage(name: adminWorkers, page: () => const WorkersScreen()),
+    GetPage(name: adminAddProject, page: () => const AddProjectScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(name: adminWorkers, page: () => const WorkersScreen(), middlewares: [AuthMiddleware()]),
     GetPage(
       name: adminWorkerDetail, 
-      page: () => WorkerDetailScreen(worker: Get.arguments as UserModel)
+      page: () {
+        final wk = Get.arguments;
+        if (wk is! UserModel) return const Scaffold(body: Center(child: Text('خطأ في البيانات')));
+        return WorkerDetailScreen(worker: wk);
+      },
+      middlewares: [AuthMiddleware()]
     ),
-    GetPage(name: adminVehicles, page: () => const VehiclesScreen()),
-    GetPage(name: adminReports, page: () => const ReportsScreen()),
+    GetPage(name: adminVehicles, page: () => const VehiclesScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(name: adminReports, page: () => const ReportsScreen(), middlewares: [AuthMiddleware()]),
     
-    GetPage(name: workerDashboard, page: () => const WorkerDashboard()),
-    GetPage(name: workerUpdateTask, page: () => const UpdateTaskScreen()),
+    // Worker Routes
+    GetPage(name: workerDashboard, page: () => const WorkerDashboard(), middlewares: [AuthMiddleware()]),
+    GetPage(name: workerUpdateTask, page: () => const UpdateTaskScreen(), middlewares: [AuthMiddleware()]),
     
-    GetPage(name: donorDashboard, page: () => const DonorDashboard()),
-    GetPage(name: donorDonate, page: () => const DonateScreen()),
+    // Donor Routes
+    GetPage(name: donorDashboard, page: () => const DonorDashboard(), middlewares: [AuthMiddleware()]),
+    GetPage(name: donorDonate, page: () => const DonateScreen(), middlewares: [AuthMiddleware()]),
     
-    GetPage(name: beneficiaryDashboard, page: () => const BeneficiaryDashboard()),
-    GetPage(name: beneficiaryNewRequest, page: () => const NewRequestScreen()),
+    // Beneficiary Routes
+    GetPage(name: beneficiaryDashboard, page: () => const BeneficiaryDashboard(), middlewares: [AuthMiddleware()]),
+    GetPage(name: beneficiaryNewRequest, page: () => const NewRequestScreen(), middlewares: [AuthMiddleware()]),
     GetPage(
       name: beneficiaryRequestStatus, 
-      page: () => RequestStatusScreen(request: Get.arguments as ServiceRequestModel)
+      page: () {
+        final req = Get.arguments;
+        if (req is! ServiceRequestModel) return const Scaffold(body: Center(child: Text('خطأ في البيانات')));
+        return RequestStatusScreen(request: req);
+      },
+      middlewares: [AuthMiddleware()]
     ),
     
+    // Guest Routes
     GetPage(name: guestRequest, page: () => const GuestRequestScreen()),
     GetPage(
       name: guestSuccess, 
-      page: () => GuestSuccessScreen(
-        refNumber: Get.arguments['refNumber'],
-        phone: Get.arguments['phone'],
-      )
+      page: () {
+        final args = Get.arguments as Map<String, dynamic>?;
+        return GuestSuccessScreen(
+          refNumber: args?['refNumber'] ?? '',
+          phone: args?['phone'] ?? '',
+        );
+      }
     ),
     
-    GetPage(name: chat, page: () => const ChatScreen()),
-    GetPage(name: chatGroup, page: () => const ChatScreen(isGroupChat: true)),
+    // Shared Routes
+    GetPage(name: chat, page: () => const ChatScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(name: chatGroup, page: () => const ChatScreen(isGroupChat: true), middlewares: [AuthMiddleware()]),
     GetPage(
       name: chatPrivate, 
-      page: () => ChatScreen(
-        isGroupChat: false, 
-        targetUserId: Get.arguments['userId'], 
-        targetUserName: Get.arguments['userName']
-      )
+      page: () {
+        final args = Get.arguments as Map<String, dynamic>?;
+        return ChatScreen(
+          isGroupChat: false, 
+          targetUserId: args?['userId'] ?? '', 
+          targetUserName: args?['userName'] ?? 'المحادثة'
+        );
+      },
+      middlewares: [AuthMiddleware()]
     ),
-    GetPage(name: notifications, page: () => const NotificationsScreen()),
-    GetPage(name: profile, page: () => const ProfileScreen()),
+    GetPage(name: notifications, page: () => const NotificationsScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(name: profile, page: () => const ProfileScreen(), middlewares: [AuthMiddleware()]),
   ];
 }

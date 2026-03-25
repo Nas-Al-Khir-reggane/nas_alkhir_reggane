@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_logo.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../data/models/user_model.dart';
+import '../../../core/utils/default_avatars.dart';
 import '../controllers/auth_controller.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -27,6 +28,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   UserRole _selectedRole = UserRole.beneficiary;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  String? _selectedAvatar;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedAvatar = DefaultAvatars.getRandomAvatar(_selectedRole);
+  }
 
   @override
   void dispose() {
@@ -182,14 +190,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 labelText: 'نوع الحساب',
                                 prefixIcon: Icon(Icons.badge_outlined, color: AppTheme.primaryGreen),
                               ),
-                              items: [
-                                const DropdownMenuItem(value: UserRole.worker, child: Text('عامل')),
-                                const DropdownMenuItem(value: UserRole.donor, child: Text('متبرع')),
-                                const DropdownMenuItem(value: UserRole.beneficiary, child: Text('مستفيد')),
+                              items: const [
+                                DropdownMenuItem(value: UserRole.worker, child: Text('عامل')),
+                                DropdownMenuItem(value: UserRole.donor, child: Text('متبرع')),
+                                DropdownMenuItem(value: UserRole.beneficiary, child: Text('مستفيد')),
                               ],
-                              onChanged: (v) => setState(() => _selectedRole = v!),
+                              onChanged: (v) {
+                                if (v != null) {
+                                  setState(() {
+                                    _selectedRole = v;
+                                    _selectedAvatar = DefaultAvatars.getRandomAvatar(v);
+                                  });
+                                }
+                              },
                               dropdownColor: Theme.of(context).colorScheme.surface,
                               style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
+                            ),
+                            const SizedBox(height: 16),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Text('اختر صورة مبدئية لحسابك:', style: TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 70,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: 10,
+                                itemBuilder: (context, index) {
+                                  final avatarUrl = DefaultAvatars.getAvatarsForRole(_selectedRole)[index];
+                                  final isSelected = _selectedAvatar == avatarUrl;
+                                  return GestureDetector(
+                                    onTap: () => setState(() => _selectedAvatar = avatarUrl),
+                                    child: Container(
+                                      margin: const EdgeInsets.only(left: 12),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: isSelected ? AppTheme.primaryGreen : Colors.transparent,
+                                          width: 3,
+                                        ),
+                                        boxShadow: isSelected ? [AppTheme.greenGlow.first] : null,
+                                      ),
+                                      child: CircleAvatar(
+                                        radius: 30,
+                                        backgroundColor: AppTheme.darkCard,
+                                        backgroundImage: NetworkImage(avatarUrl),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                             const SizedBox(height: 24),
                             Obx(() => authController.isLoading.value
@@ -209,6 +260,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                             email: _emailController.text.trim(),
                                             password: _passwordController.text.trim(),
                                             role: _selectedRole,
+                                            profileImage: _selectedAvatar,
                                           );
                                         }
                                       },

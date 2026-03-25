@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/service_request_model.dart';
 import '../controllers/beneficiary_controller.dart';
@@ -93,14 +94,30 @@ class RequestStatusScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, dynamic value) {
+    String formattedValue = value.toString();
+    if (value is Timestamp) {
+      formattedValue = DateFormat('yyyy/MM/dd HH:mm').format(value.toDate());
+    } else if (value is String && value.startsWith('Timestamp(')) {
+      // Fallback if the map value was unfortunately saved as a string representation of Timestamp
+      formattedValue = 'تاريخ مسجل';
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: AppTheme.textHint)),
-          Text(value, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+          Text(label, style: const TextStyle(color: AppTheme.textHint)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              formattedValue.isEmpty ? '—' : formattedValue,
+              style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+              textAlign: TextAlign.left,
+            ),
+          ),
         ],
       ),
     );

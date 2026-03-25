@@ -6,6 +6,8 @@ class WorkerUpdate {
   final String workerName;
   final String description;
   final String? imageUrl;
+  final String? projectId; // أضفت هذا الحقل
+  final String? requestId; // أضفت هذا الحقل للطلبات الفردية
   final DateTime createdAt;
 
   WorkerUpdate({
@@ -14,6 +16,8 @@ class WorkerUpdate {
     required this.workerName,
     required this.description,
     this.imageUrl,
+    this.projectId,
+    this.requestId,
     required this.createdAt,
   });
 
@@ -24,6 +28,8 @@ class WorkerUpdate {
       'workerName': workerName,
       'description': description,
       'imageUrl': imageUrl,
+      'projectId': projectId,
+      'requestId': requestId,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }
@@ -35,6 +41,8 @@ class WorkerUpdate {
       workerName: map['workerName'] ?? '',
       description: map['description'] ?? '',
       imageUrl: map['imageUrl'],
+      projectId: map['projectId'],
+      requestId: map['requestId'],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }

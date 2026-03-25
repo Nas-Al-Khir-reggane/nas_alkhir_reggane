@@ -22,7 +22,7 @@ class AppLogo extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.volunteer_activism, color: Colors.black, size: size * 0.35),
-            Text('ناس', style: TextStyle(
+            Text('ناس الخير', style: TextStyle(
               fontFamily: 'Tajawal',
               color: Colors.black,
               fontSize: size * 0.15,

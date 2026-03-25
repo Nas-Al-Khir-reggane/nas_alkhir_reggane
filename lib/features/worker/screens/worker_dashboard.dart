@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,7 +7,8 @@ import '../../../core/theme/app_theme.dart';
 import '../controllers/worker_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/models/service_request_model.dart';
-import '../../shared/screens/chat_screen.dart';
+import '../../../data/models/user_model.dart';
+import '../../chat/screens/chat_screen.dart';
 import './update_task_screen.dart';
 import '../../../data/services/notification_service.dart';
 
@@ -22,73 +24,100 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
   final AuthController authController = Get.find<AuthController>();
   final NotificationService notificationService = Get.find<NotificationService>();
   int _currentIndex = 0;
-  int _unreadChatCount = 0;
 
   @override
   void initState() {
     super.initState();
-    // تتبع عدد الرسائل غير المقروءة في مجموعة الفريق
-    final userId = authController.currentUser.value?.id ?? '';
-    FirebaseFirestore.instance
-        .collection('chats')
-        .doc('group_team')
-        .collection('messages')
-        .where('isRead', isEqualTo: false)
-        .where('senderId', isNotEqualTo: userId)
-        .snapshots()
-        .listen((snap) {
-      if (mounted) setState(() => _unreadChatCount = snap.docs.length);
-    });
+  }
+
+  Future<bool> _onWillPop() async {
+    final result = await Get.dialog<bool>(
+      AlertDialog(
+        backgroundColor: AppTheme.darkSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('تأكيد الخروج',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+        content: Text('هل أنت متأكد من أنك تريد الخروج من التطبيق؟',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'Tajawal')),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Get.back(result: false),
+                  child: const Text('إلغاء', style: TextStyle(color: AppTheme.textHint, fontFamily: 'Tajawal')),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: AppTheme.gradientButton(
+                  text: 'خروج',
+                  onPressed: () => Get.back(result: true),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.darkBg,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          _buildHomeTab(),
-          const UpdateTaskScreen(),
-          const ChatScreen(isWorker: true, isGroupChat: true),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.darkSurface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: AppTheme.darkShadow,
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          selectedItemColor: AppTheme.primaryGreen,
-          unselectedItemColor: AppTheme.textHint,
-          type: BottomNavigationBarType.fixed,
-          items: [
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'مهامي',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.add_circle_outline),
-              activeIcon: Icon(Icons.add_circle),
-              label: 'تحديث',
-            ),
-            BottomNavigationBarItem(
-              icon: _unreadChatCount > 0
-                  ? Badge(
-                      label: Text(_unreadChatCount.toString()),
-                      child: const Icon(Icons.chat_bubble_outline),
-                    )
-                  : const Icon(Icons.chat_bubble_outline),
-              activeIcon: const Icon(Icons.chat_bubble),
-              label: 'الدردشة',
-            ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppTheme.darkBg,
+        body: IndexedStack(
+          index: _currentIndex,
+          children: [
+            _buildHomeTab(),
+            const UpdateTaskScreen(),
+            _buildSupportTab(), // استبدال الدردشة الجماعية بتبويب التواصل الخاص
           ],
+        ),
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.darkSurface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: AppTheme.darkShadow,
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) => setState(() => _currentIndex = index),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            selectedItemColor: AppTheme.primaryGreen,
+            unselectedItemColor: AppTheme.textHint,
+            type: BottomNavigationBarType.fixed,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home),
+                label: 'مهامي',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.add_circle_outline),
+                activeIcon: Icon(Icons.add_circle),
+                label: 'تحديث',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.support_agent_outlined),
+                activeIcon: Icon(Icons.support_agent),
+                label: 'الإدارة',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -127,40 +156,6 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                 icon: const Icon(Icons.person_outline, color: AppTheme.primaryGreen, size: 28),
                 onPressed: () => Get.toNamed('/profile'),
               ),
-              // Toggle Availability
-              Obx(() => GestureDetector(
-                    onTap: () => workerController.toggleAvailability(),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      decoration: BoxDecoration(
-                        color: workerController.isAvailable.value ? AppTheme.successColor.withValues(alpha: 0.15) : AppTheme.warningColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: workerController.isAvailable.value ? AppTheme.successColor : AppTheme.warningColor),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: workerController.isAvailable.value ? AppTheme.successColor : AppTheme.warningColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            workerController.isAvailable.value ? 'متاح' : 'مشغول',
-                            style: TextStyle(
-                              color: workerController.isAvailable.value ? AppTheme.successColor : AppTheme.warningColor,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )),
               const SizedBox(width: 8),
               Obx(() => Stack(
                 children: [
@@ -209,62 +204,36 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                   AppTheme.primaryGradient,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildWorkerKPI(
-                  'الإنجاز',
-                  '${workerController.completionRate.toStringAsFixed(0)}%',
-                  Icons.trending_up,
-                  AppTheme.goldGradient,
-                ),
-              ),
             ],
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
+          
+          // حث المتطوع على التواصل الخاص عند الحاجة
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryGreen.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, color: AppTheme.primaryGreen),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text('لأي استفسار بخصوص المهام، يرجى مراسلة أحد المدراء بشكل خاص.', 
+                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                ),
+                TextButton(
+                  onPressed: () => setState(() => _currentIndex = 2),
+                  child: const Text('تواصل الآن', style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
 
-          // Last Admin Message
-          Obx(() => workerController.lastAdminMessage.value != null
-              ? GestureDetector(
-                  onTap: () => setState(() => _currentIndex = 2),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      color: AppTheme.darkCard,
-                      borderRadius: BorderRadius.circular(16),
-                      border: const Border(right: BorderSide(color: AppTheme.primaryGreen, width: 4)),
-                    ),
-                    padding: const EdgeInsets.all(14),
-                    child: Row(
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.all(8),
-                          child: const Icon(Icons.admin_panel_settings, color: AppTheme.primaryGreen, size: 20),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('رسالة من المدير', style: TextStyle(color: AppTheme.primaryGreen, fontSize: 12, fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 4),
-                              Text(
-                                workerController.lastAdminMessage.value!.message,
-                                style: TextStyle(color: AppTheme.textPrimary),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis
-                              ),
-                              const Text('منذ قليل', style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.arrow_forward_ios, color: AppTheme.textHint, size: 14),
-                      ],
-                    ),
-                  ),
-                )
-              : const SizedBox.shrink()),
+          const SizedBox(height: 24),
 
           // My Tasks Header
           Row(
@@ -284,13 +253,11 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                   width: double.infinity,
                   decoration: AppTheme.glassDecoration,
                   padding: const EdgeInsets.all(30),
-                  child: Column(
+                  child: const Column(
                     children: [
-                      const Icon(Icons.task_alt, color: AppTheme.textHint, size: 40),
-                      const SizedBox(height: 12),
-                      const Text('لا توجد مهام حالية', style: TextStyle(color: AppTheme.textHint), textAlign: TextAlign.center),
-                      const SizedBox(height: 4),
-                      Text('أنت متاح لاستقبال مهام جديدة', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13), textAlign: TextAlign.center),
+                      Icon(Icons.task_alt, color: AppTheme.textHint, size: 40),
+                      SizedBox(height: 12),
+                      Text('لا توجد مهام حالية', style: TextStyle(color: AppTheme.textHint), textAlign: TextAlign.center),
                     ],
                   ),
                 )
@@ -299,6 +266,51 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                 )),
 
           const SizedBox(height: 80),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSupportTab() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 40),
+          const Text('🛡️ التواصل مع الإدارة', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+          const Text('اختر مديراً لمراسلته بخصوص عملك أو تقديم تقرير', style: TextStyle(color: Colors.white54, fontSize: 13)),
+          const SizedBox(height: 24),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('users').where('role', whereIn: ['admin', 'superAdmin']).snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                final admins = snapshot.data!.docs;
+                return ListView.builder(
+                  itemCount: admins.length,
+                  itemBuilder: (context, index) {
+                    final admin = UserModel.fromMap(admins[index].data() as Map<String, dynamic>, admins[index].id);
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(16)),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
+                          backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty) ? NetworkImage(admin.profileImage!) : null,
+                          child: (admin.profileImage == null || admin.profileImage!.isEmpty) ? Text(admin.name[0], style: const TextStyle(color: AppTheme.primaryGreen)) : null,
+                        ),
+                        title: Text(admin.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        subtitle: Text(admin.role == UserRole.superAdmin ? 'مدير عام' : 'مدير إداري', style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12)),
+                        trailing: const Icon(Icons.chat_bubble_outline, color: AppTheme.primaryGreen),
+                        onTap: () => Get.toNamed('/chat/private', arguments: {'userId': admin.id, 'userName': admin.name}),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
         ],
       ),
     );
@@ -424,13 +436,6 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                     const Icon(Icons.person_outline, color: AppTheme.textHint, size: 16),
                     const SizedBox(width: 6),
                     Text(request.requesterName, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                    const Spacer(),
-                    const Icon(Icons.phone_outlined, color: AppTheme.primaryGreen, size: 16),
-                    const SizedBox(width: 4),
-                    GestureDetector(
-                      onTap: () => launchUrl(Uri.parse('tel:${request.phone}')),
-                      child: Text(request.phone, style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 13)),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -441,72 +446,10 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                     Text('${request.wilaya} - ${request.address}', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                   ],
                 ),
-
-                if (request.type == 'funeral_transport' || request.type == 'نقل جنازة') ...[
-                  const Divider(color: AppTheme.glassBorder, height: 20),
-                  Container(
-                    decoration: BoxDecoration(color: AppTheme.darkSurface, borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.person_off_outlined, color: AppTheme.textHint, size: 14),
-                            const SizedBox(width: 6),
-                            Text('المتوفى: ${request.details['deceasedName'] ?? 'غير معروف'}', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            const Icon(Icons.place, color: AppTheme.errorColor, size: 14),
-                            const SizedBox(width: 6),
-                            Expanded(child: Text('من: ${request.details['pickupLocation'] ?? request.details['pickup'] ?? ''}', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12))),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.flag, color: AppTheme.primaryGreen, size: 14),
-                            const SizedBox(width: 6),
-                            Expanded(child: Text('إلى: ${request.details['deliveryLocation'] ?? request.details['delivery'] ?? ''}', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12))),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: () => _openMapsNavigation(request),
-                          child: Container(
-                            decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(10)),
-                            padding: const EdgeInsets.all(10),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.navigation, color: Colors.black, size: 18),
-                                SizedBox(width: 8),
-                                Text('فتح الملاحة', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 13)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
                 const Divider(color: AppTheme.glassBorder, height: 20),
-
-                Text('تحديث سريع', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _buildQuickAction(request, 'progress', 'تقدم في العمل', Icons.trending_up, AppTheme.primaryGreen),
-                    _buildQuickAction(request, 'arrived', 'وصلت للموقع', Icons.location_on, Colors.blue),
-                    _buildQuickAction(request, 'issue', 'مشكلة', Icons.warning_outlined, AppTheme.warningColor),
-                    _buildQuickAction(request, 'complete', 'إتمام المهمة', Icons.check_circle, AppTheme.successColor),
-                  ],
+                AppTheme.gradientButton(
+                  text: 'تحديث حالة المهمة',
+                  onPressed: () => Get.to(() => const UpdateTaskScreen()),
                 ),
               ],
             ),
@@ -514,109 +457,5 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
         ],
       ),
     );
-  }
-
-  Widget _buildQuickAction(ServiceRequestModel request, String type, String label, IconData icon, Color color) {
-    return GestureDetector(
-      onTap: () {
-        if (type == 'complete') {
-          _showCompleteConfirmDialog(request);
-        } else {
-          _showQuickUpdateSheet(request, type, label, icon, color);
-        }
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 16),
-            const SizedBox(width: 6),
-            Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showCompleteConfirmDialog(ServiceRequestModel request) {
-    Get.defaultDialog(
-      title: "تأكيد الإتمام",
-      middleText: "هل أنت متأكد من إتمام هذه المهمة؟",
-      textConfirm: "نعم متأكد",
-      textCancel: "إلغاء",
-      confirmTextColor: Colors.white,
-      buttonColor: AppTheme.primaryGreen,
-      onConfirm: () {
-        workerController.completeTask(request.id);
-        Get.back();
-      },
-    );
-  }
-
-  void _showQuickUpdateSheet(ServiceRequestModel request, String type, String label, IconData icon, Color color) {
-    final TextEditingController descController = TextEditingController();
-    Get.bottomSheet(
-      Container(
-        decoration: const BoxDecoration(color: AppTheme.darkSurface, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('إضافة تحديث', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-            const SizedBox(height: 16),
-            Container(
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Icon(icon, color: color),
-                  const SizedBox(width: 10),
-                  Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descController,
-              maxLines: 3,
-              style: TextStyle(color: AppTheme.textPrimary),
-              decoration: AppTheme.inputDecoration('وصف التحديث...', Icons.description_outlined),
-            ),
-            const SizedBox(height: 16),
-            Obx(() => workerController.isLoading.value
-                ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
-                : AppTheme.gradientButton(
-                    text: 'إرسال التحديث',
-                    icon: Icons.send,
-                    onPressed: () {
-                      workerController.submitQuickUpdate(
-                        requestId: request.id,
-                        type: type,
-                        description: descController.text,
-                      );
-                      Get.back();
-                    },
-                  )),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openMapsNavigation(ServiceRequestModel request) async {
-    final pickup = request.details['pickupLocation'] ?? request.details['pickup'] ?? '';
-    final delivery = request.details['deliveryLocation'] ?? request.details['delivery'] ?? '';
-    final url = 'https://www.google.com/maps/dir/?api=1&origin=${Uri.encodeComponent(pickup)}&destination=${Uri.encodeComponent(delivery)}&travelmode=driving';
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
-    }
   }
 }

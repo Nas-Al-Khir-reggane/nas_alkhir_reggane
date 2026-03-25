@@ -58,7 +58,25 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> with SingleTicker
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(child: Text(user.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textPrimary))),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                                  backgroundImage: (user.profileImage != null && user.profileImage!.isNotEmpty)
+                                      ? NetworkImage(user.profileImage!)
+                                      : null,
+                                  child: (user.profileImage == null || user.profileImage!.isEmpty)
+                                      ? Text(user.name.isNotEmpty ? user.name[0] : '?',
+                                          style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold))
+                                      : null,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(child: Text(user.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textPrimary))),
+                              ],
+                            ),
+                          ),
                           Text(DateFormat('yyyy-MM-dd').format(user.createdAt), style: const TextStyle(color: AppTheme.textHint)),
                         ],
                       ),
@@ -133,7 +151,13 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> with SingleTicker
               child: ListTile(
                 leading: CircleAvatar(
                   backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                  child: const Icon(Icons.person, color: AppTheme.primaryGreen),
+                  backgroundImage: (user.profileImage != null && user.profileImage!.isNotEmpty)
+                      ? NetworkImage(user.profileImage!)
+                      : null,
+                  child: (user.profileImage == null || user.profileImage!.isEmpty)
+                      ? Text(user.name.isNotEmpty ? user.name[0] : '?',
+                          style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold))
+                      : null,
                 ),
                 title: Text(user.name, style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
                 subtitle: Text("${user.role.displayName} | ${user.phone}", style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),

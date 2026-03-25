@@ -115,6 +115,55 @@ class RequestDetailScreen extends StatelessWidget {
           _buildInfoRow(Icons.location_on_outlined, 'العنوان', request.address),
           const Divider(color: Colors.white10),
           _buildInfoRow(Icons.description_outlined, 'الوصف', request.description),
+          if (request.assignedToName != null) ...[
+            const Divider(color: Colors.white10),
+            _buildAssignedWorkerRow(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAssignedWorkerRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(Icons.engineering_outlined, color: AppTheme.primaryGreen, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('العامل المسند إليه', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    StreamBuilder<DocumentSnapshot>(
+                      stream: FirebaseFirestore.instance.collection(AppConstants.usersCollection).doc(request.assignedTo).snapshots(),
+                      builder: (context, snapshot) {
+                        String? imageUrl;
+                        if (snapshot.hasData && snapshot.data!.exists) {
+                          imageUrl = (snapshot.data!.data() as Map<String, dynamic>)['profileImage'];
+                        }
+                        return CircleAvatar(
+                          radius: 12,
+                          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                          backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
+                          child: (imageUrl == null || imageUrl.isEmpty)
+                              ? Text(request.assignedToName![0], style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 10, fontWeight: FontWeight.bold))
+                              : null,
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    Text(request.assignedToName!, style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -192,7 +241,15 @@ class RequestDetailScreen extends StatelessWidget {
                     itemCount: snapshot.data!.docs.length,
                     itemBuilder: (context, index) {
                       var worker = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                      String? imageUrl = worker['profileImage'];
                       return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                          backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
+                          child: (imageUrl == null || imageUrl.isEmpty)
+                              ? Text(worker['name'][0], style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold))
+                              : null,
+                        ),
                         title: Text(worker['name'], style: TextStyle(color: AppTheme.textPrimary)),
                         onTap: () {
                           adminController.assignToWorker(request.id, snapshot.data!.docs[index].id, workerName: worker['name']);

@@ -1,12 +1,19 @@
+import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
-import 'package:pdf/widgets.dart' as pw;
+import 'package:intl/intl.dart';
+import 'package:screenshot/screenshot.dart';
 import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../data/models/donation_model.dart';
 import '../../../data/models/project_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../widgets/donation_certificate_widget.dart';
 import '../screens/donate_screen.dart';
 
 class DonorController extends GetxController {
@@ -14,20 +21,20 @@ class DonorController extends GetxController {
   RxList<ProjectModel> activeProjects = <ProjectModel>[].obs;
   RxBool isLoading = false.obs;
   Rx<UserModel?> currentDonor = Rx<UserModel?>(null);
+  
+  final ScreenshotController screenshotController = ScreenshotController();
 
   // إحصائيات
   RxDouble totalDonated = 0.0.obs;
   RxInt donationsCount = 0.obs;
   RxList<Map<String, dynamic>> donationsByProject = <Map<String, dynamic>>[].obs;
 
-  // اختيار مسبق للمشروع عند الضغط على "تبرع لهذا المشروع"
+  // اختيار مسبق للمشروع
   RxString preSelectedProjectId = 'general'.obs;
   RxString preSelectedProjectName = 'تبرع عام للجمعية'.obs;
 
-  void preSelectProject(String id, String name) {
-    preSelectedProjectId.value = id;
-    preSelectedProjectName.value = name;
-  }
+  StreamSubscription? _donationsSub;
+  StreamSubscription? _projectsSub;
 
   @override
   void onInit() {
@@ -37,10 +44,90 @@ class DonorController extends GetxController {
     loadActiveProjects();
   }
 
+  // دالة لاختيار مشروع مسبقاً
+  void preSelectProject(String id, String name) {
+    preSelectedProjectId.value = id;
+    preSelectedProjectName.value = name;
+  }
+
+  // دالة لجلب اسم المتبرع الحالي
+  String get donorName => currentDonor.value?.name ?? "متبرع فاعل خير";
+
+  // دالة لعرض الشهادة وتنزيلها
+  void showCertificate() {
+    if (totalDonated.value <= 0) {
+      Get.snackbar('تنبيه', 'يجب أن تساهم في تبرع واحد على الأقل للحصول على شهادة.',
+          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.8),
+          colorText: Colors.black);
+      return;
+    }
+
+    Get.dialog(
+      Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(15),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // معاينة الشهادة
+            Screenshot(
+              controller: screenshotController,
+              child: DonationCertificateWidget(
+                donorName: donorName,
+                date: DateFormat('yyyy/MM/dd').format(DateTime.now()),
+                amount: totalDonated.value.toString(),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // أزرار التحكم
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AppTheme.gradientButton(
+                  text: 'تحميل الشهادة',
+                  icon: Icons.download,
+                  onPressed: _downloadCertificate,
+                ),
+                const SizedBox(width: 12),
+                TextButton(
+                  onPressed: () => Get.back(),
+                  child: const Text('إغلاق', style: TextStyle(color: Colors.white, fontFamily: 'Tajawal')),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // دالة التقاط الصورة وحفظها/مشاركتها
+  Future<void> _downloadCertificate() async {
+    try {
+      final image = await screenshotController.capture();
+      if (image != null) {
+        final pdf = pw.Document();
+        final pdfImage = pw.MemoryImage(image);
+        pdf.addPage(pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context context) {
+            return pw.Center(child: pw.Image(pdfImage));
+          }
+        ));
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdf.save(),
+          name: 'Certificate_$donorName.pdf',
+        );
+      }
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل تحميل الشهادة: $e');
+    }
+  }
+
   void loadMyDonations() {
     if (currentDonor.value == null) return;
     
-    FirebaseFirestore.instance
+    _donationsSub = FirebaseFirestore.instance
         .collection('donations')
         .where('donorId', isEqualTo: currentDonor.value?.id)
         .orderBy('date', descending: true)
@@ -76,13 +163,12 @@ class DonorController extends GetxController {
   }
 
   Color _getProjectColor(String id) {
-    // توليد لون بناءً على معرف المشروع
     final int hash = id.hashCode;
     return Color((hash & 0xFFFFFF) | 0xFF000000).withValues(alpha: 0.8);
   }
 
   void loadActiveProjects() {
-    FirebaseFirestore.instance
+    _projectsSub = FirebaseFirestore.instance
         .collection('projects')
         .where('status', isEqualTo: 'active')
         .snapshots()
@@ -102,10 +188,10 @@ class DonorController extends GetxController {
   }) async {
     isLoading.value = true;
     try {
-      final donorName = isAnonymous ? 'متبرع مجهول' : currentDonor.value?.name ?? '';
+      final dName = isAnonymous ? 'متبرع مجهول' : donorName;
       final donationData = {
         'donorId': isAnonymous ? 'anonymous' : currentDonor.value?.id,
-        'donorName': donorName,
+        'donorName': dName,
         'amount': amount,
         'projectId': projectId,
         'projectName': projectName,
@@ -119,7 +205,6 @@ class DonorController extends GetxController {
 
       await FirebaseFirestore.instance.collection('donations').add(donationData);
       
-      // تحديث إجمالي المشروع
       if (projectId != 'general') {
         await FirebaseFirestore.instance.collection('projects').doc(projectId).update({
           'collected': FieldValue.increment(amount),
@@ -127,8 +212,9 @@ class DonorController extends GetxController {
         });
       }
       
-      // رسالة شكر
-      _showThankYouMessage(donorName, amount, projectName);
+      Get.dialog(
+        ThankYouDialog(name: dName, amount: amount, projectName: projectName),
+      );
     } catch (e) {
       Get.snackbar('خطأ', 'فشل في عملية التبرع: $e');
     } finally {
@@ -136,30 +222,10 @@ class DonorController extends GetxController {
     }
   }
 
-  void _showThankYouMessage(String name, double amount, String projectName) {
-    Get.dialog(
-      ThankYouDialog(name: name, amount: amount, projectName: projectName),
-    );
+  @override
+  void onClose() {
+    _donationsSub?.cancel();
+    _projectsSub?.cancel();
+    super.onClose();
   }
-
-  Future<void> generateCertificate() async {
-    final pdf = pw.Document();
-    pdf.addPage(pw.Page(
-      build: (context) => pw.Center(
-        child: pw.Column(
-          mainAxisAlignment: pw.MainAxisAlignment.center,
-          children: [
-            pw.Text('شهادة تقدير', style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 20),
-            pw.Text('تشكر جمعية ناس الخير رقان'),
-            pw.Text('السيد/ة ${currentDonor.value?.name}'),
-            pw.Text('على تبرعه السخي بمبلغ ${totalDonated.value} دج'),
-            pw.Text('جزاكم الله خير الجزاء'),
-          ],
-        ),
-      ),
-    ));
-    await Printing.sharePdf(bytes: await pdf.save(), filename: 'شهادة_تقدير.pdf');
-  }
-
 }

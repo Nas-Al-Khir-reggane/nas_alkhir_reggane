@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_theme.dart';
 
-class GuestSuccessScreen extends StatelessWidget {
+class GuestSuccessScreen extends StatefulWidget {
   final String refNumber;
   final String phone;
 
@@ -14,12 +15,44 @@ class GuestSuccessScreen extends StatelessWidget {
   });
 
   @override
+  State<GuestSuccessScreen> createState() => _GuestSuccessScreenState();
+}
+
+class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
+  final TextEditingController phoneController = TextEditingController();
+
+  @override
+  void dispose() {
+    phoneController.dispose();
+    super.dispose();
+  }
+
+  void _shareRequestDetails() {
+    final String shareText = 'تم إرسال طلبي بنجاح إلى جمعية ناس الخير.\n'
+        'رقم الطلب المرجعي: ${widget.refNumber}\n'
+        'رقم الهاتف: ${widget.phone}\n'
+        'شكراً لجمعية ناس الخير على مجهوداتكم.';
+    Share.share(shareText, subject: 'تفاصيل طلب جمعية ناس الخير');
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share, color: AppTheme.primaryGreen),
+            onPressed: _shareRequestDetails,
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -38,7 +71,6 @@ class GuestSuccessScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               FadeInUp(
-                delay: const Duration(milliseconds: 200),
                 child: Text('تم إرسال طلبك!',
                     style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
                     textAlign: TextAlign.center),
@@ -62,7 +94,7 @@ class GuestSuccessScreen extends StatelessWidget {
                     children: [
                       Text('رقم الطلب المرجعي', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                       const SizedBox(height: 8),
-                      Text(refNumber,
+                      Text(widget.refNumber,
                           style: const TextStyle(
                               color: AppTheme.primaryGreen,
                               fontSize: 22,
@@ -94,13 +126,23 @@ class GuestSuccessScreen extends StatelessWidget {
                           style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 12),
                       TextField(
+                        controller: phoneController,
                         keyboardType: TextInputType.phone,
                         style: TextStyle(color: AppTheme.textPrimary),
                         decoration: AppTheme.inputDecoration('أدخل رقم الهاتف', Icons.phone),
                       ),
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
-                        onPressed: () {},
+                        onPressed: () {
+                          if (phoneController.text.isEmpty) {
+                            Get.snackbar('تنبيه', 'يرجى إدخال رقم الهاتف للتتبع',
+                                backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+                            return;
+                          }
+                          Get.snackbar('قريباً', 'سيتم تفعيل ميزة التتبع اللحظي في التحديث القادم',
+                              icon: const Icon(Icons.info_outline),
+                              backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2));
+                        },
                         icon: const Icon(Icons.search),
                         label: const Text('تتبع طلبي'),
                         style: OutlinedButton.styleFrom(

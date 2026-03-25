@@ -182,7 +182,7 @@ class AdminController extends GetxController {
       for (int i = 5; i >= 0; i--) {
         final month = DateTime(now.year, now.month - i, 1);
         final nextMonth = DateTime(now.year, now.month - i + 1, 1);
-        final snap = await _firestore.collection('donations')
+        final snap = await _firestore.collection(AppConstants.donationsCollection)
           .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(month))
           .where('date', isLessThan: Timestamp.fromDate(nextMonth))
           .get();
@@ -193,7 +193,7 @@ class AdminController extends GetxController {
       donationsLastSixMonths.value = sixMonthsData;
 
       // توزيع الخدمات - بيانات حقيقية
-      final requestsSnap = await _firestore.collection('service_requests').get();
+      final requestsSnap = await _firestore.collection(AppConstants.serviceRequestsCollection).get();
       final Map<String, int> typeCounts = {};
       for (var doc in requestsSnap.docs) {
         final type = doc.data()['type'] ?? 'other';
@@ -211,7 +211,7 @@ class AdminController extends GetxController {
 
       // طلبات هذا الشهر يومياً - بيانات حقيقية
       final startOfMonth = DateTime(now.year, now.month, 1);
-      final monthSnap = await _firestore.collection('service_requests')
+      final monthSnap = await _firestore.collection(AppConstants.serviceRequestsCollection)
         .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
         .get();
       final Map<int, int> dayCounts = {};
@@ -387,7 +387,7 @@ class AdminController extends GetxController {
 
   Future<void> addProject(ProjectModel newProject) async {
     try {
-      await _firestore.collection('projects').add(newProject.toMap());
+      await _firestore.collection(AppConstants.projectsCollection).add(newProject.toMap());
       await loadActiveProjects();
       Get.snackbar('✅ تم', 'تم إضافة المشروع بنجاح',
         backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),

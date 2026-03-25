@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../controllers/admin_controller.dart';
+import '../controllers/project_controller.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/constants/app_constants.dart';
-import '../../../data/models/project_model.dart';
-import '../../auth/controllers/auth_controller.dart';
 
 class AddProjectScreen extends StatefulWidget {
   const AddProjectScreen({super.key});
@@ -19,148 +15,314 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
   final _budgetController = TextEditingController();
-  
-  String _selectedCategory = 'غذائية';
+
+  String _selectedCategory = ProjectController.categories.first['id'] as String;
   DateTime? _selectedDate;
 
-  final List<String> _categories = ['غذائية', 'طبية', 'جنائزية', 'تعليمية', 'أخرى'];
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descController.dispose();
+    _budgetController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<AdminController>();
-    final authController = Get.find<AuthController>();
+    final projectController = Get.find<ProjectController>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text("إضافة مشروع جديد", style: GoogleFonts.tajawal()),
-        actions: [
-          IconButton(
-            icon: Icon(Get.isDarkMode ? Icons.light_mode : Icons.dark_mode),
-            onPressed: () => AppConstants.toggleTheme(),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSectionTitle("بيانات المشروع الأساسية"),
-              const SizedBox(height: 20),
-              _buildTextField(_nameController, "اسم المشروع", Icons.edit, "يرجى إدخال اسم المشروع"),
-              const SizedBox(height: 15),
-              _buildTextField(_descController, "وصف المشروع", Icons.description, "يرجى إدخال الوصف", maxLines: 4),
-              const SizedBox(height: 25),
-              
-              _buildSectionTitle("التفاصيل المالية والنوع"),
-              const SizedBox(height: 20),
-              Row(
+      backgroundColor: AppTheme.backgroundColor,
+      body: Column(
+        children: [
+          // ─── Header ───
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+              child: Row(
                 children: [
-                  Expanded(child: _buildTextField(_budgetController, "الميزانية (دج)", Icons.monetization_on, "أدخل المبلغ", isNumber: true)),
-                  const SizedBox(width: 15),
-                  Expanded(child: _buildDropdown()),
+                  GestureDetector(
+                    onTap: () => Get.back(),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceColor,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppTheme.glassBorder),
+                      ),
+                      child: Icon(Icons.arrow_back_ios_new_rounded,
+                          color: AppTheme.textPrimary, size: 18),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('➕ مشروع جديد',
+                          style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: AppTheme.textPrimary,
+                              fontFamily: 'Tajawal')),
+                      Text('أضف مشروعاً خيرياً جديداً',
+                          style:
+                              TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(height: 25),
-              
-              _buildSectionTitle("الموعد النهائي (اختياري)"),
-              const SizedBox(height: 15),
-              _buildDatePicker(context),
-              
-              const SizedBox(height: 50),
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    if (_formKey.currentState!.validate()) {
-                      final newProject = ProjectModel(
-                        id: '',
-                        name: _nameController.text.trim(),
-                        description: _descController.text.trim(),
-                        category: _selectedCategory,
-                        budget: double.parse(_budgetController.text),
-                        deadline: _selectedDate,
-                        createdAt: DateTime.now(),
-                        createdBy: authController.currentUser.value?.id ?? '',
-                      );
-                      
-                      await controller.addProject(newProject);
-                      Get.back();
-                      Get.snackbar("نجاح", "تمت إضافة المشروع بنجاح", 
-                          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green, colorText: Colors.white);
-                    }
-                  },
-                  child: Text("حفظ المشروع ونشره", style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
+            ),
+          ),
+
+          // ─── Form ───
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // قسم: البيانات الأساسية
+                    _sectionCard(
+                      icon: Icons.info_outline_rounded,
+                      title: 'بيانات المشروع الأساسية',
+                      children: [
+                        _field(_nameController, 'اسم المشروع', Icons.edit_rounded,
+                            'يرجى إدخال اسم المشروع'),
+                        const SizedBox(height: 14),
+                        _field(_descController, 'وصف المشروع',
+                            Icons.description_rounded, 'يرجى إدخال الوصف',
+                            maxLines: 4),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // قسم: المالية والنوع
+                    _sectionCard(
+                      icon: Icons.account_balance_wallet_rounded,
+                      title: 'التفاصيل المالية والنوع',
+                      children: [
+                        _field(
+                            _budgetController,
+                            'الميزانية المستهدفة (دج)',
+                            Icons.monetization_on_rounded,
+                            'أدخل المبلغ',
+                            isNumber: true),
+                        const SizedBox(height: 14),
+                        _categoryDropdown(),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // قسم: الموعد النهائي
+                    _sectionCard(
+                      icon: Icons.calendar_today_rounded,
+                      title: 'الموعد النهائي',
+                      children: [_datePicker()],
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // زر الحفظ
+                    GestureDetector(
+                      onTap: () async {
+                        if (_formKey.currentState!.validate()) {
+                          if (_selectedDate == null) {
+                            Get.snackbar(
+                              'تنبيه',
+                              'يرجى اختيار الموعد النهائي',
+                              backgroundColor:
+                                  AppTheme.warningColor.withValues(alpha: 0.2),
+                              colorText: AppTheme.warningColor,
+                              snackPosition: SnackPosition.BOTTOM,
+                            );
+                            return;
+                          }
+                          await projectController.addProject(
+                            name: _nameController.text.trim(),
+                            description: _descController.text.trim(),
+                            category: _selectedCategory,
+                            budget: double.parse(_budgetController.text),
+                            endDate: _selectedDate!,
+                          );
+                          Get.back();
+                        }
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.primaryGradient,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: AppTheme.greenGlow,
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.save_rounded, color: Colors.black, size: 22),
+                            SizedBox(width: 10),
+                            Text('حفظ المشروع ونشره',
+                                style: TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16,
+                                    fontFamily: 'Tajawal')),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(title, style: GoogleFonts.tajawal(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen));
+  Widget _sectionCard(
+      {required IconData icon,
+      required String title,
+      required List<Widget> children}) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.glassBorder),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: AppTheme.primaryGreen, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Text(title,
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primaryGreen,
+                      fontFamily: 'Tajawal')),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
+    );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon, String error, {bool isNumber = false, int maxLines = 1}) {
+  Widget _field(TextEditingController controller, String label, IconData icon,
+      String error,
+      {bool isNumber = false, int maxLines = 1}) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: AppTheme.primaryGreen),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-        filled: true,
-        fillColor: Theme.of(context).cardColor,
-      ),
-      validator: (value) => value == null || value.isEmpty ? error : null,
+      style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
+      decoration: AppTheme.inputDecoration(label, icon),
+      validator: (v) => (v == null || v.isEmpty) ? error : null,
     );
   }
 
-  Widget _buildDropdown() {
+  /// اختيار الفئة — بدون Flexible داخل DropdownMenuItem لتجنب أخطاء الـ layout
+  Widget _categoryDropdown() {
     return DropdownButtonFormField<String>(
-      initialValue: _selectedCategory,
-      decoration: InputDecoration(
-        labelText: "الفئة",
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-        filled: true,
-        fillColor: Theme.of(context).cardColor,
-      ),
-      items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+      value: _selectedCategory,
+      dropdownColor: AppTheme.cardColor,
+      isExpanded: true,
+      style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
+      decoration: AppTheme.inputDecoration('الفئة', Icons.category_rounded),
+      items: ProjectController.categories.map((c) {
+        return DropdownMenuItem<String>(
+          value: c['id'] as String,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(c['icon'] as IconData, color: c['color'] as Color, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  c['name'] as String,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
       onChanged: (val) => setState(() => _selectedCategory = val!),
     );
   }
 
-  Widget _buildDatePicker(BuildContext context) {
-    return InkWell(
+  Widget _datePicker() {
+    return GestureDetector(
       onTap: () async {
         final date = await showDatePicker(
           context: context,
-          initialDate: DateTime.now(),
+          initialDate: DateTime.now().add(const Duration(days: 30)),
           firstDate: DateTime.now(),
-          lastDate: DateTime.now().add(const Duration(days: 365)),
+          lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+          builder: (context, child) => Theme(
+            data: Get.isDarkMode
+                ? ThemeData.dark().copyWith(
+                    colorScheme: const ColorScheme.dark(
+                        primary: AppTheme.primaryGreen))
+                : ThemeData.light().copyWith(
+                    colorScheme: const ColorScheme.light(
+                        primary: AppTheme.primaryGreen)),
+            child: child!,
+          ),
         );
         if (date != null) setState(() => _selectedDate = date);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
-          borderRadius: BorderRadius.circular(15),
-          color: Theme.of(context).cardColor,
+          color: AppTheme.cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: _selectedDate != null
+                  ? AppTheme.primaryGreen
+                  : AppTheme.glassBorder),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(_selectedDate == null ? "اختر التاريخ" : _selectedDate.toString().split(' ')[0], 
-                style: GoogleFonts.tajawal()),
-            const Icon(Icons.calendar_today, color: AppTheme.primaryGreen),
+            Icon(Icons.calendar_today_rounded,
+                color: _selectedDate != null
+                    ? AppTheme.primaryGreen
+                    : AppTheme.textHint,
+                size: 20),
+            const SizedBox(width: 12),
+            Text(
+              _selectedDate == null
+                  ? 'اختر التاريخ النهائي'
+                  : '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
+              style: TextStyle(
+                  color: _selectedDate != null
+                      ? AppTheme.textPrimary
+                      : AppTheme.textHint,
+                  fontFamily: 'Tajawal',
+                  fontSize: 14),
+            ),
+            const Spacer(),
+            if (_selectedDate != null)
+              const Icon(Icons.check_circle_rounded,
+                  color: AppTheme.primaryGreen, size: 18),
           ],
         ),
       ),

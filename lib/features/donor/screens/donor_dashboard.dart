@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/routes/app_routes.dart';
 import '../controllers/donor_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
 import 'donate_screen.dart';
 import '../../../data/models/project_model.dart';
+import '../../../data/models/user_model.dart';
 import '../../admin/controllers/project_controller.dart';
 import '../../../data/services/notification_service.dart';
 
@@ -25,48 +30,93 @@ class _DonorDashboardState extends State<DonorDashboard> {
   final NotificationService notificationService = Get.find<NotificationService>();
   int _currentIndex = 0;
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.darkBg,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          _buildHomeTab(),
-          _buildProjectsTab(),
-          const DonateScreen(),
+  Future<bool> _onWillPop() async {
+    final result = await Get.dialog<bool>(
+      AlertDialog(
+        backgroundColor: AppTheme.darkSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('تأكيد الخروج',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+        content: Text('هل أنت متأكد من أنك تريد الخروج من التطبيق؟',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'Tajawal')),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Get.back(result: false),
+                  child: const Text('إلغاء', style: TextStyle(color: AppTheme.textHint, fontFamily: 'Tajawal')),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: AppTheme.gradientButton(
+                  text: 'خروج',
+                  onPressed: () => Get.back(result: true),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.darkSurface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: AppTheme.darkShadow,
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          selectedItemColor: AppTheme.primaryGreen,
-          unselectedItemColor: AppTheme.textHint,
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined),
-              activeIcon: Icon(Icons.dashboard),
-              label: 'لوحتي',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.folder_outlined),
-              activeIcon: Icon(Icons.folder),
-              label: 'المشاريع',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.volunteer_activism),
-              label: 'تبرع الآن',
-            ),
+    );
+    return result ?? false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppTheme.darkBg,
+        body: IndexedStack(
+          index: _currentIndex,
+          children: [
+            _buildHomeTab(),
+            _buildProjectsTab(),
+            const DonateScreen(),
           ],
+        ),
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.darkSurface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: AppTheme.darkShadow,
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) => setState(() => _currentIndex = index),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            selectedItemColor: AppTheme.primaryGreen,
+            unselectedItemColor: AppTheme.textHint,
+            type: BottomNavigationBarType.fixed,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.dashboard_outlined),
+                activeIcon: Icon(Icons.dashboard),
+                label: 'لوحتي',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.folder_outlined),
+                activeIcon: Icon(Icons.folder),
+                label: 'المشاريع',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.volunteer_activism),
+                label: 'تبرع الآن',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -87,7 +137,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   Text('أهلاً,',
                       style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
                   Obx(() => Text(
-                        donorController.currentDonor.value?.name ?? 'المتبرع',
+                        donorController.donorName,
                         style: TextStyle(
                             color: AppTheme.textPrimary,
                             fontSize: 20,
@@ -101,7 +151,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                 onPressed: () => Get.toNamed('/profile'),
               ),
               GestureDetector(
-                onTap: () => donorController.generateCertificate(),
+                onTap: () => donorController.showCertificate(),
                 child: Container(
                   decoration: BoxDecoration(
                     color: AppTheme.goldAccent.withValues(alpha: 0.15),
@@ -160,6 +210,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       '${projectController.formatNumber(donorController.totalDonated.value)} دج',
                       Icons.volunteer_activism,
                       AppTheme.goldGradient,
+                      onTap: _showAllDonations,
                     )),
               ),
               const SizedBox(width: 12),
@@ -169,93 +220,102 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       donorController.donationsCount.value.toString(),
                       Icons.receipt_long,
                       AppTheme.primaryGradient,
+                      onTap: _showAllDonations,
                     )),
               ),
             ],
           ),
+          const SizedBox(height: 24),
+
+          // قسم تواصل مع الإدارة الجديد
+          _buildAdminTeamSection(),
+
           const SizedBox(height: 24),
           Obx(() => donorController.donationsByProject.isNotEmpty
               ? Column(
                   children: [
                     _buildSectionHeader('🥧 توزيع تبرعاتي', ''),
                     const SizedBox(height: 12),
-                    Container(
-                      decoration: AppTheme.glassDecoration,
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 1,
-                            child: SizedBox(
-                              height: 180,
-                              child: PieChart(
-                                PieChartData(
-                                  sections: donorController.donationsByProject.map((item) {
-                                    final total = donorController.totalDonated.value;
-                                    final percentage = total > 0 ? (item['total'] / total * 100) : 0;
-                                    return PieChartSectionData(
-                                      value: (item['total'] as num).toDouble(),
-                                      color: item['color'],
-                                      title: '${percentage.toStringAsFixed(0)}%',
-                                      radius: 65,
-                                      titleStyle: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          fontFamily: 'Tajawal'),
-                                    );
-                                  }).toList(),
-                                  centerSpaceRadius: 35,
-                                  sectionsSpace: 3,
+                    GestureDetector(
+                      onTap: _showAllDonations,
+                      child: Container(
+                        decoration: AppTheme.glassDecoration,
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 1,
+                              child: SizedBox(
+                                height: 180,
+                                child: PieChart(
+                                  PieChartData(
+                                    sections: donorController.donationsByProject.map((item) {
+                                      final total = donorController.totalDonated.value;
+                                      final percentage = total > 0 ? (item['total'] / total * 100) : 0;
+                                      return PieChartSectionData(
+                                        value: (item['total'] as num).toDouble(),
+                                        color: item['color'],
+                                        title: '${percentage.toStringAsFixed(0)}%',
+                                        radius: 65,
+                                        titleStyle: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            fontFamily: 'Tajawal'),
+                                      );
+                                    }).toList(),
+                                    centerSpaceRadius: 35,
+                                    sectionsSpace: 3,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 1,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: donorController.donationsByProject.map((item) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: BoxDecoration(
-                                          color: item['color'],
-                                          borderRadius: BorderRadius.circular(3),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 1,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: donorController.donationsByProject.map((item) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 10,
+                                          height: 10,
+                                          decoration: BoxDecoration(
+                                            color: item['color'],
+                                            borderRadius: BorderRadius.circular(3),
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(item['projectName'],
-                                                style: TextStyle(
-                                                    color: AppTheme.textSecondary,
-                                                    fontSize: 11),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis),
-                                            Text(
-                                                '${projectController.formatNumber(item['total'] as num)} دج',
-                                                style: TextStyle(
-                                                    color: AppTheme.textPrimary,
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w600)),
-                                          ],
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(item['projectName'],
+                                                  style: TextStyle(
+                                                      color: AppTheme.textSecondary,
+                                                      fontSize: 11),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis),
+                                              Text(
+                                                  '${projectController.formatNumber(item['total'] as num)} دج',
+                                                  style: TextStyle(
+                                                      color: AppTheme.textPrimary,
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w600)),
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -286,80 +346,90 @@ class _DonorDashboardState extends State<DonorDashboard> {
                 )
               : Column(
                   children: donorController.myDonations.take(5).map((donation) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.darkCard,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      padding: const EdgeInsets.all(14),
-                      child: Row(
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: donation.donorId == 'anonymous'
-                                  ? AppTheme.textHint.withValues(alpha: 0.15)
-                                  : AppTheme.goldAccent.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(12),
+                    return GestureDetector(
+                      onTap: () {
+                        try {
+                          final project = donorController.activeProjects.firstWhere((p) => p.id == donation.projectId);
+                          Get.toNamed(AppRoutes.adminProjectDetail, arguments: project);
+                        } catch (e) {
+                          _showAllDonations();
+                        }
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.darkCard,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                color: donation.donorId == 'anonymous'
+                                    ? AppTheme.textHint.withValues(alpha: 0.15)
+                                    : AppTheme.goldAccent.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.all(10),
+                              child: Icon(
+                                donation.donorId == 'anonymous'
+                                    ? Icons.person_off
+                                    : Icons.volunteer_activism,
+                                color: donation.donorId == 'anonymous'
+                                    ? AppTheme.textHint
+                                    : AppTheme.goldAccent,
+                                size: 20,
+                              ),
                             ),
-                            padding: const EdgeInsets.all(10),
-                            child: Icon(
-                              donation.donorId == 'anonymous'
-                                  ? Icons.person_off
-                                  : Icons.volunteer_activism,
-                              color: donation.donorId == 'anonymous'
-                                  ? AppTheme.textHint
-                                  : AppTheme.goldAccent,
-                              size: 20,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(donation.projectName,
+                                      style: TextStyle(
+                                          color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+                                  Row(
+                                    children: [
+                                      Text(
+                                          donation.donorId == 'anonymous'
+                                              ? 'مجهول'
+                                              : _methodLabel(donation.method),
+                                          style: TextStyle(
+                                              color: AppTheme.textSecondary, fontSize: 12)),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        width: 4,
+                                        height: 4,
+                                        decoration: const BoxDecoration(
+                                            color: AppTheme.textHint, shape: BoxShape.circle),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                          DateFormat('yyyy/MM/dd').format(donation.date),
+                                          style: const TextStyle(
+                                              color: AppTheme.textHint, fontSize: 11)),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Text(donation.projectName,
-                                    style: TextStyle(
-                                        color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
-                                Row(
-                                  children: [
-                                    Text(
-                                        donation.donorId == 'anonymous'
-                                            ? 'مجهول'
-                                            : _methodLabel(donation.method),
-                                        style: TextStyle(
-                                            color: AppTheme.textSecondary, fontSize: 12)),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      width: 4,
-                                      height: 4,
-                                      decoration: const BoxDecoration(
-                                          color: AppTheme.textHint, shape: BoxShape.circle),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                        DateFormat('yyyy/MM/dd').format(donation.date),
-                                        style: const TextStyle(
-                                            color: AppTheme.textHint, fontSize: 11)),
-                                  ],
-                                ),
+                                Text(
+                                    '${projectController.formatNumber(donation.amount)} دج',
+                                    style: const TextStyle(
+                                        color: AppTheme.goldAccent,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15)),
+                                const SizedBox(height: 4),
+                                AppTheme.statusBadge(donation.status),
                               ],
                             ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                  '${projectController.formatNumber(donation.amount)} دج',
-                                  style: const TextStyle(
-                                      color: AppTheme.goldAccent,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 15)),
-                              const SizedBox(height: 4),
-                              AppTheme.statusBadge(donation.status),
-                            ],
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   }).toList(),
@@ -375,57 +445,60 @@ class _DonorDashboardState extends State<DonorDashboard> {
                           .any((d) => d['projectId'] == p.id))
                       .map((project) {
                     final progress = project.progressPercentage / 100;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.darkCard,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(project.name,
-                                    style: TextStyle(
-                                        color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
-                              ),
-                              Text('${project.progressPercentage.toInt()}%',
-                                  style: const TextStyle(
-                                      color: AppTheme.primaryGreen, fontWeight: FontWeight.w700)),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              backgroundColor: AppTheme.darkSurface,
-                              minHeight: 8,
-                              valueColor: AlwaysStoppedAnimation(
-                                project.progressPercentage >= 80 ? AppTheme.successColor
-                                  : project.progressPercentage >= 50 ? AppTheme.primaryGreen
-                                  : project.progressPercentage >= 20 ? AppTheme.warningColor
-                                  : AppTheme.errorColor,
+                    return GestureDetector(
+                      onTap: () => Get.toNamed(AppRoutes.adminProjectDetail, arguments: project),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.darkCard,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(project.name,
+                                      style: TextStyle(
+                                          color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+                                ),
+                                Text('${project.progressPercentage.toInt()}%',
+                                    style: const TextStyle(
+                                        color: AppTheme.primaryGreen, fontWeight: FontWeight.w700)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                backgroundColor: AppTheme.darkSurface,
+                                minHeight: 8,
+                                valueColor: AlwaysStoppedAnimation(
+                                  project.progressPercentage >= 80 ? AppTheme.successColor
+                                    : project.progressPercentage >= 50 ? AppTheme.primaryGreen
+                                    : project.progressPercentage >= 20 ? AppTheme.warningColor
+                                    : AppTheme.errorColor,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Text(
-                                  '${projectController.formatNumber(project.collected)} دج',
-                                  style: const TextStyle(
-                                      color: AppTheme.primaryGreen, fontSize: 12)),
-                              const Spacer(),
-                              Text(
-                                  'من ${projectController.formatNumber(project.budget)} دج',
-                                  style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
-                            ],
-                          ),
-                        ],
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Text(
+                                    '${projectController.formatNumber(project.collected)} dج',
+                                    style: const TextStyle(
+                                        color: AppTheme.primaryGreen, fontSize: 12)),
+                                const Spacer(),
+                                Text(
+                                    'من ${projectController.formatNumber(project.budget)} دج',
+                                    style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }).toList(),
@@ -436,31 +509,160 @@ class _DonorDashboardState extends State<DonorDashboard> {
     );
   }
 
-  Widget _buildDonorKPI(String label, String value, IconData icon, Gradient gradient) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: AppTheme.darkShadow,
-      ),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            padding: const EdgeInsets.all(8),
-            child: Icon(icon, color: Colors.white, size: 22),
+  Widget _buildAdminTeamSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('🛡️ تواصل مع الإدارة', 'عرض الكل', onTap: () => _showAdminsList()),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 110,
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .where('role', whereIn: ['admin', 'superAdmin'])
+                .limit(5)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final admins = snapshot.data!.docs;
+              
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: admins.length,
+                itemBuilder: (context, index) {
+                  final data = admins[index].data() as Map<String, dynamic>;
+                  final admin = UserModel.fromMap(data, admins[index].id);
+                  return GestureDetector(
+                    onTap: () => Get.toNamed('/profile', arguments: admin),
+                    child: Container(
+                      width: 90,
+                      margin: const EdgeInsets.only(left: 12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.darkCard,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.1)),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircleAvatar(
+                            radius: 25,
+                            backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
+                            backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty)
+                                ? NetworkImage(admin.profileImage!)
+                                : null,
+                            child: (admin.profileImage == null || admin.profileImage!.isEmpty)
+                                ? Text(admin.name[0], style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold))
+                                : null,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(admin.name.split(' ')[0], 
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(admin.role == UserRole.superAdmin ? 'مدير عام' : 'مدير',
+                            style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 9)),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
-          const SizedBox(height: 12),
-          Text(value,
-              style: const TextStyle(
-                  color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        ],
+        ),
+      ],
+    );
+  }
+
+  void _showAdminsList() {
+    Get.bottomSheet(
+      DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.5,
+        expand: false,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(color: AppTheme.darkSurface, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[600], borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 20),
+                Text('الفريق الإداري', style: GoogleFonts.tajawal(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .where('role', whereIn: ['admin', 'superAdmin'])
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                      final admins = snapshot.data!.docs;
+                      return ListView.builder(
+                        controller: scrollController,
+                        itemCount: admins.length,
+                        itemBuilder: (context, index) {
+                          final admin = UserModel.fromMap(admins[index].data() as Map<String, dynamic>, admins[index].id);
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
+                              backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty) ? NetworkImage(admin.profileImage!) : null,
+                              child: (admin.profileImage == null || admin.profileImage!.isEmpty) ? Text(admin.name[0], style: const TextStyle(color: AppTheme.primaryGreen)) : null,
+                            ),
+                            title: Text(admin.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            subtitle: Text(admin.role == UserRole.superAdmin ? 'مدير عام' : 'مدير إداري', style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12)),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.chat_bubble_outline, color: AppTheme.primaryGreen),
+                              onPressed: () => Get.toNamed('/chat/private', arguments: {'userId': admin.id, 'userName': admin.name}),
+                            ),
+                            onTap: () => Get.toNamed('/profile', arguments: admin),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  Widget _buildDonorKPI(String label, String value, IconData icon, Gradient gradient, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: AppTheme.darkShadow,
+        ),
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.all(8),
+              child: Icon(icon, color: Colors.white, size: 22),
+            ),
+            const SizedBox(height: 12),
+            Text(value,
+                style: const TextStyle(
+                    color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          ],
+        ),
       ),
     );
   }
@@ -528,85 +730,91 @@ class _DonorDashboardState extends State<DonorDashboard> {
       child: Column(
         children: [
           // Header
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [categoryColor.withValues(alpha: 0.35), categoryColor.withValues(alpha: 0.08)],
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
+          GestureDetector(
+            onTap: () => Get.toNamed(AppRoutes.adminProjectDetail, arguments: project),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [categoryColor.withValues(alpha: 0.35), categoryColor.withValues(alpha: 0.08)],
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
               ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 52, height: 52,
-                  decoration: BoxDecoration(
-                    color: categoryColor.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: categoryColor.withValues(alpha: 0.5)),
+              child: Row(
+                children: [
+                  Container(
+                    width: 52, height: 52,
+                    decoration: BoxDecoration(
+                      color: categoryColor.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: categoryColor.withValues(alpha: 0.5)),
+                    ),
+                    child: Icon(cat['icon'] as IconData, color: categoryColor, size: 28),
                   ),
-                  child: Icon(cat['icon'] as IconData, color: categoryColor, size: 28),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(project.name,
-                          style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontSize: 17, height: 1.2)),
-                      const SizedBox(height: 4),
-                      Text(cat['name'] as String,
-                          style: TextStyle(color: categoryColor, fontSize: 12, fontWeight: FontWeight.w600)),
-                    ],
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(project.name,
+                            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontSize: 17, height: 1.2)),
+                        const SizedBox(height: 4),
+                        Text(cat['name'] as String,
+                            style: TextStyle(color: categoryColor, fontSize: 12, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
                   ),
-                ),
-                AppTheme.statusBadge(project.status),
-              ],
+                  AppTheme.statusBadge(project.status),
+                ],
+              ),
             ),
           ),
 
           // Circular Progress + Stats
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 110, height: 110,
-                  child: CustomPaint(
-                    painter: _ArcProgressPainter(progress: progress, color: categoryColor, backgroundColor: AppTheme.darkSurface),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('$progressPercent%',
-                              style: TextStyle(color: categoryColor, fontWeight: FontWeight.w900, fontSize: 24, height: 1)),
-                          Text('اكتمل', style: TextStyle(color: AppTheme.textHint, fontSize: 10)),
-                        ],
+          GestureDetector(
+            onTap: () => Get.toNamed(AppRoutes.adminProjectDetail, arguments: project),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 110, height: 110,
+                    child: CustomPaint(
+                      painter: _ArcProgressPainter(progress: progress, color: categoryColor, backgroundColor: AppTheme.darkSurface),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('$progressPercent%',
+                                style: TextStyle(color: categoryColor, fontWeight: FontWeight.w900, fontSize: 24, height: 1)),
+                            Text('اكتمل', style: TextStyle(color: AppTheme.textHint, fontSize: 10)),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (project.description.isNotEmpty)
-                        Text(project.description,
-                            maxLines: 2, overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, height: 1.4)),
-                      const SizedBox(height: 12),
-                      _buildStatRow('جُمع', '${projectController.formatNumber(project.collected)} دج', categoryColor),
-                      const SizedBox(height: 6),
-                      _buildStatRow('الهدف', '${projectController.formatNumber(project.budget)} دج', AppTheme.textSecondary),
-                      const SizedBox(height: 6),
-                      _buildStatRow('المتبقى', '${projectController.formatNumber(remaining)} دج', AppTheme.warningColor),
-                    ],
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (project.description.isNotEmpty)
+                          Text(project.description,
+                              maxLines: 2, overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, height: 1.4)),
+                        const SizedBox(height: 12),
+                        _buildStatRow('جُمع', '${projectController.formatNumber(project.collected)} دج', categoryColor),
+                        const SizedBox(height: 6),
+                        _buildStatRow('الهدف', '${projectController.formatNumber(project.budget)} دج', AppTheme.textSecondary),
+                        const SizedBox(height: 6),
+                        _buildStatRow('المتبقى', '${projectController.formatNumber(remaining)} دج', AppTheme.warningColor),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
@@ -761,36 +969,44 @@ class _DonorDashboardState extends State<DonorDashboard> {
                           itemCount: donorController.myDonations.length,
                           itemBuilder: (context, index) {
                             final donation = donorController.myDonations[index];
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(14)),
-                              padding: const EdgeInsets.all(14),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(color: AppTheme.goldAccent.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-                                    padding: const EdgeInsets.all(10),
-                                    child: const Icon(Icons.volunteer_activism, color: AppTheme.goldAccent, size: 20),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                            return GestureDetector(
+                              onTap: () {
+                                try {
+                                  final project = donorController.activeProjects.firstWhere((p) => p.id == donation.projectId);
+                                  Get.toNamed(AppRoutes.adminProjectDetail, arguments: project);
+                                } catch (e) {}
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(14)),
+                                padding: const EdgeInsets.all(14),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(color: AppTheme.goldAccent.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                                      padding: const EdgeInsets.all(10),
+                                      child: const Icon(Icons.volunteer_activism, color: AppTheme.goldAccent, size: 20),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(donation.projectName, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+                                          Text(_methodLabel(donation.method), style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                                        ],
+                                      ),
+                                    ),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
                                       children: [
-                                        Text(donation.projectName, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
-                                        Text(_methodLabel(donation.method), style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                                        Text('${projectController.formatNumber(donation.amount)} دج',
+                                            style: const TextStyle(color: AppTheme.goldAccent, fontWeight: FontWeight.w700)),
+                                        AppTheme.statusBadge(donation.status),
                                       ],
                                     ),
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text('${projectController.formatNumber(donation.amount)} دج',
-                                          style: const TextStyle(color: AppTheme.goldAccent, fontWeight: FontWeight.w700)),
-                                      AppTheme.statusBadge(donation.status),
-                                    ],
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             );
                           },
@@ -816,7 +1032,7 @@ class _ArcProgressPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final strokeWidth = 10.0;
+    const strokeWidth = 10.0;
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width / 2) - strokeWidth / 2;
     const startAngle = -2.356; // -135 degrees in radians

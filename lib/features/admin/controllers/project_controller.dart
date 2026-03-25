@@ -7,6 +7,8 @@ import '../../../data/models/project_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../core/constants/app_constants.dart';
 import 'package:intl/intl.dart';
+import '../../../data/services/offline_queue_service.dart';
+import '../../../data/services/connectivity_service.dart';
 
 class ProjectController extends GetxController {
   RxList<ProjectModel> allProjects = <ProjectModel>[].obs;
@@ -16,16 +18,64 @@ class ProjectController extends GetxController {
   RxString selectedStatus = 'all'.obs;
   TextEditingController searchController = TextEditingController();
 
+  OfflineQueueService get _queue => Get.find<OfflineQueueService>();
+  ConnectivityService get _connectivity => Get.find<ConnectivityService>();
+
   static const List<Map<String, dynamic>> categories = [
-    {'id': 'construction', 'name': 'بناء وتعمير', 'icon': Icons.construction, 'color': Color(0xFF795548)},
-    {'id': 'education', 'name': 'تعليم وكفالة أيتام', 'icon': Icons.school, 'color': Color(0xFF1565C0)},
-    {'id': 'food', 'name': 'إغاثة غذائية', 'icon': Icons.fastfood, 'color': Color(0xFF2E7D32)},
-    {'id': 'medical', 'name': 'مساعدة طبية', 'icon': Icons.nightlight_round, 'color': Color(0xFFC62828)},
-    {'id': 'financial', 'name': 'مساعدة مالية', 'icon': Icons.attach_money, 'color': Color(0xFFFF8F00)},
-    {'id': 'funeral', 'name': 'نقل الجنازات', 'icon': Icons.airport_shuttle, 'color': Color(0xFF4A148C)},
-    {'id': 'religious', 'name': 'ديني واجتماعي', 'icon': Icons.mosque, 'color': Color(0xFF00695C)},
-    {'id': 'infrastructure', 'name': 'بنية تحتية', 'icon': Icons.engineering, 'color': Color(0xFF37474F)},
-    {'id': 'other', 'name': 'أخرى', 'icon': Icons.more_horiz, 'color': Color(0xFF546E7A)},
+    {
+      'id': 'mosque',
+      'name': 'عمارة المساجد وترميمها',
+      'icon': Icons.mosque,
+      'color': Color(0xFF00695C), // أخضر إسلامي عميق
+    },
+    {
+      'id': 'orphan',
+      'name': 'كفالة الأيتام والتعليم',
+      'icon': Icons.menu_book,
+      'color': Color(0xFF1565C0), // أزرق تعليمي
+    },
+    {
+      'id': 'food',
+      'name': 'إطعام الطعام والطرود',
+      'icon': Icons.shopping_basket,
+      'color': Color(0xFF2E7D32), // أخضر النماء
+    },
+    {
+      'id': 'water',
+      'name': 'سقي الماء وحفر الآبار',
+      'icon': Icons.water_drop,
+      'color': Color(0xFF0277BD), // أزرق مائي
+    },
+    {
+      'id': 'medical',
+      'name': 'مداواة المرضى والإسعاف',
+      'icon': Icons.healing,
+      'color': Color(0xFFC62828), // أحمر الرحمة
+    },
+    {
+      'id': 'housing',
+      'name': 'تفريج كرب الأسر والبيوت',
+      'icon': Icons.home,
+      'color': Color(0xFF795548), // بني ترابي للأرض
+    },
+    {
+      'id': 'funeral',
+      'name': 'إكرام الموتى (نقل الجنائز)',
+      'icon': Icons.airport_shuttle,
+      'color': Color(0xFF4527A0), // بنفسجي وقور
+    },
+    {
+      'id': 'zakat',
+      'name': 'زكاة المال والصدقات',
+      'icon': Icons.savings,
+      'color': Color(0xFFD4AF37), // لون الذهب والزكاة
+    },
+    {
+      'id': 'general',
+      'name': 'أبواب الخير العامة',
+      'icon': Icons.volunteer_activism,
+      'color': Color(0xFF546E7A),
+    },
   ];
 
   @override
@@ -74,21 +124,34 @@ class ProjectController extends GetxController {
     required double budget,
     required DateTime endDate,
   }) async {
+    final data = {
+      'name': name,
+      'category': category,
+      'description': description,
+      'budget': budget,
+      'endDate': Timestamp.fromDate(endDate),
+      'collected': 0.0,
+      'status': 'active',
+      'createdAt': FieldValue.serverTimestamp(),
+      'createdBy': Get.find<AuthController>().currentUser.value?.id ?? '',
+      'donorsCount': 0,
+      'assignedWorkers': [],
+      'volunteers': [],
+    };
+
+    if (!_connectivity.isOnline.value) {
+      final queueData = Map<String, dynamic>.from(data);
+      queueData['createdAt'] = '__serverTimestamp__';
+      queueData['endDate'] = endDate.toIso8601String();
+      await _queue.enqueue(collection: AppConstants.projectsCollection, operation: 'add', data: queueData);
+      Get.snackbar('💾 تم الحفظ', 'سيتم نشر المشروع عند استعادة الاتصال',
+          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2),
+          colorText: AppTheme.warningColor, snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+
     try {
-      await FirebaseFirestore.instance.collection(AppConstants.projectsCollection).add({
-        'name': name,
-        'category': category,
-        'description': description,
-        'budget': budget,
-        'endDate': Timestamp.fromDate(endDate),
-        'collected': 0.0,
-        'status': 'active',
-        'createdAt': FieldValue.serverTimestamp(),
-        'createdBy': Get.find<AuthController>().currentUser.value?.id ?? '',
-        'donorsCount': 0,
-        'assignedWorkers': [],
-        'volunteers': [],
-      });
+      await FirebaseFirestore.instance.collection(AppConstants.projectsCollection).add(data);
       Get.snackbar('✅ تم', 'تم إضافة المشروع بنجاح',
           backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
           colorText: AppTheme.successColor);
@@ -100,10 +163,18 @@ class ProjectController extends GetxController {
   }
 
   Future<void> updateProject(String id, Map<String, dynamic> data) async {
+    final updateData = {...data, 'updatedAt': FieldValue.serverTimestamp()};
+    if (!_connectivity.isOnline.value) {
+      final queueData = Map<String, dynamic>.from(updateData);
+      queueData['updatedAt'] = '__serverTimestamp__';
+      await _queue.enqueue(collection: AppConstants.projectsCollection, operation: 'update', data: queueData, docId: id);
+      Get.snackbar('💾 تم الحفظ', 'سيتم تطبيق التعديل عند استعادة الاتصال',
+          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2),
+          colorText: AppTheme.warningColor, snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
     try {
-      await FirebaseFirestore.instance.collection(AppConstants.projectsCollection).doc(id).update({
-        ...data, 'updatedAt': FieldValue.serverTimestamp()
-      });
+      await FirebaseFirestore.instance.collection(AppConstants.projectsCollection).doc(id).update(updateData);
     } catch (e) {
       Get.snackbar('خطأ', 'فشل تحديث المشروع: $e');
     }
@@ -119,6 +190,13 @@ class ProjectController extends GetxController {
   }
 
   Future<void> deleteProject(String id) async {
+    if (!_connectivity.isOnline.value) {
+      await _queue.enqueue(collection: AppConstants.projectsCollection, operation: 'delete', data: {}, docId: id);
+      Get.snackbar('💾 تم الحفظ', 'سيتم حذف المشروع عند استعادة الاتصال',
+          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2),
+          colorText: AppTheme.warningColor, snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
     try {
       await FirebaseFirestore.instance.collection(AppConstants.projectsCollection).doc(id).delete();
       Get.snackbar('🗑️ تم الحذف', 'تم حذف المشروع',

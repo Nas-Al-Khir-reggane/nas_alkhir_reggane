@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../data/models/user_model.dart';
@@ -45,6 +46,7 @@ class AuthController extends GetxController {
     required String email,
     required String password,
     required UserRole role,
+    String? profileImage,
   }) async {
     try {
       isLoading.value = true;
@@ -56,6 +58,7 @@ class AuthController extends GetxController {
         wilaya: wilaya,
         address: address,
         role: role,
+        profileImage: profileImage,
         createdAt: DateTime.now(),
       );
       UserModel? user = await _authService.signUp(email, password, userData);
@@ -101,29 +104,31 @@ class AuthController extends GetxController {
   }
 
   void _navigateBasedOnRole(UserModel user) {
-    if (!user.isApproved && user.role != UserRole.superAdmin) {
-      Get.offAllNamed(AppRoutes.pending);
-      return;
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!user.isApproved && user.role != UserRole.superAdmin) {
+        Get.offAllNamed(AppRoutes.pending);
+        return;
+      }
 
-    switch (user.role) {
-      case UserRole.superAdmin:
-      case UserRole.admin:
-        Get.offAllNamed(AppRoutes.adminDashboard);
-        break;
-      case UserRole.worker:
-        Get.offAllNamed(AppRoutes.workerDashboard);
-        break;
-      case UserRole.donor:
-        Get.offAllNamed(AppRoutes.donorDashboard);
-        break;
-      case UserRole.beneficiary:
-        Get.offAllNamed(AppRoutes.beneficiaryDashboard);
-        break;
-      case UserRole.guest:
-        Get.offAllNamed(AppRoutes.login);
-        break;
-    }
+      switch (user.role) {
+        case UserRole.superAdmin:
+        case UserRole.admin:
+          Get.offAllNamed(AppRoutes.adminDashboard);
+          break;
+        case UserRole.worker:
+          Get.offAllNamed(AppRoutes.workerDashboard);
+          break;
+        case UserRole.donor:
+          Get.offAllNamed(AppRoutes.donorDashboard);
+          break;
+        case UserRole.beneficiary:
+          Get.offAllNamed(AppRoutes.beneficiaryDashboard);
+          break;
+        case UserRole.guest:
+          Get.offAllNamed(AppRoutes.guestRequest);
+          break;
+      }
+    });
   }
 
   Future<void> refreshUser() async {
