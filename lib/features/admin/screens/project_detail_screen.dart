@@ -505,13 +505,6 @@ class ProjectDetailScreen extends StatelessWidget {
     );
   }
 
-  Color _getProgressColor(double percentage) {
-    if (percentage >= 100) return AppTheme.successColor;
-    if (percentage >= 75) return AppTheme.primaryGreen;
-    if (percentage >= 40) return AppTheme.warningColor;
-    return AppTheme.errorColor;
-  }
-
   void _showAssignWorkerSheet(BuildContext context) {
     Get.bottomSheet(
       Container(

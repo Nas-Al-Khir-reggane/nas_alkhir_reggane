@@ -40,7 +40,7 @@ class HexagonalProgressIndicator extends StatelessWidget {
                 size: Size(size, size),
                 painter: _HexagonPainter(
                   progress: 1.0,
-                  color: progressColor.withOpacity(0.1),
+                  color: progressColor.withValues(alpha: 0.1),
                   strokeWidth: 4,
                 ),
               ),
@@ -129,8 +129,11 @@ class _HexagonPainter extends CustomPainter {
     for (int i = 0; i < 6; i++) {
       double x = center.dx + radius * math.cos(startAngle + angleStep * i);
       double y = center.dy + radius * math.sin(startAngle + angleStep * i);
-      if (i == 0) path.moveTo(x, y);
-      else path.lineTo(x, y);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
     }
     path.close();
     return path;
@@ -414,8 +417,11 @@ class _CinematicGridPainter extends CustomPainter {
           double angle = (math.pi / 3) * i - (math.pi / 2);
           double x = center.dx + r * 1.1 * math.cos(angle);
           double y = center.dy + r * 1.1 * math.sin(angle);
-          if (i == 0) path.moveTo(x, y);
-          else path.lineTo(x, y);
+          if (i == 0) {
+            path.moveTo(x, y);
+          } else {
+            path.lineTo(x, y);
+          }
         }
         path.close();
     }

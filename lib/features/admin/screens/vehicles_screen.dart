@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:animate_do/animate_do.dart';
-import '../controllers/admin_controller.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/vehicle_model.dart';
 
@@ -14,8 +13,6 @@ class VehiclesScreen extends StatefulWidget {
 }
 
 class _VehiclesScreenState extends State<VehiclesScreen> {
-  final AdminController _adminCtl = Get.find<AdminController>();
-
   final List<Map<String, dynamic>> _vehicleTypesList = [
     {'name': 'نقل إسعاف', 'icon': Icons.local_hospital_rounded},
     {'name': 'نقل موتى (جنائز)', 'icon': Icons.airport_shuttle_rounded},

@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../controllers/donor_controller.dart';
 import '../../../data/models/project_model.dart';
-import '../../../core/routes/app_routes.dart';
 
 class MySubscriptionsScreen extends StatelessWidget {
   const MySubscriptionsScreen({super.key});
@@ -32,7 +31,7 @@ class MySubscriptionsScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.child_care_outlined, size: 80, color: AppTheme.textHint.withOpacity(0.5)),
+                Icon(Icons.child_care_outlined, size: 80, color: AppTheme.textHint.withValues(alpha: 0.5)),
                 const SizedBox(height: 20),
                 const Text('ليس لديك اشتراكات نشطة حالياً',
                     style: TextStyle(color: AppTheme.textHint, fontSize: 16)),
@@ -63,7 +62,7 @@ class MySubscriptionsScreen extends StatelessWidget {
                       leading: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryGreen.withOpacity(0.1),
+                          color: AppTheme.primaryGreen.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.volunteer_activism, color: AppTheme.primaryGreen),
@@ -85,7 +84,7 @@ class MySubscriptionsScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       width: double.infinity,
-                      color: AppTheme.primaryGreen.withOpacity(0.05),
+                      color: AppTheme.primaryGreen.withValues(alpha: 0.05),
                       child: Row(
                         children: [
                           Icon(Icons.stars, color: _getMilestoneColor(monthsCompleted), size: 18),

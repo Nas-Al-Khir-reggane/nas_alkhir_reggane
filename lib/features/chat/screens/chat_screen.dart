@@ -469,7 +469,7 @@ class _ChatScreenState extends State<ChatScreen> {
               margin: const EdgeInsets.symmetric(vertical: 20),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: AppTheme.darkCard.withOpacity(0.5), 
+                color: AppTheme.darkCard.withValues(alpha: 0.5), 
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: AppTheme.glassBorder)
               ),
@@ -515,7 +515,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: isMe ? AppTheme.primaryGreen.withOpacity(0.15) : Colors.black.withOpacity(0.2),
+                                color: isMe ? AppTheme.primaryGreen.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 10,
                                 offset: const Offset(0, 5),
                               )
@@ -578,7 +578,7 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.2), width: 1),
+            border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2), width: 1),
           ),
           child: CircleAvatar(
             radius: 14,
@@ -627,7 +627,7 @@ class _ChatScreenState extends State<ChatScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: isMe ? Colors.black.withOpacity(0.08) : Colors.white.withOpacity(0.05),
+        color: isMe ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(10),
         border: Border(right: BorderSide(color: isMe ? Colors.black45 : AppTheme.primaryGreen, width: 3)),
       ),

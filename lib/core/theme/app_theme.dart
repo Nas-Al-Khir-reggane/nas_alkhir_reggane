@@ -305,9 +305,14 @@ class AppTheme {
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title, style: TextStyle(fontFamily: 'Tajawal', color: textPrimary, fontWeight: FontWeight.w500)),
-            if (subtitle != null) Text(subtitle, style: TextStyle(fontFamily: 'Tajawal', color: textSecondary, fontSize: 12)),
+            ...?(subtitle == null
+                ? null
+                : [
+                    Text(subtitle,
+                        style: TextStyle(fontFamily: 'Tajawal', color: textSecondary, fontSize: 12)),
+                  ]),
           ])),
-          if (trailing != null) trailing,
+          ...?(trailing == null ? null : [trailing]),
           if (onTap != null && trailing == null) const Icon(Icons.arrow_forward_ios, color: textHint, size: 14),
         ]),
       ),

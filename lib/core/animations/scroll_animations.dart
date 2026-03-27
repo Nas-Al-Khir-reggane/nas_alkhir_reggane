@@ -11,7 +11,7 @@ class ScrollAnimations {
   }) {
     if (fromLeft) return FadeInLeft(delay: Duration(milliseconds: delay.toInt()), child: child);
     if (fromRight) return FadeInRight(delay: Duration(milliseconds: delay.toInt()), child: child);
-    return FadeInUp(delay: Duration(milliseconds: delay.toInt()), child: child, from: 20);
+    return FadeInUp(delay: Duration(milliseconds: delay.toInt()), from: 20, child: child);
   }
 
   // 2. Parallax Effect (تأثير البارالاكس للخلفيات)

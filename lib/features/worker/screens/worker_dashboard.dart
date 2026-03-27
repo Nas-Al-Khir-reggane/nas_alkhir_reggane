@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
@@ -9,7 +8,6 @@ import '../controllers/worker_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/models/service_request_model.dart';
 import '../../../data/models/user_model.dart';
-import '../../chat/screens/chat_screen.dart';
 import './update_task_screen.dart';
 import '../../../data/services/notification_service.dart';
 
@@ -214,9 +212,9 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.primaryGreen.withOpacity(0.05),
+              color: AppTheme.primaryGreen.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.2)),
+              border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2)),
             ),
             child: Row(
               children: [
@@ -297,7 +295,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                       decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(16)),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
+                          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
                           backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty) ? NetworkImage(admin.profileImage!) : null,
                           child: (admin.profileImage == null || admin.profileImage!.isEmpty) ? Text(admin.name[0], style: const TextStyle(color: AppTheme.primaryGreen)) : null,
                         ),

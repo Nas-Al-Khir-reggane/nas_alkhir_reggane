@@ -163,7 +163,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             const SizedBox(height: 14),
                             DropdownButtonFormField<String>(
-                              value: _selectedWilaya,
+                              initialValue: _selectedWilaya,
                               decoration: const InputDecoration(
                                 labelText: 'الولاية',
                                 prefixIcon: Icon(Icons.location_on_outlined, color: AppTheme.primaryGreen),
@@ -184,7 +184,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               FadeInDown(
                                 duration: const Duration(milliseconds: 300),
                                 child: DropdownButtonFormField<String>(
-                                  value: _selectedCommune,
+                                  initialValue: _selectedCommune,
                                   decoration: const InputDecoration(
                                     labelText: 'البلدية',
                                     prefixIcon: Icon(Icons.map_outlined, color: AppTheme.primaryGreen),
@@ -209,7 +209,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             const SizedBox(height: 14),
                             DropdownButtonFormField<UserRole>(
-                              value: _selectedRole,
+                              initialValue: _selectedRole,
                               decoration: const InputDecoration(
                                 labelText: 'نوع الحساب',
                                 prefixIcon: Icon(Icons.badge_outlined, color: AppTheme.primaryGreen),

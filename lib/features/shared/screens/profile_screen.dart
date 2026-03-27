@@ -373,7 +373,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        value: selectedWilaya,
+                        initialValue: selectedWilaya,
                         dropdownColor: Theme.of(context).cardColor,
                         style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
                         decoration: AppTheme.inputDecoration('الولاية', Icons.location_on_outlined),
@@ -388,7 +388,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 12),
                       if (selectedWilaya != null)
                         DropdownButtonFormField<String>(
-                          value: (selectedWilaya != null && AppConstants.getCommunesForWilaya(selectedWilaya!).contains(selectedCommune)) 
+                          initialValue: (selectedWilaya != null && AppConstants.getCommunesForWilaya(selectedWilaya!).contains(selectedCommune)) 
                               ? selectedCommune 
                               : null,
                           dropdownColor: Theme.of(context).cardColor,

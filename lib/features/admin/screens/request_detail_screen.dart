@@ -14,7 +14,13 @@ class RequestDetailScreen extends StatelessWidget {
   RequestDetailScreen({super.key, this.request});
 
   // الحصول على الطلب من المشيد أو من arguments كخيار بديل
-  ServiceRequestModel get displayRequest => request ?? Get.arguments;
+  ServiceRequestModel get displayRequest {
+    if (request != null) return request!;
+    final args = Get.arguments;
+    if (args is ServiceRequestModel) return args;
+    if (args is Map<String, dynamic>) return ServiceRequestModel.fromMap(args);
+    throw Exception('Invalid request data');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -234,6 +240,17 @@ class RequestDetailScreen extends StatelessWidget {
             const Divider(color: Colors.white10),
             _buildAssignedWorkerRow(req),
           ],
+          
+          if (req.details.isNotEmpty) ...[
+            const Divider(color: Colors.white10),
+            const SizedBox(height: 8),
+            Text('تفاصيل الخدمة الإضافية', style: TextStyle(color: AppTheme.primaryGreen.withValues(alpha: 0.8), fontSize: 12, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            ...req.details.entries.map((entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _buildInfoRow(Icons.info_outline, entry.key, entry.value.toString()),
+            )),
+          ],
         ],
       ),
     );
@@ -290,7 +307,7 @@ class RequestDetailScreen extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null) trailing,
+          ...?(trailing == null ? null : [trailing]),
         ],
       ),
     );
@@ -345,32 +362,27 @@ class RequestDetailScreen extends StatelessWidget {
   }
 
   void _showDeleteConfirmation(ServiceRequestModel req) {
-    Get.dialog(
-      AlertDialog(
-        backgroundColor: AppTheme.surfaceColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: AppTheme.errorColor),
-            SizedBox(width: 8),
-            Text('تأكيد الحذف', style: TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: const Text('حذف هذا الطلب نهائياً لا يمكن التراجع عنه. هل أنت متأكد؟',
-            style: TextStyle(fontFamily: 'Tajawal')),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
-            onPressed: () async {
-              Get.back();
-              await adminController.deleteRequest(req.id, isGuest: req.isGuest);
-              Get.back();
-            },
-            child: const Text('حذف نهائياً', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+    Get.defaultDialog(
+      title: 'تأكيد الحذف النهائي',
+      titleStyle: const TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold),
+      backgroundColor: AppTheme.surfaceColor,
+      radius: 20,
+      contentPadding: const EdgeInsets.all(20),
+      content: const Text(
+        'سيتم حذف هذا الطلب نهائياً من قاعدة البيانات. هل أنت متأكد؟',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontFamily: 'Tajawal'),
       ),
+      textCancel: 'إلغاء',
+      textConfirm: 'حذف الآن',
+      confirmTextColor: Colors.white,
+      buttonColor: AppTheme.errorColor,
+      onConfirm: () async {
+        Get.back(); // إغلاق الدايالوج
+        await adminController.deleteRequest(req.id, isGuest: req.isGuest);
+        Get.back(); // العودة للشاشة السابقة
+      },
+      onCancel: () => Get.back(),
     );
   }
 

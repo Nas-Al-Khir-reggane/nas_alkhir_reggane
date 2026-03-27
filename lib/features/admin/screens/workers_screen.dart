@@ -251,7 +251,7 @@ class WorkersScreen extends StatelessWidget {
                   margin: const EdgeInsets.symmetric(horizontal: 3),
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    color: isSelected ? activeColor.withOpacity(0.2) : Theme.of(context).cardColor,
+                    color: isSelected ? activeColor.withValues(alpha: 0.2) : Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: isSelected ? activeColor : AppTheme.glassBorder),
                   ),
@@ -308,7 +308,7 @@ class WorkersScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: AppTheme.cardShadow,
           border: Border.all(
-              color: worker.isAvailable ? AppTheme.glassBorder : AppTheme.warningColor.withOpacity(0.3)),
+              color: worker.isAvailable ? AppTheme.glassBorder : AppTheme.warningColor.withValues(alpha: 0.3)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -320,7 +320,7 @@ class WorkersScreen extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundColor: roleColor.withOpacity(0.2),
+                    backgroundColor: roleColor.withValues(alpha: 0.2),
                     backgroundImage: (worker.profileImage != null && worker.profileImage!.isNotEmpty)
                         ? NetworkImage(worker.profileImage!)
                         : null,
@@ -370,7 +370,7 @@ class WorkersScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      decoration: BoxDecoration(color: roleColor.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(color: roleColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -487,7 +487,7 @@ class WorkersScreen extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -519,7 +519,7 @@ class WorkersScreen extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.people_outline, size: 80, color: AppTheme.textHint.withOpacity(0.3)),
+          Icon(Icons.people_outline, size: 80, color: AppTheme.textHint.withValues(alpha: 0.3)),
           const SizedBox(height: 16),
           Text('لا يوجد عمال مطابقين للبحث', style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
         ],
@@ -607,7 +607,7 @@ class WorkersScreen extends StatelessWidget {
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           decoration: BoxDecoration(
-                            color: isSelected ? color.withOpacity(0.2) : Theme.of(context).cardColor,
+                            color: isSelected ? color.withValues(alpha: 0.2) : Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                                 color: isSelected ? color : AppTheme.glassBorder, width: isSelected ? 2 : 1),
@@ -668,7 +668,7 @@ class WorkersScreen extends StatelessWidget {
                               emailController.text.isEmpty ||
                               passwordController.text.isEmpty) {
                             Get.snackbar('تنبيه', 'يرجى ملء جميع الحقول المطلوبة',
-                                backgroundColor: AppTheme.warningColor.withOpacity(0.2));
+                                backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
                             return;
                           }
                           controller.addWorker({
@@ -743,7 +743,7 @@ class WorkersScreen extends StatelessWidget {
                           leading: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                                color: AppTheme.primaryGreen.withOpacity(0.15),
+                                color: AppTheme.primaryGreen.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10)),
                             child: const Icon(Icons.volunteer_activism, color: AppTheme.primaryGreen, size: 20),
                           ),

@@ -545,14 +545,14 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       decoration: BoxDecoration(
                         color: AppTheme.darkCard,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.1)),
+                        border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.1)),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           CircleAvatar(
                             radius: 25,
-                            backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
+                            backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
                             backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty)
                                 ? NetworkImage(admin.profileImage!)
                                 : null,
@@ -613,7 +613,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                           final admin = UserModel.fromMap(admins[index].data() as Map<String, dynamic>, admins[index].id);
                           return ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
+                              backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
                               backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty) ? NetworkImage(admin.profileImage!) : null,
                               child: (admin.profileImage == null || admin.profileImage!.isEmpty) ? Text(admin.name[0], style: const TextStyle(color: AppTheme.primaryGreen)) : null,
                             ),
@@ -773,7 +773,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.amber.withOpacity(0.9),
+                                  color: Colors.amber.withValues(alpha: 0.9),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Row(
@@ -1003,7 +1003,9 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                 try {
                                   final project = donorController.activeProjects.firstWhere((p) => p.id == donation.projectId);
                                   Get.toNamed(AppRoutes.adminProjectDetail, arguments: project);
-                                } catch (e) {}
+                                } catch (e) {
+                                  debugPrint('❌ [DonorDashboard] donation project navigation error: $e');
+                                }
                               },
                               child: Container(
                                 margin: const EdgeInsets.only(bottom: 10),

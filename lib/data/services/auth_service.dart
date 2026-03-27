@@ -64,7 +64,7 @@ class AuthService {
       try {
         DocumentSnapshot doc = await _firestore.collection(AppConstants.usersCollection).doc(user.uid).get();
         if (doc.exists) {
-          final userModel = UserModel.fromMap(doc.data() as Map<String, dynamic>);
+          final userModel = UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
           await _cacheUserModel(userModel);
           return userModel;
         }

@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -293,8 +292,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
               );
             }),
           ),
-          swapAnimationDuration: const Duration(milliseconds: 800),
-          swapAnimationCurve: Curves.easeOutQuint,
+        duration: const Duration(milliseconds: 800),
+        curve: Curves.easeOutQuint,
         ),
       );
     });
@@ -327,7 +326,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     );
                   }).toList(),
                 ),
-                swapAnimationDuration: const Duration(milliseconds: 800),
+                duration: const Duration(milliseconds: 800),
               ),
             ),
             Expanded(

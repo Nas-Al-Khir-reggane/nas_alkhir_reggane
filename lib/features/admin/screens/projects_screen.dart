@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../../../core/animations/mount_animations.dart';
 import '../../../core/animations/visual_effects.dart';
 import '../../../core/theme/app_theme.dart';
@@ -11,7 +10,7 @@ import 'add_project_screen.dart';
 class ProjectsScreen extends StatelessWidget {
   ProjectController get projectController => Get.find<ProjectController>();
 
-  ProjectsScreen({super.key});
+  const ProjectsScreen({super.key});
 
   static void showAddProjectSheet(BuildContext context) {
     Get.to(() => const AddProjectScreen());
@@ -31,7 +30,7 @@ class ProjectsScreen extends StatelessWidget {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryGreen.withOpacity(0.03),
+                color: AppTheme.primaryGreen.withValues(alpha: 0.03),
               ),
             ),
           ),
@@ -194,15 +193,15 @@ class ProjectsScreen extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            categoryColor.withOpacity(0.15),
+            categoryColor.withValues(alpha: 0.15),
             AppTheme.cardColor,
             AppTheme.cardColor,
           ],
         ),
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: categoryColor.withOpacity(0.3), width: 1.5),
+        border: Border.all(color: categoryColor.withValues(alpha: 0.3), width: 1.5),
         boxShadow: [
-          BoxShadow(color: categoryColor.withOpacity(0.2), blurRadius: 25, offset: const Offset(0, 10)),
+          BoxShadow(color: categoryColor.withValues(alpha: 0.2), blurRadius: 25, offset: const Offset(0, 10)),
         ],
       ),
       child: Column(
@@ -211,7 +210,7 @@ class ProjectsScreen extends StatelessWidget {
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [categoryColor.withOpacity(0.3), categoryColor.withOpacity(0.05)],
+                colors: [categoryColor.withValues(alpha: 0.3), categoryColor.withValues(alpha: 0.05)],
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
               ),
@@ -222,9 +221,9 @@ class ProjectsScreen extends StatelessWidget {
                 Container(
                   width: 52, height: 52,
                   decoration: BoxDecoration(
-                    color: categoryColor.withOpacity(0.2),
+                    color: categoryColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: categoryColor.withOpacity(0.4)),
+                    border: Border.all(color: categoryColor.withValues(alpha: 0.4)),
                   ),
                   child: Icon(cat['icon'] as IconData, color: categoryColor, size: 28),
                 ),
@@ -499,9 +498,9 @@ class ProjectsScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
-              border: Border.all(color: color.withOpacity(0.3)),
+              border: Border.all(color: color.withValues(alpha: 0.3)),
             ),
             child: Icon(icon, color: color, size: 28),
           ),
