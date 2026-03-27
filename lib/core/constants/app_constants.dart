@@ -27,7 +27,6 @@ class AppConstants {
     "56 - جانت", "57 - المغير", "58 - المنيعة"
   ];
 
-  // بلديات ولايات الجنوب الجزائري
   static const Map<String, List<String>> wilayaCommunes = {
     "01 - أدرار": ["أدرار", "تامست", "تمنطيط", "فنوغيل", "إن زجمير", "رقان", "سالي", "أولاد أحمد تيمي", "بودا"],
     "03 - الأغواط": ["الأغواط", "أفلو", "عين ماضي", "حاسي الرمل", "قصر الحيران"],
@@ -88,8 +87,75 @@ class AppConstants {
       'orphans care': 'كفالة أيتام',
       'other': 'أخرى',
     };
-    
+
     return translations[t] ?? type;
+  }
+
+  static IconData getServiceIcon(String type) {
+    String t = type.toLowerCase().trim().replaceAll('_', ' ');
+    
+    if (t == 'نقل الجنازات' || t == 'إكرام الموتى' || t == 'funeral transport') {
+      return Icons.airport_shuttle_rounded;
+    }
+    if (t == 'مساعدات غذائية' || t == 'إطعام الطعام' || t == 'food aid' || t == 'food distribution') {
+      return Icons.shopping_basket_rounded;
+    }
+    if (t == 'مساعدة طبية' || t == 'الرعاية الطبية' || t == 'medical aid' || t == 'medical equipment' || t == 'patient transport' || t == 'نقل المرضى') {
+      return Icons.medical_services_rounded;
+    }
+    if (t == 'مساعدات مالية' || t == 'financial aid' || t == 'money' || t == 'تفريج كربة (مالي)') {
+      return Icons.payments_rounded;
+    }
+    if (t == 'بناء وتعمير' || t == 'ترميم بيوت الله والفقراء' || t == 'construction' || t == 'housing') {
+      return Icons.home_work_rounded;
+    }
+    if (t == 'تعليم وكفالة أيتام' || t == 'تعليم وكفالة طالب' || t == 'education' || t == 'school bags' || t == 'الحقيبة المدرسية') {
+      return Icons.menu_book_rounded;
+    }
+    if (t == 'تبرع بالدم' || t == 'blood donation') {
+      return Icons.bloodtype_rounded;
+    }
+    if (t == 'سقي الماء' || t == 'حفر الآبار' || t == 'water supply' || t == 'water well') {
+      return Icons.water_drop_rounded;
+    }
+    if (t == 'كفالة أيتام' || t == 'orphan care') {
+      return Icons.child_care_rounded;
+    }
+    if (t == 'حالة طارئة' || t == 'emergency') {
+      return Icons.emergency_rounded;
+    }
+
+    return Icons.volunteer_activism_rounded;
+  }
+
+  static IconData getIconFromName(String iconName) {
+    switch (iconName) {
+      case 'mosque': return Icons.mosque;
+      case 'shopping_basket': return Icons.shopping_basket;
+      case 'medication': return Icons.medication;
+      case 'payments': return Icons.payments;
+      case 'home_work': return Icons.home_work;
+      case 'menu_book': return Icons.menu_book;
+      case 'school': return Icons.school;
+      case 'water_drop': return Icons.water_drop;
+      case 'volunteer_activism': return Icons.volunteer_activism;
+      case 'checkroom': return Icons.checkroom;
+      case 'inventory': return Icons.inventory;
+      case 'emergency': return Icons.emergency_outlined;
+      case 'ac_unit': return Icons.ac_unit;
+      case 'nightlight_round': return Icons.nightlight_round;
+      case 'bloodtype': return Icons.bloodtype;
+      case 'more_horiz': return Icons.more_horiz;
+      // Fallbacks
+      case 'medical': return Icons.medical_services_outlined;
+      case 'food': return Icons.restaurant;
+      case 'transport': return Icons.local_shipping_outlined;
+      case 'blood': return Icons.bloodtype_outlined;
+      case 'funeral': return Icons.airport_shuttle;
+      case 'money': return Icons.account_balance_wallet_outlined;
+      case 'other': return Icons.more_horiz;
+      default: return Icons.category_outlined;
+    }
   }
 
   static const String usersCollection = "users";
@@ -104,8 +170,7 @@ class AppConstants {
   static const List<Map<String, dynamic>> projectCategories = [
     {'id': 'construction', 'name': 'البناء والترميم', 'icon': Icons.construction, 'color': Color(0xFF5D4037)},
     {'id': 'orphan', 'name': 'كفالة الأيتام والتعليم', 'icon': Icons.child_care, 'color': Color(0xFF1565C0)},
-    {'id': 'food', 'name': 'إطعام الطعام والطرود', 'icon': Icons.shopping_basket, 'color': Color(
-        0xFF85C69B)},
+    {'id': 'food', 'name': 'إطعام الطعام والطرود', 'icon': Icons.shopping_basket, 'color': Color(0xFF85C69B)},
     {'id': 'water', 'name': 'سقي الماء وحفر الآبار', 'icon': Icons.water_drop, 'color': Color(0xFF0277BD)},
     {'id': 'medical', 'name': 'مداواة المرضى والإسعاف', 'icon': Icons.healing, 'color': Color(0xFFC62828)},
     {'id': 'housing', 'name': 'تفريج كرب الأسر والبيوت', 'icon': Icons.home, 'color': Color(0xFF795548)},

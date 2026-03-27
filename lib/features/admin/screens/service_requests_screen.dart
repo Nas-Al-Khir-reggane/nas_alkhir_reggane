@@ -81,7 +81,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
       query = query.where('assignedTo', isEqualTo: selectedWorker.value);
     }
 
-    return query.orderBy('createdAt', descending: true);
+    return query; // Order by createdAt is handled client-side to avoid requiring complex composite indexes
   }
 
   void clearAllFilters() {
@@ -378,7 +378,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                           const SizedBox(height: 16),
                           Text('حدث خطأ في عرض الطلبات', style: TextStyle(color: AppTheme.textPrimary)),
                           const SizedBox(height: 8),
-                          Text('تأكد من اتصالك بالإنترنت', 
+                          Text('تأكد من اتصالك بالإنترنت',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                           TextButton(onPressed: () => setState(() {}), child: const Text('إعادة المحاولة')),
@@ -404,6 +404,18 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                     String rCommune = (data['commune'] ?? '').toString().toLowerCase();
                     return rName.contains(queryText) || rPhone.contains(queryText) || rWilaya.contains(queryText) || rCommune.contains(queryText);
                   }).toList();
+
+                  // Client-side sorting by createdAt (descending)
+                  filteredDocs.sort((a, b) {
+                    var dataA = a.data() as Map<String, dynamic>;
+                    var dataB = b.data() as Map<String, dynamic>;
+                    Timestamp? tA = dataA['createdAt'] as Timestamp?;
+                    Timestamp? tB = dataB['createdAt'] as Timestamp?;
+                    if (tA == null && tB == null) return 0;
+                    if (tA == null) return 1;
+                    if (tB == null) return -1;
+                    return tB.compareTo(tA);
+                  });
 
                   if (filteredDocs.isEmpty) return _buildEmptyState();
 
@@ -507,7 +519,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
           border: Border(right: BorderSide(color: urgencyColor, width: 4)),
           boxShadow: AppTheme.cardShadow,
         ),
-        child: Dismissible(
+        child: request.status == 'rejected' ? _buildCardContent(request) : Dismissible(
           key: Key(request.id),
           direction: DismissDirection.endToStart,
           confirmDismiss: (direction) async {
@@ -563,8 +575,15 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
               ],
             ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+          child: _buildCardContent(request),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardContent(ServiceRequestModel request) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
             child: Column(
               children: [
                 Row(
@@ -575,7 +594,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                         color: AppTheme.primaryGreen.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.volunteer_activism, color: AppTheme.primaryGreen, size: 20),
+                      child: Icon(AppConstants.getServiceIcon(request.typeName.isNotEmpty ? request.typeName : request.type), color: AppTheme.primaryGreen, size: 20),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -670,33 +689,40 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    _buildActionButton(Icons.phone, 'اتصال', Colors.green, () => launchUrl(Uri.parse('tel:${request.phone}'))),
-                    const SizedBox(width: 8),
                     Expanded(
+                      flex: 2,
+                      child: _buildActionButton(Icons.phone, 'اتصال', Colors.green, () => launchUrl(Uri.parse('tel:${request.phone}'))),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 3,
                       child: _buildActionButton(
                         request.assignedTo == null ? Icons.assignment_ind_outlined : Icons.swap_horiz,
-                        request.assignedTo == null ? 'إسناد عامل' : 'تغيير العامل',
+                        request.assignedTo == null ? 'إسناد' : 'تبديل',
                         request.assignedTo == null ? AppTheme.primaryGreen : AppTheme.warningColor,
                         () => _showAssignWorkerDialog(request),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    _buildActionButton(
-                      Icons.airport_shuttle_rounded,
-                      'سيارة',
-                      Colors.teal,
-                      () => _showAssignVehicleDialog(request),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 2,
+                      child: _buildActionButton(
+                        Icons.airport_shuttle_rounded,
+                        'سيارة',
+                        Colors.teal,
+                        () => _showAssignVehicleDialog(request),
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    _buildActionButton(Icons.update, 'الحالة', AppTheme.warningColor, () => _showStatusUpdateSheet(request)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 2,
+                      child: _buildActionButton(Icons.update, 'حالة', AppTheme.warningColor, () => _showStatusUpdateSheet(request)),
+                    ),
                   ],
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
+          );
   }
 
   Widget _buildStatusBadge(String status, {bool isUrgency = false}) {
@@ -730,16 +756,19 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
       onTap: onPressed,
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 16),
-            const SizedBox(width: 4),
-            Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500)),
-          ],
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: 4),
+              Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500)),
+            ],
+          ),
         ),
       ),
     );

@@ -363,7 +363,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(_getIconData(service.icon), 
+                          Icon(AppConstants.getIconFromName(service.icon), 
                             color: isSelected ? AppTheme.primaryGreen : AppTheme.textHint, 
                             size: 24),
                           const SizedBox(height: 6),
@@ -398,7 +398,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
-                    child: Icon(_getIconData(selectedService!.icon), color: AppTheme.primaryGreen, size: 20),
+                    child: Icon(AppConstants.getIconFromName(selectedService!.icon), color: AppTheme.primaryGreen, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -558,34 +558,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
     );
   }
 
-  IconData _getIconData(String iconName) {
-    switch (iconName) {
-      case 'mosque': return Icons.mosque;
-      case 'shopping_basket': return Icons.shopping_basket;
-      case 'medication': return Icons.medication;
-      case 'payments': return Icons.payments;
-      case 'home_work': return Icons.home_work;
-      case 'menu_book': return Icons.menu_book;
-      case 'water_drop': return Icons.water_drop;
-      case 'volunteer_activism': return Icons.volunteer_activism;
-      case 'checkroom': return Icons.checkroom;
-      case 'inventory': return Icons.inventory;
-      case 'emergency': return Icons.emergency_outlined;
-      case 'ac_unit': return Icons.ac_unit;
-      case 'nightlight_round': return Icons.nightlight_round;
-      case 'bloodtype': return Icons.bloodtype;
-      case 'more_horiz': return Icons.more_horiz;
-      // Fallbacks
-      case 'medical': return Icons.medical_services_outlined;
-      case 'food': return Icons.restaurant;
-      case 'transport': return Icons.local_shipping_outlined;
-      case 'blood': return Icons.bloodtype_outlined;
-      case 'funeral': return Icons.airport_shuttle;
-      case 'money': return Icons.account_balance_wallet_outlined;
-      case 'other': return Icons.more_horiz;
-      default: return Icons.category_outlined;
-    }
-  }
+
 
   void _showServiceDetailsModal(ServiceTypeModel service) {
     Get.bottomSheet(
@@ -620,7 +593,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
-                            child: Icon(_getIconData(service.icon), color: AppTheme.primaryGreen, size: 24),
+                            child: Icon(AppConstants.getIconFromName(service.icon), color: AppTheme.primaryGreen, size: 24),
                           ),
                           const SizedBox(width: 12),
                           Expanded(

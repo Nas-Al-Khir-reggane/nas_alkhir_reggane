@@ -53,6 +53,19 @@ class MicroInteractions {
       ),
     );
   }
+
+  // 4. Hover Scale Effect
+  static Widget hoverScale({
+    required Widget child,
+    double scale = 1.05,
+    Duration duration = const Duration(milliseconds: 200),
+  }) {
+    return _HoverScale(
+      scale: scale,
+      duration: duration,
+      child: child,
+    );
+  }
 }
 
 class _BouncingButton extends StatefulWidget {
@@ -176,6 +189,39 @@ class _AnimatedFocusFieldState extends State<_AnimatedFocusField> {
         child: widget.isError 
           ? ShakeX(duration: const Duration(milliseconds: 400), from: 4, child: widget.child)
           : widget.child,
+      ),
+    );
+  }
+}
+
+class _HoverScale extends StatefulWidget {
+  final Widget child;
+  final double scale;
+  final Duration duration;
+
+  const _HoverScale({
+    required this.child,
+    this.scale = 1.05,
+    this.duration = const Duration(milliseconds: 200),
+  });
+
+  @override
+  State<_HoverScale> createState() => _HoverScaleState();
+}
+
+class _HoverScaleState extends State<_HoverScale> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedScale(
+        scale: _isHovered ? widget.scale : 1.0,
+        duration: widget.duration,
+        curve: Curves.easeInOut,
+        child: widget.child,
       ),
     );
   }

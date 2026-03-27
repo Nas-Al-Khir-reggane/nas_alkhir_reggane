@@ -7,160 +7,48 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Role helpers (support legacy role strings)
-    function getUserDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
-    function userRoleRaw() {
-      return isLoggedIn() && getUserDoc().exists ? (getUserDoc().data.role) : null;
-    }
-
-    function roleNormalized() {
-      // Normalize: lower-case + remove underscores for backward compatibility
-      return userRoleRaw() == null ? '' : lower(replaceAll(userRoleRaw(), '_', ''));
-    }
-
-    function isSuperAdmin() {
-      return isLoggedIn() && roleNormalized() == 'superadmin';
-    }
-
-    function isAdmin() {
-      // Treat sub-admins as admins (legacy)
-      return isLoggedIn() && (roleNormalized() == 'admin' || roleNormalized() == 'subadmin' || isSuperAdmin());
-    }
-
-    function isWorker() {
-      return isLoggedIn() && roleNormalized() == 'worker';
-    }
-
-    // Basic field validation helpers (avoid accidental wide writes)
-    function hasOnlyKeys(allowedKeys) {
-      return request.resource.data.keys().hasOnly(allowedKeys);
-    }
-
-    function isOwner(userIdField) {
-      return isLoggedIn() && request.auth.uid == userIdField;
+    // دالة للتحقق من دور المستخدم (تستخدم فقط بعد إنشاء الحساب)
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
     // --- قواعد مجموعة المستخدمين ---
     match /users/{userId} {
-      // Users contain sensitive fields; only authenticated users can read
       allow read: if isLoggedIn();
       allow create: if isLoggedIn() && request.auth.uid == userId;
-      // User can update their own profile; admins can approve/update roles
-      allow update: if isLoggedIn() && (request.auth.uid == userId || isSuperAdmin());
-      allow delete: if isSuperAdmin();
+      allow update: if isLoggedIn() && (request.auth.uid == userId || getRole() == 'super_admin');
+      allow delete: if isLoggedIn() && getRole() == 'super_admin';
     }
 
-    // --- قواعد الإشعارات ---
+    // --- قواعد الإشعارات (تعديل: السماح للجميع بالإرسال لتصل للمدير) ---
     match /notifications/{notifId} {
-      // Owner can read/update/delete their own notifications.
-      // Admins can read for troubleshooting.
-      allow read: if isLoggedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-
-      // Allow create for any client (including unauth guests) but restrict shape.
-      // This supports guest flows while limiting blast radius.
-      allow create: if request.resource.data.userId is string
-        && request.resource.data.title is string
-        && request.resource.data.body is string;
-
-      // Only owner/admin can update/delete
-      allow update, delete: if isLoggedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if isLoggedIn() && resource.data.userId == request.auth.uid;
+      allow write: if true; 
     }
 
-    // --- قواعد أنواع الخدمات ---
+    // --- قواعد أنواع الخدمات (إضافة: للجميع لرؤية الأيقونات وزيادة الشعبية) ---
     match /service_types/{typeId} {
       allow read: if true;
-      // Only super admin can create/update/delete service types
-      allow create, update, delete: if isSuperAdmin();
+      allow update: if true; 
+      allow write: if isLoggedIn() && getRole() == 'super_admin';
     }
 
-    // --- قواعد طلبات الزوار ---
+    // --- قواعد طلبات الزوار (إضافة: للسماح بإرسال الطلبات) ---
     match /guest_requests/{requestId} {
-      // Guest can create (even unauth) to avoid blocking public flow.
+      allow read: if isLoggedIn() && getRole() == 'super_admin';
       allow create: if true;
-
-      // Only admins can read/update/delete guest requests.
-      allow read, update, delete: if isAdmin();
+      allow update, delete: if isLoggedIn() && getRole() == 'super_admin';
     }
 
-    // --- قواعد المشاريع ---
+    // --- قواعد المشاريع (إضافة: للجميع للرؤية) ---
     match /projects/{projectId} {
       allow read: if true;
-      // Only super admin can create/update/delete projects
-      allow create, update, delete: if isSuperAdmin();
+      allow write: if isLoggedIn() && getRole() == 'super_admin';
     }
 
-    // --- قواعد طلبات الأعضاء ---
-    match /service_requests/{requestId} {
-      allow create: if isLoggedIn();
-      // Beneficiary can read their own, admins/workers can read all for processing.
-      allow read: if isLoggedIn() && (
-        resource.data.requesterId == request.auth.uid
-        || isAdmin()
-        || isWorker()
-      );
-      // Admin/worker can update status/assignments; owner can update limited fields (optional).
-      allow update: if isLoggedIn() && (isAdmin() || isWorker());
-      allow delete: if isAdmin();
-    }
-
-    // --- التبرعات ---
-    match /donations/{donationId} {
-      allow create: if isLoggedIn();
-      allow read: if isLoggedIn() && (isAdmin() || resource.data.donorId == request.auth.uid);
-      allow update, delete: if isAdmin();
-    }
-
-    // --- السيارات ---
-    match /vehicles/{vehicleId} {
-      allow read: if isLoggedIn() && isAdmin();
-      allow create, update, delete: if isLoggedIn() && isAdmin();
-    }
-
-    // --- أنواع المهام ---
-    match /task_types/{taskTypeId} {
-      allow read: if isLoggedIn() && isAdmin();
-      allow create, update, delete: if isLoggedIn() && isAdmin();
-    }
-
-    // --- تحديثات ميدانية ---
-    match /worker_updates/{updateId} {
-      allow read: if isLoggedIn() && isAdmin();
-      allow create: if isLoggedIn() && (isWorker() || isAdmin());
-      allow update, delete: if isLoggedIn() && isAdmin();
-    }
-
-    // --- الدردشة ---
-    match /chats/{chatId} {
-      // Chat doc contains participants + typing; only logged in users in participants can access.
-      allow read, create, update: if isLoggedIn()
-        && (
-          // Group chat: allow team roles
-          (chatId == 'group_team' && (isAdmin() || isWorker() || isSuperAdmin()))
-          // Private chat: require membership
-          || (resource.data.participants.hasAny([request.auth.uid]))
-        );
-
-      allow delete: if isAdmin();
-
-      match /messages/{messageId} {
-        allow read, create: if isLoggedIn()
-          && (
-            (chatId == 'group_team' && (isAdmin() || isWorker() || isSuperAdmin()))
-            || get(/databases/$(database)/documents/chats/$(chatId)).data.participants.hasAny([request.auth.uid])
-          );
-        // Only admins can delete messages (can be tightened later)
-        allow delete: if isAdmin();
-        allow update: if isLoggedIn() && isAdmin();
-      }
-    }
-
-    // --- Default deny-by-default ---
+    // --- السماح بالوصول لباقي المجموعات للأعضاء المسجلين ---
     match /{path=**} {
-      allow read, write: if false;
+      allow read, write: if isLoggedIn();
     }
   }
 }

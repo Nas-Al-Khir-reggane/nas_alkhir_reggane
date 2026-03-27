@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../data/models/service_request_model.dart';
 
 class GuestSuccessScreen extends StatefulWidget {
   final String refNumber;
@@ -21,10 +23,51 @@ class GuestSuccessScreen extends StatefulWidget {
 class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
   final TextEditingController phoneController = TextEditingController();
 
+  bool isTracking = false;
+
   @override
   void dispose() {
     phoneController.dispose();
     super.dispose();
+  }
+
+  void _trackRequest() async {
+    if (phoneController.text.isEmpty) {
+      Get.snackbar('تنبيه', 'يرجى إدخال رقم الهاتف للتتبع',
+          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+      return;
+    }
+
+    setState(() => isTracking = true);
+
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('guest_requests')
+          .where('refNumber', isEqualTo: widget.refNumber)
+          .where('phone', isEqualTo: phoneController.text)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        Get.snackbar('عذراً', 'لم نتمكن من العثور على طلب بهذا الرقم المرجعي ورقم الهاتف.',
+            backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+        return;
+      }
+
+      final doc = querySnapshot.docs.first;
+      final requestData = doc.data();
+      requestData['id'] = doc.id;
+      requestData['isGuest'] = true;
+
+      final requestModel = ServiceRequestModel.fromMap(requestData);
+
+      Get.toNamed('/beneficiary/request-status', arguments: requestModel);
+    } catch (e) {
+      Get.snackbar('خطأ', 'حدث خطأ أثناء البحث عن الطلب. يرجى المحاولة لاحقاً',
+          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2));
+    } finally {
+      if (mounted) setState(() => isTracking = false);
+    }
   }
 
   void _shareRequestDetails() {
@@ -132,25 +175,18 @@ class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
                         decoration: AppTheme.inputDecoration('أدخل رقم الهاتف', Icons.phone),
                       ),
                       const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          if (phoneController.text.isEmpty) {
-                            Get.snackbar('تنبيه', 'يرجى إدخال رقم الهاتف للتتبع',
-                                backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
-                            return;
-                          }
-                          Get.snackbar('قريباً', 'سيتم تفعيل ميزة التتبع اللحظي في التحديث القادم',
-                              icon: const Icon(Icons.info_outline),
-                              backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2));
-                        },
-                        icon: const Icon(Icons.search),
-                        label: const Text('تتبع طلبي'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppTheme.primaryGreen,
-                          side: const BorderSide(color: AppTheme.primaryGreen),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
+                      isTracking
+                          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
+                          : OutlinedButton.icon(
+                              onPressed: _trackRequest,
+                              icon: const Icon(Icons.search),
+                              label: const Text('تتبع طلبي'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppTheme.primaryGreen,
+                                side: const BorderSide(color: AppTheme.primaryGreen),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
                     ],
                   ),
                 ),

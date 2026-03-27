@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart' as intl;
 import '../../../core/theme/app_theme.dart';
+import '../../../core/constants/app_constants.dart';
 import '../controllers/beneficiary_controller.dart';
 import '../../../data/models/service_type_model.dart';
 import '../../../data/models/user_model.dart';
@@ -126,7 +127,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                               color: AppTheme.primaryGreen.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(_getIconData(selectedService!.icon), color: AppTheme.primaryGreen, size: 24),
+                            child: Icon(AppConstants.getIconFromName(selectedService!.icon), color: AppTheme.primaryGreen, size: 24),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -460,7 +461,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      _getIconData(service.icon), 
+                      AppConstants.getIconFromName(service.icon), 
                       color: isSelected ? AppTheme.primaryGreen : AppTheme.textHint,
                       size: 24,
                     ),
@@ -486,27 +487,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     });
   }
 
-  IconData _getIconData(String iconName) {
-    switch (iconName) {
-      case 'mosque': return Icons.mosque;
-      case 'shopping_basket': return Icons.shopping_basket;
-      case 'medication': return Icons.medication;
-      case 'payments': return Icons.payments;
-      case 'home_work': return Icons.home_work;
-      case 'menu_book': return Icons.menu_book;
-      case 'school': return Icons.school;
-      case 'water_drop': return Icons.water_drop;
-      case 'volunteer_activism': return Icons.volunteer_activism;
-      case 'checkroom': return Icons.checkroom;
-      case 'inventory': return Icons.inventory;
-      case 'emergency': return Icons.emergency;
-      case 'ac_unit': return Icons.ac_unit;
-      case 'nightlight_round': return Icons.nightlight_round;
-      case 'bloodtype': return Icons.bloodtype;
-      case 'more_horiz': return Icons.more_horiz;
-      default: return Icons.volunteer_activism;
-    }
-  }
+
 
   IconData _getFieldIcon(String fieldName) {
     if (fieldName.contains('اسم')) return Icons.person_outline;

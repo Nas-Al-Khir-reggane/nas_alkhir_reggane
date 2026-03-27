@@ -19,6 +19,7 @@ import '../../features/admin/screens/vehicles_screen.dart';
 import '../../features/admin/screens/reports_screen.dart';
 import '../../features/admin/screens/add_project_screen.dart';
 import '../../features/admin/screens/admin_committed_donors.dart';
+import '../../features/admin/screens/donations_details_screen.dart';
 import '../../features/worker/screens/worker_dashboard.dart';
 import '../../features/worker/screens/update_task_screen.dart';
 import '../../features/donor/screens/donor_dashboard.dart';
@@ -57,6 +58,7 @@ class AppRoutes {
   static const String adminWorkerDetail = '/admin/worker-detail';
   static const String adminVehicles = '/admin/vehicles';
   static const String adminReports = '/admin/reports';
+  static const String adminDonations = '/admin/donations'; // ✨ NEW
   
   static const String workerDashboard = '/worker/dashboard';
   static const String workerUpdateTask = '/worker/update-task';
@@ -157,6 +159,11 @@ class AppRoutes {
     ),
     GetPage(name: adminVehicles, page: () => const VehiclesScreen(), middlewares: [AuthMiddleware()]),
     GetPage(name: adminReports, page: () => const ReportsScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(
+      name: adminDonations,
+      page: () => const DonationsDetailsScreen(),
+      middlewares: [AuthMiddleware()],
+    ),
     
     // Worker Routes
     GetPage(name: workerDashboard, page: () => const WorkerDashboard(), middlewares: [AuthMiddleware()]),

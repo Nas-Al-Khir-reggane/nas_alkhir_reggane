@@ -320,11 +320,11 @@ class AdminController extends GetxController {
       // This doc is maintained by donation creation flows in-app.
       try {
         final statsDoc = await _firestore.collection('stats').doc('global').get();
-        if (statsDoc.exists) {
+        if (statsDoc.exists && (statsDoc.data() as Map<String, dynamic>).containsKey('totalDonations') && (statsDoc.data() as Map<String, dynamic>)['totalDonations'] > 0) {
           final data = statsDoc.data() as Map<String, dynamic>;
           totalDonations.value = ((data['totalDonations'] ?? 0) as num).toInt();
         } else {
-          totalDonations.value = 0;
+          throw Exception('Fallback to calculating total donations manually');
         }
       } catch (e) {
         // Fallback (legacy): keep previous behavior but with a cap to reduce cost.

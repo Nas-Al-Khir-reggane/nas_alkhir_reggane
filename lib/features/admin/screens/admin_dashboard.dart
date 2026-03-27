@@ -531,7 +531,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
               children: [
-                _buildKPICard('إجمالي التبرعات', controller.totalDonations, Icons.volunteer_activism, AppTheme.goldGradient, 'دج', onTap: () {}),
+                _buildKPICard('إجمالي التبرعات', controller.totalDonations, Icons.volunteer_activism, AppTheme.goldGradient, 'دج', onTap: () => Get.toNamed('/admin/donations')),
                 _buildKPICard('الطلبات المعلقة', controller.pendingRequests, Icons.pending_actions,
                     const LinearGradient(colors: [Colors.orange, Colors.deepOrange]), '', onTap: () => setState(() => _currentIndex = 1)),
                 _buildKPICard('المشاريع النشطة', controller.activeProjects, Icons.folder_open, AppTheme.primaryGradient, '', onTap: () => setState(() => _currentIndex = 2)),

@@ -4,14 +4,13 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/service_request_model.dart';
-import '../controllers/beneficiary_controller.dart';
+
 import '../../../core/constants/app_constants.dart';
 
 class RequestStatusScreen extends StatelessWidget {
   final ServiceRequestModel request;
-  final BeneficiaryController controller = Get.find<BeneficiaryController>();
 
-  RequestStatusScreen({super.key, required this.request});
+  const RequestStatusScreen({super.key, required this.request});
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +42,7 @@ class RequestStatusScreen extends StatelessWidget {
                       color: AppTheme.primaryGreen.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(_getIconData(request.type), color: AppTheme.primaryGreen, size: 40),
+                    child: Icon(AppConstants.getServiceIcon(request.typeName.isNotEmpty ? request.typeName : request.type), color: AppTheme.primaryGreen, size: 40),
                   ),
                   const SizedBox(height: 16),
                   Text(_getTypeName(request.type),
@@ -83,7 +82,7 @@ class RequestStatusScreen extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 40),
-            if (request.status == 'completed')
+            if (request.status == 'completed' && !request.isGuest)
               AppTheme.gradientButton(
                 text: 'تقييم الخدمة',
                 icon: Icons.star,
@@ -128,10 +127,7 @@ class RequestStatusScreen extends StatelessWidget {
     // نفس منطق الـ dialog الموجود في الـ dashboard
   }
 
-  IconData _getIconData(String type) {
-    if (type == 'funeral_transport') return Icons.airport_shuttle;
-    return Icons.help_outline;
-  }
+
 
   String _getTypeName(String type) => AppConstants.translateServiceType(type);
 

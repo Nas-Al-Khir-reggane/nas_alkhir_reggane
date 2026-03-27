@@ -4,8 +4,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:animate_do/animate_do.dart';
+import 'dart:ui' as ui;
 import '../../../core/theme/app_theme.dart';
 import '../../../data/services/notification_service.dart';
+import '../../../core/animations/visual_effects.dart';
+import '../../../core/animations/micro_interactions.dart';
+import '../../auth/controllers/auth_controller.dart';
+import '../../../data/models/user_model.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -17,17 +22,47 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen>
     with SingleTickerProviderStateMixin {
   final NotificationService notificationService = Get.find<NotificationService>();
-  final userId = FirebaseAuth.instance.currentUser?.uid;
+  final AuthController authController = Get.find<AuthController>();
+  final String? userId = FirebaseAuth.instance.currentUser?.uid;
+  
   late TabController _tabController;
-
-  final List<String> _tabs = ['الكل', 'الطلبات', 'عام'];
-  final List<String?> _tabTypes = [null, 'new_request', 'announcement'];
+  late List<String> _tabs;
+  late List<List<String>?> _tabFilters;
 
   @override
   void initState() {
     super.initState();
+    _initRoleBasedTabs();
     _tabController = TabController(length: _tabs.length, vsync: this);
     Future.microtask(() => notificationService.markAllAsRead());
+  }
+
+  void _initRoleBasedTabs() {
+    final role = authController.currentUser.value?.role;
+    
+    if (role == UserRole.superAdmin || role == UserRole.admin) {
+      _tabs = ['الكل', 'الطلبات', 'النظام'];
+      _tabFilters = [
+        null, // All
+        ['new_request', 'request_update'], // Requests
+        ['announcement', 'system'], // System
+      ];
+    } else if (role == UserRole.worker) {
+      _tabs = ['الكل', 'المهام', 'متفرقات'];
+      _tabFilters = [
+        null,
+        ['new_task', 'task_update', 'chat'],
+        ['announcement', 'system'],
+      ];
+    } else {
+      // Beneficiary / Guest / Others
+      _tabs = ['الكل', 'تحديثات طلباتي', 'عام'];
+      _tabFilters = [
+        null,
+        ['request_update', 'request_approved', 'request_rejected'],
+        ['announcement', 'system', 'new_donation', 'new_project'],
+      ];
+    }
   }
 
   @override
@@ -50,114 +85,185 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      body: Column(
-        children: [
-          // ─── Header ───
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-              child: Row(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '🔔 الإشعارات',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: AppTheme.textPrimary,
-                          fontFamily: 'Tajawal',
-                        ),
+      body: VisualEffects.ambientBackground(
+        isDark: Get.isDarkMode,
+        child: Column(
+          children: [
+            // ─── Header ───
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
                       ),
-                      StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('notifications')
-                            .where('userId', isEqualTo: userId)
-                            .where('isRead', isEqualTo: false)
-                            .snapshots(),
-                        builder: (context, snap) {
-                          final count = snap.data?.docs.length ?? 0;
-                          return Text(
-                            count > 0 ? '$count غير مقروء' : 'لا توجد إشعارات جديدة',
+                      child: const Icon(Icons.notifications_active_outlined, color: AppTheme.primaryGreen),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'الإشعارات',
                             style: TextStyle(
-                                color: count > 0
-                                    ? AppTheme.primaryGreen
-                                    : AppTheme.textSecondary,
-                                fontSize: 13,
-                                fontFamily: 'Tajawal'),
-                          );
-                        },
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              color: AppTheme.textPrimary,
+                              fontFamily: 'Tajawal',
+                            ),
+                          ),
+                          Obx(() {
+                            final count = notificationService.unreadCount.value;
+                            return Text(
+                              count > 0 ? 'لديك $count إشعار جديد' : 'أنت على اطلاع دائم',
+                              style: TextStyle(
+                                  color: count > 0 ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                                  fontSize: 13,
+                                  fontWeight: count > 0 ? FontWeight.bold : FontWeight.normal,
+                                  fontFamily: 'Tajawal'),
+                            );
+                          }),
+                        ],
                       ),
-                    ],
-                  ),
-                  const Spacer(),
-                  _buildMarkAllReadButton(),
+                    ),
+                    _buildHeaderActions(),
+                  ],
+                ),
+              ),
+            ),
+            
+            // ─── Floating Glassmorphic Tabs ───
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppTheme.darkCard.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppTheme.glassBorder),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
                 ],
               ),
-            ),
-          ),
-
-          // ─── Tabs ───
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.glassBorder),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                borderRadius: BorderRadius.circular(12),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: AppTheme.greenGlow,
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    labelColor: Colors.white,
+                    unselectedLabelColor: AppTheme.textHint,
+                    labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Tajawal', fontSize: 13),
+                    unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontFamily: 'Tajawal', fontSize: 13),
+                    dividerColor: Colors.transparent,
+                    physics: const BouncingScrollPhysics(),
+                    splashFactory: NoSplash.splashFactory,
+                    overlayColor: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) => Colors.transparent),
+                    tabs: _tabs.map((t) => Tab(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(t, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ),
+                    )).toList(),
+                  ),
+                ),
               ),
-              indicatorPadding: const EdgeInsets.all(4),
-              labelColor: Colors.black,
-              unselectedLabelColor: AppTheme.textHint,
-              labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontFamily: 'Tajawal', fontSize: 13),
-              dividerColor: Colors.transparent,
-              tabs: _tabs.map((t) => Tab(text: t)).toList(),
             ),
-          ),
 
-          // ─── Content ───
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: _tabTypes.map((type) => _NotificationList(
-                userId: userId!,
-                typeFilter: type,
-              )).toList(),
+            // ─── Content ───
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                physics: const BouncingScrollPhysics(),
+                children: _tabFilters.map((filters) => _NotificationList(
+                  userId: userId!,
+                  allowedTypes: filters,
+                )).toList(),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildMarkAllReadButton() {
-    return GestureDetector(
-      onTap: () => notificationService.markAllAsRead(),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppTheme.primaryGreen.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.3)),
+  Widget _buildHeaderActions() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        MicroInteractions.hoverScale(
+          child: IconButton(
+            onPressed: () {
+              Get.dialog(
+                AlertDialog(
+                  title: const Text('حذف التنبيهات', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Tajawal')),
+                  content: const Text('هل تريد حذف جميع الإشعارات المقروءة؟', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Tajawal')),
+                  actions: [
+                    TextButton(onPressed: () => Get.back(), child: const Text('إلغاء', style: TextStyle(fontFamily: 'Tajawal'))),
+                    TextButton(
+                      onPressed: () {
+                        notificationService.deleteAllRead();
+                        Get.back();
+                        Get.snackbar('تم', 'تم حذف الإشعارات المقروءة', backgroundColor: AppTheme.successColor.withValues(alpha: 0.2));
+                      },
+                      child: const Text('حذف الكل', style: TextStyle(color: AppTheme.errorColor, fontFamily: 'Tajawal')),
+                    ),
+                  ],
+                ),
+              );
+            },
+            icon: const Icon(Icons.delete_sweep_outlined, color: AppTheme.errorColor),
+            tooltip: 'حذف المقروءة',
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.done_all_rounded, color: AppTheme.primaryGreen, size: 16),
-            const SizedBox(width: 6),
-            const Text('قراءة الكل',
-                style: TextStyle(
-                    color: AppTheme.primaryGreen,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'Tajawal')),
-          ],
+        const SizedBox(width: 4),
+        _buildMarkAllReadButton(),
+      ],
+    );
+  }
+
+  Widget _buildMarkAllReadButton() {
+    return MicroInteractions.hoverScale(
+      child: GestureDetector(
+        onTap: () {
+          notificationService.markAllAsRead();
+          Get.snackbar('تم', 'تم تحديد جميع الإشعارات كمقروءة',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
+            colorText: AppTheme.successColor,
+            duration: const Duration(seconds: 2));
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppTheme.glassBorder),
+            boxShadow: AppTheme.cardShadow,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.clear_all_rounded, color: AppTheme.textSecondary, size: 20),
+              const SizedBox(width: 6),
+              Text('مقروءة',
+                  style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Tajawal')),
+            ],
+          ),
         ),
       ),
     );
@@ -168,65 +274,103 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
 class _NotificationList extends StatelessWidget {
   final String userId;
-  final String? typeFilter;
+  final List<String>? allowedTypes;
 
-  const _NotificationList({required this.userId, this.typeFilter});
+  const _NotificationList({required this.userId, this.allowedTypes});
 
   @override
   Widget build(BuildContext context) {
+    // We only query by userId from the server.
+    // Client-side filtering applies the type conditions to prevent composite index errors.
     Query query = FirebaseFirestore.instance
         .collection('notifications')
-        .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true);
-
-    if (typeFilter != null) {
-      query = query.where('type', isEqualTo: typeFilter);
-    }
+        .where('userId', isEqualTo: userId);
 
     return StreamBuilder<QuerySnapshot>(
       stream: query.snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          // Check if it's an index error and show a graceful message
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, color: AppTheme.errorColor, size: 48),
-                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(color: AppTheme.errorColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  child: const Icon(Icons.error_outline, color: AppTheme.errorColor, size: 40),
+                ),
+                const SizedBox(height: 16),
                 Text('تعذّر تحميل الإشعارات',
-                    style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal')),
+                    style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal', fontWeight: FontWeight.bold)),
               ],
             ),
           );
         }
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-              child: CircularProgressIndicator(color: AppTheme.primaryGreen));
+          return const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen));
         }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+
+        List<DocumentSnapshot> docs = snapshot.data?.docs ?? [];
+        
+        // Client-side filtering & sorting
+        if (allowedTypes != null && allowedTypes!.isNotEmpty) {
+          docs = docs.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final type = data['type'] as String?;
+            return allowedTypes!.contains(type);
+          }).toList();
+        }
+
+        docs.sort((a, b) {
+          var dataA = a.data() as Map<String, dynamic>;
+          var dataB = b.data() as Map<String, dynamic>;
+          Timestamp? tA = dataA['createdAt'] as Timestamp?;
+          Timestamp? tB = dataB['createdAt'] as Timestamp?;
+          if (tA == null && tB == null) return 0;
+          if (tA == null) return 1;
+          if (tB == null) return -1;
+          return tB.compareTo(tA);
+        });
+
+        if (docs.isEmpty) {
           return _buildEmptyState();
         }
 
-        final docs = snapshot.data!.docs;
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
+          physics: const BouncingScrollPhysics(),
           itemCount: docs.length,
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
             final bool isRead = data['isRead'] ?? false;
-            final DateTime date =
-                (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+            final DateTime date = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
             final docRef = docs[index].reference;
 
-            return FadeInLeft(
-              delay: Duration(milliseconds: index * 60),
-              duration: const Duration(milliseconds: 350),
-              child: _NotificationCard(
-                data: data,
-                isRead: isRead,
-                date: date,
-                docRef: docRef,
+            return FadeInUp(
+              delay: Duration(milliseconds: (index % 10) * 50),
+              duration: const Duration(milliseconds: 400),
+              child: Dismissible(
+                key: Key(docs[index].id),
+                direction: DismissDirection.endToStart,
+                onDismissed: (_) {
+                  Get.find<NotificationService>().deleteNotification(docs[index].id);
+                },
+                background: Container(
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.only(left: 20),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.errorColor.withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Icon(Icons.delete_outline, color: Colors.white),
+                ),
+                child: _NotificationCard(
+                  data: data,
+                  isRead: isRead,
+                  date: date,
+                  docRef: docRef,
+                ),
               ),
             );
           },
@@ -236,31 +380,34 @@ class _NotificationList extends StatelessWidget {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryGreen.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
+    return FadeIn(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryGreen.withValues(alpha: 0.05),
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.1), width: 2),
+              ),
+              child: const Icon(Icons.notifications_active_outlined,
+                  size: 50, color: AppTheme.primaryGreen),
             ),
-            child: Icon(Icons.notifications_off_outlined,
-                size: 56, color: AppTheme.textHint.withValues(alpha: 0.5)),
-          ),
-          const SizedBox(height: 20),
-          Text('لا توجد إشعارات',
-              style: TextStyle(
-                  color: AppTheme.textHint,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Tajawal')),
-          const SizedBox(height: 6),
-          Text('ستظهر الإشعارات هنا عند وصولها',
-              style: TextStyle(
-                  color: AppTheme.textHint.withValues(alpha: 0.6), fontSize: 13, fontFamily: 'Tajawal')),
-        ],
+            const SizedBox(height: 24),
+            Text('لم تصلك إشعارات بعد',
+                style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: 'Tajawal')),
+            const SizedBox(height: 8),
+            Text('سوف تظهر التنبيهات المخصصة لك هنا',
+                style: TextStyle(
+                    color: AppTheme.textHint.withValues(alpha: 0.8), fontSize: 13, fontFamily: 'Tajawal')),
+          ],
+        ),
       ),
     );
   }
@@ -288,12 +435,31 @@ class _NotificationCard extends StatelessWidget {
     final icon = _typeIcon(type);
     final label = _typeLabel(type);
 
-    return GestureDetector(
-      onTap: () async {
+    return MicroInteractions.hoverScale(
+      child: GestureDetector(
+        onTap: () async {
         if (!isRead) {
           await docRef.update({'isRead': true});
         }
         _navigate(data);
+      },
+      onLongPress: () {
+        Get.dialog(
+          AlertDialog(
+            title: const Text('حذف الإشعار', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Tajawal')),
+            content: const Text('هل أنت متأكد من حذف هذا الإشعار؟', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Tajawal')),
+            actions: [
+              TextButton(onPressed: () => Get.back(), child: const Text('إلغاء', style: TextStyle(fontFamily: 'Tajawal'))),
+              TextButton(
+                onPressed: () {
+                  Get.find<NotificationService>().deleteNotification(docRef.id);
+                  Get.back();
+                },
+                child: const Text('حذف', style: TextStyle(color: AppTheme.errorColor, fontFamily: 'Tajawal')),
+              ),
+            ],
+          ),
+        );
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -436,7 +602,7 @@ class _NotificationCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 
   bool _canNavigate(String? type) {

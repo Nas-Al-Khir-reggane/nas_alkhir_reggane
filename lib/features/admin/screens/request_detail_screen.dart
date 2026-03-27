@@ -166,7 +166,7 @@ class RequestDetailScreen extends StatelessWidget {
       decoration: AppTheme.glassDecoration,
       child: Column(
         children: [
-          _buildInfoRow(Icons.category_outlined, 'نوع الخدمة', 
+          _buildInfoRow(AppConstants.getServiceIcon(req.typeName.isNotEmpty ? req.typeName : req.type), 'نوع الخدمة', 
             AppConstants.translateServiceType(req.typeName.isNotEmpty ? req.typeName : req.type)),
           const Divider(color: Colors.white10),
           
@@ -205,14 +205,21 @@ class RequestDetailScreen extends StatelessWidget {
                 );
               }
 
-              if (name.isEmpty) name = '(غير متوفر)';
-              if (phone.isEmpty) phone = '(غير متوفر)';
+              if (name.isEmpty || name == '(غير متوفر)') {
+                name = adminController.currentUser?.name ?? '(غير متوفر)';
+              }
+              if (phone.isEmpty || phone == '(غير متوفر)') {
+                phone = adminController.currentUser?.phone ?? '(غير متوفر)';
+              }
+              if (wilaya.isEmpty) wilaya = adminController.currentUser?.wilaya ?? '';
+              if (commune.isEmpty) commune = adminController.currentUser?.commune ?? '';
+              if (addressDetail.isEmpty) addressDetail = adminController.currentUser?.address ?? '';
               
               String fullAddress = '(غير متوفر)';
               List<String> addressParts = [];
               if (wilaya.isNotEmpty && wilaya != 'all') addressParts.add(wilaya);
               if (commune.isNotEmpty && commune != 'all') addressParts.add(commune);
-              if (addressDetail.isNotEmpty) addressParts.add(addressDetail);
+              if (addressDetail.isNotEmpty && addressDetail != '(غير متوفر)') addressParts.add(addressDetail);
               if (addressParts.isNotEmpty) fullAddress = addressParts.join(' - ');
 
               return Column(

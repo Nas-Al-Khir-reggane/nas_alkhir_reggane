@@ -26,15 +26,15 @@ class NotificationService extends GetxController {
     debugPrint('🔔 NotificationService: Controller Active');
     _initListeners();
     
-    // اختبار النظام بعد 5 ثوانٍ من التشغيل
-    if (kDebugMode) {
+    // اختبار النظام بعد 5 ثوانٍ من التشغيل - تم تعطيله بناء على طلب المستخدم
+    /* if (kDebugMode) {
       Future.delayed(const Duration(seconds: 5), () {
         _showLocalNotification(
           title: 'نظام الإشعارات يعمل ✅',
           body: 'تم فحص الاتصال وتفعيل التنبيهات بنجاح',
         );
       });
-    }
+    } */
 
     FirebaseAuth.instance.authStateChanges().listen((user) {
       _cleanupSubscriptions();
@@ -384,6 +384,33 @@ class NotificationService extends GetxController {
       await batch.commit();
     } catch (e) {
       debugPrint('❌ [NotificationService] markAllAsRead error: $e');
+    }
+  }
+
+  Future<void> deleteNotification(String docId) async {
+    try {
+      await FirebaseFirestore.instance.collection('notifications').doc(docId).delete();
+    } catch (e) {
+      debugPrint('❌ [NotificationService] deleteNotification error: $e');
+    }
+  }
+
+  Future<void> deleteAllRead() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+    try {
+      final read = await FirebaseFirestore.instance
+          .collection('notifications')
+          .where('userId', isEqualTo: userId)
+          .where('isRead', isEqualTo: true)
+          .get();
+      final batch = FirebaseFirestore.instance.batch();
+      for (var doc in read.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('❌ [NotificationService] deleteAllRead error: $e');
     }
   }
 }
