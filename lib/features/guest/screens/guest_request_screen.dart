@@ -7,6 +7,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../data/models/service_type_model.dart';
+import '../../../data/services/connectivity_service.dart';
+import '../../../data/services/offline_queue_service.dart';
 import '../../../data/services/notification_service.dart';
 
 class GuestRequestScreen extends StatefulWidget {
@@ -19,6 +21,9 @@ class GuestRequestScreen extends StatefulWidget {
 class _GuestRequestScreenState extends State<GuestRequestScreen> {
   int currentStep = 1;
   bool isLoading = false;
+
+  ConnectivityService get _connectivity => Get.find<ConnectivityService>();
+  OfflineQueueService get _queue => Get.find<OfflineQueueService>();
   
   // Step 1 Controllers
   final TextEditingController nameController = TextEditingController();
@@ -76,6 +81,20 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
         };
       }
 
+      if (!_connectivity.isOnline.value) {
+        final queueData = Map<String, dynamic>.from(requestData);
+        queueData['createdAt'] = '__serverTimestamp__';
+
+        await _queue.enqueue(
+          collection: 'guest_requests',
+          operation: 'add',
+          data: queueData,
+        );
+
+        Get.offNamed('/guest/success', arguments: {'refNumber': refNumber, 'phone': phoneController.text});
+        return;
+      }
+
       await FirebaseFirestore.instance.collection('guest_requests').add(requestData);
 
       await FirebaseFirestore.instance
@@ -83,7 +102,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
           .doc(selectedService!.id)
           .update({'popularity': FieldValue.increment(1)});
 
-      NotificationService.notifyAllAdmins(
+      await NotificationService.notifyAllAdmins(
         type: 'new_request',
         title: 'طلب خدمة جديد (زائر)',
         body: 'قام ${nameController.text} بطلب خدمة ${selectedService!.name}',
@@ -100,15 +119,16 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: AppTheme.darkBg,
+      backgroundColor: scheme.surface,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
             pinned: true,
             title: const Text('طلب خدمة (زائر)', style: TextStyle(fontFamily: 'Tajawal')),
             leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Get.back()),
-            backgroundColor: AppTheme.darkSurface,
+            backgroundColor: scheme.surface,
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(60),
               child: Padding(
@@ -535,32 +555,6 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
           decoration: AppTheme.inputDecoration(label, icon),
         ),
       ],
-    );
-  }
-
-  Widget _buildUrgencyOption(String id, String name, IconData icon, Color color) {
-    final isSelected = selectedUrgency == id;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => selectedUrgency = id),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.only(right: 6),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? color.withValues(alpha: 0.15) : AppTheme.darkCard,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isSelected ? color : AppTheme.glassBorder, width: isSelected ? 2 : 1)
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: isSelected ? color : AppTheme.textHint, size: 20),
-              const SizedBox(height: 4),
-              Text(name, style: TextStyle(color: isSelected ? color : AppTheme.textHint, fontSize: 11, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-            ],
-          ),
-        ),
-      ),
     );
   }
 

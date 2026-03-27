@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum UserRole { superAdmin, admin, worker, donor, beneficiary, guest }
+enum UserRole { superAdmin, admin, worker, donor, beneficiary, guest, chatModerator }
 
 extension UserRoleExtension on UserRole {
   String get displayName {
@@ -17,6 +17,8 @@ extension UserRoleExtension on UserRole {
         return 'مستفيد';
       case UserRole.guest:
         return 'زائر';
+      case UserRole.chatModerator:
+        return 'مشرف الدردشة';
     }
   }
 }
@@ -108,6 +110,7 @@ class UserModel {
       if (normalized == 'worker') return UserRole.worker;
       if (normalized == 'donor') return UserRole.donor;
       if (normalized == 'beneficiary') return UserRole.beneficiary;
+      if (normalized == 'chatmoderator' || normalized == 'chatmod') return UserRole.chatModerator;
       return UserRole.guest;
     }
 

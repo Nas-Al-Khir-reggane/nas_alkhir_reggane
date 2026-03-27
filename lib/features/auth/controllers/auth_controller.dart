@@ -129,6 +129,9 @@ class AuthController extends GetxController {
         case UserRole.beneficiary:
           Get.offAllNamed(AppRoutes.beneficiaryDashboard);
           break;
+        case UserRole.chatModerator:
+          Get.offAllNamed(AppRoutes.chatGroup);
+          break;
         case UserRole.guest:
           Get.offAllNamed(AppRoutes.guestRequest);
           break;

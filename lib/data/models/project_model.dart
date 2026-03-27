@@ -103,7 +103,7 @@ class ProjectModel {
       category: map['category'] ?? '',
       budget: (map['budget'] ?? 0.0).toDouble(),
       collected: (map['collected'] ?? 0.0).toDouble(),
-      deadline: map['deadline'] != null ? (map['deadline'] as Timestamp).toDate() : null,
+      deadline: map['deadline'] is Timestamp ? (map['deadline'] as Timestamp).toDate() : null,
       status: map['status'] ?? 'active',
       updates: List<ProjectUpdate>.from(map['updates']?.map((x) => ProjectUpdate.fromMap(x)) ?? []),
       createdAt: (map['createdAt'] is Timestamp) 

@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'dart:async';
 import 'dart:io';
@@ -26,12 +27,14 @@ class NotificationService extends GetxController {
     _initListeners();
     
     // اختبار النظام بعد 5 ثوانٍ من التشغيل
-    Future.delayed(const Duration(seconds: 5), () {
-      _showLocalNotification(
-        title: 'نظام الإشعارات يعمل ✅',
-        body: 'تم فحص الاتصال وتفعيل التنبيهات بنجاح',
-      );
-    });
+    if (kDebugMode) {
+      Future.delayed(const Duration(seconds: 5), () {
+        _showLocalNotification(
+          title: 'نظام الإشعارات يعمل ✅',
+          body: 'تم فحص الاتصال وتفعيل التنبيهات بنجاح',
+        );
+      });
+    }
 
     FirebaseAuth.instance.authStateChanges().listen((user) {
       _cleanupSubscriptions();
@@ -99,7 +102,9 @@ class NotificationService extends GetxController {
               
               try {
                  Get.find<SoundManager>().playNotification();
-              } catch (_) {}
+              } catch (e) {
+                debugPrint('❌ [NotificationService] Sound error: $e');
+              }
             }
           }
         }, onError: (error) {
@@ -209,7 +214,9 @@ class NotificationService extends GetxController {
           'fcmToken': token,
           'lastTokenUpdate': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
-      } catch (e) {}
+      } catch (e) {
+        debugPrint('❌ [NotificationService] Save token error: $e');
+      }
     }
   }
 
@@ -236,7 +243,7 @@ class NotificationService extends GetxController {
   }
 
   static void _handleBackgroundMessage(RemoteMessage message) {
-    Get.toNamed(message.data['type'] == 'new_request' ? '/adminRequests' : '/notifications');
+    Get.toNamed(message.data['type'] == 'new_request' ? '/admin/requests' : '/notifications');
   }
 
   static void _onNotificationTap(NotificationResponse response) {
@@ -293,7 +300,9 @@ class NotificationService extends GetxController {
           );
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('❌ [NotificationService] scheduleMonthlyReminders error: $e');
+    }
   }
 
   tz.TZDateTime _nextInstanceOfFirstOfMonth() {
@@ -333,16 +342,15 @@ class NotificationService extends GetxController {
     try {
       final admins = await FirebaseFirestore.instance
           .collection('users')
-          .where('role', whereIn: [
-            'admin', 'superAdmin', 'super_admin', 'sub_admin', 'subAdmin', 
-            'manager', 'general_manager', 'generalManager', 'director'
-          ])
+          .where('role', whereIn: ['admin', 'superAdmin'])
           .where('isApproved', isEqualTo: true)
           .get();
       for (var admin in admins.docs) {
         await sendNotification(userId: admin.id, type: type, title: title, body: body, data: data);
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('❌ [NotificationService] notifyAllAdmins error: $e');
+    }
   }
 
   static Future<void> notifyAllWorkers({required String title, required String body}) async {
@@ -355,7 +363,9 @@ class NotificationService extends GetxController {
       for (var worker in workers.docs) {
         await sendNotification(userId: worker.id, type: 'announcement', title: title, body: body);
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('❌ [NotificationService] notifyAllWorkers error: $e');
+    }
   }
 
   Future<void> markAllAsRead() async {
@@ -372,6 +382,8 @@ class NotificationService extends GetxController {
         batch.update(doc.reference, {'isRead': true});
       }
       await batch.commit();
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('❌ [NotificationService] markAllAsRead error: $e');
+    }
   }
 }

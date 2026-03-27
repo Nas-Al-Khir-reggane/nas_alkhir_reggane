@@ -6,6 +6,7 @@ import 'package:intl/intl.dart' as intl;
 import '../../../core/theme/app_theme.dart';
 import '../controllers/beneficiary_controller.dart';
 import '../../../data/models/service_type_model.dart';
+import '../../../data/models/user_model.dart';
 
 class NewRequestScreen extends StatefulWidget {
   const NewRequestScreen({super.key});
@@ -21,10 +22,21 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   String selectedUrgency = 'normal';
   final Map<String, TextEditingController> dynamicControllers = {};
   final TextEditingController descriptionController = TextEditingController();
+  
+  // Admin entry fields for other persons
+  final TextEditingController beneficiaryNameController = TextEditingController();
+  final TextEditingController beneficiaryPhoneController = TextEditingController();
+  final TextEditingController beneficiaryAddressController = TextEditingController();
+
+  bool get isAdmin => controller.currentBeneficiary.value?.role == UserRole.admin || 
+                   controller.currentBeneficiary.value?.role == UserRole.superAdmin;
 
   @override
   void dispose() {
     descriptionController.dispose();
+    beneficiaryNameController.dispose();
+    beneficiaryPhoneController.dispose();
+    beneficiaryAddressController.dispose();
     for (var ctrl in dynamicControllers.values) {
       ctrl.dispose();
     }
@@ -68,6 +80,12 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       'description': descriptionController.text,
       'details': details,
     };
+
+    if (isAdmin && beneficiaryNameController.text.isNotEmpty) {
+      requestData['beneficiaryName'] = beneficiaryNameController.text;
+      requestData['beneficiaryPhone'] = beneficiaryPhoneController.text;
+      requestData['beneficiaryAddress'] = beneficiaryAddressController.text;
+    }
 
     controller.submitRequest(requestData);
   }
@@ -131,6 +149,33 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         padding: EdgeInsets.symmetric(vertical: 16),
                         child: Divider(color: AppTheme.glassBorder),
                       ),
+
+                      if (isAdmin) ...[
+                        Text('بيانات المستفيد (يدوي)', style: TextStyle(color: AppTheme.primaryGreen, fontSize: 14, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: beneficiaryNameController,
+                          style: TextStyle(color: AppTheme.textPrimary),
+                          decoration: AppTheme.inputDecoration('اسم المستفيد الكامل...', Icons.person_add_alt_1_rounded),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: beneficiaryPhoneController,
+                          keyboardType: TextInputType.phone,
+                          style: TextStyle(color: AppTheme.textPrimary),
+                          decoration: AppTheme.inputDecoration('رقم هاتف المستفيد...', Icons.phone_android_rounded),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: beneficiaryAddressController,
+                          style: TextStyle(color: AppTheme.textPrimary),
+                          decoration: AppTheme.inputDecoration('عنوان المستفيد...', Icons.location_city_rounded),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Divider(color: AppTheme.glassBorder),
+                        ),
+                      ],
                       
                       ...selectedService!.fields.map((field) => Padding(
                         padding: const EdgeInsets.only(bottom: 20),
@@ -250,6 +295,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           }
           
           if (isDateTime || isTimeOnly) {
+            if (!mounted) return;
             time = await showTimePicker(
               context: context,
               initialTime: TimeOfDay.now(),
@@ -292,7 +338,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     
     if (isBloodType) {
       return DropdownButtonFormField<String>(
-        value: dynamicControllers[field]!.text.isEmpty ? null : dynamicControllers[field]!.text,
+        key: ValueKey('bloodType_${dynamicControllers[field]!.text}'),
+        initialValue: dynamicControllers[field]!.text.isEmpty ? null : dynamicControllers[field]!.text,
         decoration: AppTheme.inputDecoration('اختر فصيلة الدم...', _getFieldIcon(field)),
         dropdownColor: Theme.of(context).colorScheme.surface,
         style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),

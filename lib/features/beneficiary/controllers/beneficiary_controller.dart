@@ -99,14 +99,18 @@ class BeneficiaryController extends GetxController {
 
     isLoading.value = true;
     try {
+      final user = currentBeneficiary.value;
+      final fallbackName = (user != null) ? user.email.split('@').first : 'مدير';
       final requestData = {
         ...data,
-        'requesterId': currentBeneficiary.value?.id,
-        'requesterName': currentBeneficiary.value?.name,
-        'phone': currentBeneficiary.value?.phone,
-        'wilaya': currentBeneficiary.value?.wilaya,
-        'commune': currentBeneficiary.value?.commune, // إضافة البلدية من بيانات المستخدم
-        'address': currentBeneficiary.value?.address,
+        'requesterId': user?.id ?? Get.find<AuthController>().currentUser.value?.id ?? '',
+        'requesterName': (data['beneficiaryName'] != null && data['beneficiaryName'].toString().isNotEmpty) 
+            ? data['beneficiaryName'] 
+            : ((user != null && user.name.isNotEmpty) ? user.name : fallbackName),
+        'phone': data['beneficiaryPhone'] ?? user?.phone ?? '',
+        'wilaya': user?.wilaya ?? '',
+        'commune': user?.commune ?? '',
+        'address': data['beneficiaryAddress'] ?? user?.address ?? '',
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
