@@ -11,6 +11,7 @@ import '../../../core/routes/app_routes.dart';
 import '../controllers/donor_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
 import 'donate_screen.dart';
+import 'my_subscriptions_screen.dart';
 import '../../../data/models/project_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../admin/controllers/project_controller.dart';
@@ -83,6 +84,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
           children: [
             _buildHomeTab(),
             _buildProjectsTab(),
+            const MySubscriptionsScreen(),
             const DonateScreen(),
           ],
         ),
@@ -110,6 +112,11 @@ class _DonorDashboardState extends State<DonorDashboard> {
                 icon: Icon(Icons.folder_outlined),
                 activeIcon: Icon(Icons.folder),
                 label: 'المشاريع',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.child_care_outlined),
+                activeIcon: Icon(Icons.child_care),
+                label: 'كفالاتي',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.volunteer_activism),
@@ -226,10 +233,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
             ],
           ),
           const SizedBox(height: 24),
-
-          // قسم تواصل مع الإدارة الجديد
           _buildAdminTeamSection(),
-
           const SizedBox(height: 24),
           Obx(() => donorController.donationsByProject.isNotEmpty
               ? Column(
@@ -339,7 +343,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       AppTheme.gradientButton(
                         text: 'تبرع الآن',
                         icon: Icons.favorite,
-                        onPressed: () => setState(() => _currentIndex = 2),
+                        onPressed: () => setState(() => _currentIndex = 3),
                       ),
                     ],
                   ),
@@ -758,14 +762,39 @@ class _DonorDashboardState extends State<DonorDashboard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(project.name,
-                            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontSize: 17, height: 1.2)),
+                        Row( // ✨ FIXED: Added Row to avoid overlapping with name
+                          children: [
+                            Expanded(
+                              child: Text(project.name,
+                                    style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontSize: 17, height: 1.2)),
+                            ),
+                            if (project.isSubscription) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(0.9),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text('تبرع شهري', style: TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.bold)),
+                                    SizedBox(width: 2),
+                                    Icon(Icons.cached_rounded, color: Colors.black, size: 12),
+                                  ],
+                                ),
+                              ),
+                            ]
+                          ],
+                        ),
                         const SizedBox(height: 4),
                         Text(cat['name'] as String,
                             style: TextStyle(color: categoryColor, fontSize: 12, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   AppTheme.statusBadge(project.status),
                 ],
               ),
@@ -887,7 +916,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   child: GestureDetector(
                     onTap: () {
                       donorController.preSelectProject(project.id, project.name);
-                      setState(() => _currentIndex = 2);
+                      setState(() => _currentIndex = 3);
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -896,13 +925,13 @@ class _DonorDashboardState extends State<DonorDashboard> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: AppTheme.greenGlow,
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.volunteer_activism, color: Colors.black, size: 18),
-                          SizedBox(width: 6),
-                          Text('تبرع لهذا المشروع',
-                              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800, fontSize: 13)),
+                          Icon(project.isSubscription ? Icons.repeat : Icons.volunteer_activism, color: Colors.black, size: 18),
+                          const SizedBox(width: 6),
+                          Text(project.isSubscription ? 'التزام شهري' : 'تبرع لهذا المشروع',
+                              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w800, fontSize: 13)),
                         ],
                       ),
                     ),
@@ -1022,7 +1051,6 @@ class _DonorDashboardState extends State<DonorDashboard> {
   }
 }
 
-// ===== Custom Painter for Circular Arc Progress =====
 class _ArcProgressPainter extends CustomPainter {
   final double progress;
   final Color color;
@@ -1035,10 +1063,9 @@ class _ArcProgressPainter extends CustomPainter {
     const strokeWidth = 10.0;
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width / 2) - strokeWidth / 2;
-    const startAngle = -2.356; // -135 degrees in radians
-    const sweepAngle = 4.712;  // 270 degrees in radians
+    const startAngle = -2.356; 
+    const sweepAngle = 4.712;  
 
-    // Background arc
     final bgPaint = Paint()
       ..color = backgroundColor
       ..strokeWidth = strokeWidth
@@ -1047,7 +1074,6 @@ class _ArcProgressPainter extends CustomPainter {
     canvas.drawArc(Rect.fromCircle(center: center, radius: radius), startAngle, sweepAngle, false, bgPaint);
 
     if (progress > 0) {
-      // Foreground arc
       final fgPaint = Paint()
         ..color = color
         ..strokeWidth = strokeWidth
@@ -1056,7 +1082,6 @@ class _ArcProgressPainter extends CustomPainter {
       canvas.drawArc(
           Rect.fromCircle(center: center, radius: radius), startAngle, sweepAngle * progress, false, fgPaint);
 
-      // Glow effect
       final glowPaint = Paint()
         ..color = color.withValues(alpha: 0.3)
         ..strokeWidth = strokeWidth + 4

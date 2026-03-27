@@ -27,6 +27,7 @@ class UserModel {
   final String email;
   final String phone;
   final String wilaya;
+  final String commune; // حقل البلدية الجديد
   final String address;
   final UserRole role;
   final List<String> permissions;
@@ -52,6 +53,7 @@ class UserModel {
     required this.email,
     required this.phone,
     required this.wilaya,
+    this.commune = '',
     required this.address,
     required this.role,
     this.permissions = const [],
@@ -77,6 +79,7 @@ class UserModel {
       'email': email,
       'phone': phone,
       'wilaya': wilaya,
+      'commune': commune,
       'address': address,
       'role': role.name,
       'permissions': permissions,
@@ -97,14 +100,26 @@ class UserModel {
   }
 
   factory UserModel.fromMap(Map<String, dynamic> map, [String? docId]) {
+    UserRole getRoleFromString(String? roleStr) {
+      if (roleStr == null) return UserRole.guest;
+      String normalized = roleStr.replaceAll('_', '').toLowerCase();
+      if (normalized == 'superadmin') return UserRole.superAdmin;
+      if (normalized == 'admin' || normalized == 'subadmin') return UserRole.admin;
+      if (normalized == 'worker') return UserRole.worker;
+      if (normalized == 'donor') return UserRole.donor;
+      if (normalized == 'beneficiary') return UserRole.beneficiary;
+      return UserRole.guest;
+    }
+
     return UserModel(
       id: docId ?? map['id'] ?? '',
       name: map['name'] ?? '',
       email: map['email'] ?? '',
       phone: map['phone'] ?? '',
       wilaya: map['wilaya'] ?? '',
+      commune: map['commune'] ?? '',
       address: map['address'] ?? '',
-      role: UserRole.values.firstWhere((e) => e.name == map['role'], orElse: () => UserRole.guest),
+      role: getRoleFromString(map['role']),
       permissions: List<String>.from(map['permissions'] ?? []),
       isApproved: map['isApproved'] ?? false,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -128,6 +143,7 @@ class UserModel {
     String? email,
     String? phone,
     String? wilaya,
+    String? commune,
     String? address,
     UserRole? role,
     List<String>? permissions,
@@ -151,6 +167,7 @@ class UserModel {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       wilaya: wilaya ?? this.wilaya,
+      commune: commune ?? this.commune,
       address: address ?? this.address,
       role: role ?? this.role,
       permissions: permissions ?? this.permissions,

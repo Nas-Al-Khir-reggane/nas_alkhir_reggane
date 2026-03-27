@@ -41,46 +41,46 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyB8Hh6Tav5nAbARQaNnpFQVfZjQGa9f8Ek',
-    appId: '1:867183793858:web:6bdc730e0fca28629dcd5b',
-    messagingSenderId: '867183793858',
-    projectId: 'nas-al-kheir',
-    authDomain: 'nas-al-kheir.firebaseapp.com',
-    storageBucket: 'nas-al-kheir.firebasestorage.app',
+    apiKey: 'AIzaSyDZGcs0B5Od2jceKoB7IhJP4HW5geW0ric',
+    appId: '1:197382034070:web:7f45daf168efe78d5768b7',
+    messagingSenderId: '197382034070',
+    projectId: 'nas-al-kheir-app',
+    authDomain: 'nas-al-kheir-app.firebaseapp.com',
+    storageBucket: 'nas-al-kheir-app.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCy34qxYiY_Mi3JoijYXI0id0ZZ61HHXrA',
-    appId: '1:867183793858:android:f8513a47ca64d0319dcd5b',
-    messagingSenderId: '867183793858',
-    projectId: 'nas-al-kheir',
-    storageBucket: 'nas-al-kheir.firebasestorage.app',
+    apiKey: 'AIzaSyA3TA21W0g0l-VQZYw-vh4ZyAVjIvA0g8w',
+    appId: '1:197382034070:android:8a72a415ac4e82405768b7',
+    messagingSenderId: '197382034070',
+    projectId: 'nas-al-kheir-app',
+    storageBucket: 'nas-al-kheir-app.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCwGWFb8iqOsf6Gm4xl1OZkjgpUNth5B44',
-    appId: '1:867183793858:ios:daf3840c152f63b99dcd5b',
-    messagingSenderId: '867183793858',
-    projectId: 'nas-al-kheir',
-    storageBucket: 'nas-al-kheir.firebasestorage.app',
+    apiKey: 'AIzaSyCTpilmU6N16VomvrccinUe6V-wFKTe84k',
+    appId: '1:197382034070:ios:0f53add86a41b0fa5768b7',
+    messagingSenderId: '197382034070',
+    projectId: 'nas-al-kheir-app',
+    storageBucket: 'nas-al-kheir-app.firebasestorage.app',
     iosBundleId: 'com.nasalkheir.nasAlKheir',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCwGWFb8iqOsf6Gm4xl1OZkjgpUNth5B44',
-    appId: '1:867183793858:ios:daf3840c152f63b99dcd5b',
-    messagingSenderId: '867183793858',
-    projectId: 'nas-al-kheir',
-    storageBucket: 'nas-al-kheir.firebasestorage.app',
+    apiKey: 'AIzaSyCTpilmU6N16VomvrccinUe6V-wFKTe84k',
+    appId: '1:197382034070:ios:0f53add86a41b0fa5768b7',
+    messagingSenderId: '197382034070',
+    projectId: 'nas-al-kheir-app',
+    storageBucket: 'nas-al-kheir-app.firebasestorage.app',
     iosBundleId: 'com.nasalkheir.nasAlKheir',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyB8Hh6Tav5nAbARQaNnpFQVfZjQGa9f8Ek',
-    appId: '1:867183793858:web:f759bc4cadb3e3109dcd5b',
-    messagingSenderId: '867183793858',
-    projectId: 'nas-al-kheir',
-    authDomain: 'nas-al-kheir.firebaseapp.com',
-    storageBucket: 'nas-al-kheir.firebasestorage.app',
+    apiKey: 'AIzaSyDZGcs0B5Od2jceKoB7IhJP4HW5geW0ric',
+    appId: '1:197382034070:web:50241b5a7a822ea65768b7',
+    messagingSenderId: '197382034070',
+    projectId: 'nas-al-kheir-app',
+    authDomain: 'nas-al-kheir-app.firebaseapp.com',
+    storageBucket: 'nas-al-kheir-app.firebasestorage.app',
   );
 }

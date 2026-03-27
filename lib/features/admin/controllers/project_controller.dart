@@ -1,7 +1,14 @@
+import 'dart:ui' as ui;
+import 'package:nas_al_kheir/core/widgets/project_share_card.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../data/repositories/project_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:share_plus/share_plus.dart';
+import 'dart:typed_data';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:screenshot/screenshot.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/project_model.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -21,62 +28,9 @@ class ProjectController extends GetxController {
   OfflineQueueService get _queue => Get.find<OfflineQueueService>();
   ConnectivityService get _connectivity => Get.find<ConnectivityService>();
 
-  static const List<Map<String, dynamic>> categories = [
-    {
-      'id': 'mosque',
-      'name': 'عمارة المساجد وترميمها',
-      'icon': Icons.mosque,
-      'color': Color(0xFF00695C), // أخضر إسلامي عميق
-    },
-    {
-      'id': 'orphan',
-      'name': 'كفالة الأيتام والتعليم',
-      'icon': Icons.menu_book,
-      'color': Color(0xFF1565C0), // أزرق تعليمي
-    },
-    {
-      'id': 'food',
-      'name': 'إطعام الطعام والطرود',
-      'icon': Icons.shopping_basket,
-      'color': Color(0xFF2E7D32), // أخضر النماء
-    },
-    {
-      'id': 'water',
-      'name': 'سقي الماء وحفر الآبار',
-      'icon': Icons.water_drop,
-      'color': Color(0xFF0277BD), // أزرق مائي
-    },
-    {
-      'id': 'medical',
-      'name': 'مداواة المرضى والإسعاف',
-      'icon': Icons.healing,
-      'color': Color(0xFFC62828), // أحمر الرحمة
-    },
-    {
-      'id': 'housing',
-      'name': 'تفريج كرب الأسر والبيوت',
-      'icon': Icons.home,
-      'color': Color(0xFF795548), // بني ترابي للأرض
-    },
-    {
-      'id': 'funeral',
-      'name': 'إكرام الموتى (نقل الجنائز)',
-      'icon': Icons.airport_shuttle,
-      'color': Color(0xFF4527A0), // بنفسجي وقور
-    },
-    {
-      'id': 'zakat',
-      'name': 'زكاة المال والصدقات',
-      'icon': Icons.savings,
-      'color': Color(0xFFD4AF37), // لون الذهب والزكاة
-    },
-    {
-      'id': 'general',
-      'name': 'أبواب الخير العامة',
-      'icon': Icons.volunteer_activism,
-      'color': Color(0xFF546E7A),
-    },
-  ];
+  final ProjectRepository _repository = ProjectRepository();
+
+  static const List<Map<String, dynamic>> categories = AppConstants.projectCategories;
 
   @override
   void onInit() {
@@ -86,15 +40,8 @@ class ProjectController extends GetxController {
   }
 
   void listenToProjects() {
-    FirebaseFirestore.instance
-        .collection(AppConstants.projectsCollection)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen((snap) {
-      allProjects.value = snap.docs.map((d) {
-        final data = d.data();
-        return ProjectModel.fromMap(data, d.id);
-      }).toList();
+    _repository.listenToProjects().listen((projects) {
+      allProjects.value = projects;
       filterProjects();
     });
   }
@@ -123,6 +70,8 @@ class ProjectController extends GetxController {
     required String description,
     required double budget,
     required DateTime endDate,
+    bool isSubscription = false, 
+    bool isMonthlyGoal = false, 
   }) async {
     final data = {
       'name': name,
@@ -137,6 +86,8 @@ class ProjectController extends GetxController {
       'donorsCount': 0,
       'assignedWorkers': [],
       'volunteers': [],
+      'isSubscription': isSubscription, 
+      'isMonthlyGoal': isMonthlyGoal, 
     };
 
     if (!_connectivity.isOnline.value) {
@@ -144,21 +95,35 @@ class ProjectController extends GetxController {
       queueData['createdAt'] = '__serverTimestamp__';
       queueData['endDate'] = endDate.toIso8601String();
       await _queue.enqueue(collection: AppConstants.projectsCollection, operation: 'add', data: queueData);
+      
+      Get.back(); // إغلاق الصفحة أولاً
       Get.snackbar('💾 تم الحفظ', 'سيتم نشر المشروع عند استعادة الاتصال',
           backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2),
-          colorText: AppTheme.warningColor, snackPosition: SnackPosition.BOTTOM);
+          colorText: AppTheme.warningColor, 
+          snackPosition: SnackPosition.BOTTOM,
+          margin: const EdgeInsets.all(12),
+          borderRadius: 16);
       return;
     }
 
     try {
-      await FirebaseFirestore.instance.collection(AppConstants.projectsCollection).add(data);
+      isLoading.value = true;
+      await _repository.addProject(data);
+      
+      Get.back(); // إغلاق الصفحة أولاً
       Get.snackbar('✅ تم', 'تم إضافة المشروع بنجاح',
           backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
-          colorText: AppTheme.successColor);
+          colorText: AppTheme.successColor,
+          snackPosition: SnackPosition.BOTTOM,
+          margin: const EdgeInsets.all(12),
+          borderRadius: 16,
+          duration: const Duration(seconds: 4));
     } catch (e) {
       Get.snackbar('خطأ', 'فشل إضافة المشروع: $e',
           backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2),
           colorText: AppTheme.errorColor);
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -174,7 +139,11 @@ class ProjectController extends GetxController {
       return;
     }
     try {
-      await FirebaseFirestore.instance.collection(AppConstants.projectsCollection).doc(id).update(updateData);
+      await _repository.updateProject(id, updateData);
+      Get.snackbar('✅ تم التحديث', 'تم حفظ التعديلات بنجاح',
+          backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
+          colorText: AppTheme.successColor,
+          snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
       Get.snackbar('خطأ', 'فشل تحديث المشروع: $e');
     }
@@ -182,8 +151,7 @@ class ProjectController extends GetxController {
 
   Future<void> toggleProjectStatus(String id, String currentStatus) async {
     try {
-      final newStatus = currentStatus == 'active' ? 'paused' : 'active';
-      await FirebaseFirestore.instance.collection(AppConstants.projectsCollection).doc(id).update({'status': newStatus});
+      await _repository.toggleProjectStatus(id, currentStatus);
     } catch (e) {
       Get.snackbar('خطأ', 'فشل تغيير حالة المشروع: $e');
     }
@@ -198,7 +166,7 @@ class ProjectController extends GetxController {
       return;
     }
     try {
-      await FirebaseFirestore.instance.collection(AppConstants.projectsCollection).doc(id).delete();
+      await _repository.deleteProject(id);
       Get.snackbar('🗑️ تم الحذف', 'تم حذف المشروع',
           backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2),
           colorText: AppTheme.errorColor);
@@ -209,9 +177,7 @@ class ProjectController extends GetxController {
 
   Future<void> assignWorkerToProject(String projectId, String workerId) async {
     try {
-      await FirebaseFirestore.instance.collection(AppConstants.projectsCollection).doc(projectId).update({
-        'assignedWorkers': FieldValue.arrayUnion([workerId])
-      });
+      await _repository.assignWorkerToProject(projectId, workerId);
     } catch (e) {
       Get.snackbar('خطأ', 'فشل إسناد العامل: $e');
     }
@@ -219,9 +185,7 @@ class ProjectController extends GetxController {
 
   Future<void> unassignWorkerFromProject(String projectId, String workerId) async {
     try {
-      await FirebaseFirestore.instance.collection(AppConstants.projectsCollection).doc(projectId).update({
-        'assignedWorkers': FieldValue.arrayRemove([workerId])
-      });
+      await _repository.unassignWorkerFromProject(projectId, workerId);
     } catch (e) {
       Get.snackbar('خطأ', 'فشل إزالة العامل: $e');
     }
@@ -238,6 +202,48 @@ ${project.description}
 تبرع الآن وساهم في هذا المشروع الخيري
     ''';
     await Share.share(text);
+  }
+
+  Future<void> shareProjectImage(ProjectModel project, Color color, String catName) async {
+    final screenshotController = ScreenshotController();
+    
+    try {
+      // توليد الصورة من ويدجت البطاقة الاحترافية (خارج الشجرة)
+      final Uint8List? imageBytes = await screenshotController.captureFromWidget(
+        Material(
+          color: Colors.transparent,
+          child: Directionality(
+            textDirection: ui.TextDirection.rtl,
+            child: MediaQuery(
+              data: const MediaQueryData(size: Size(400, 1000), devicePixelRatio: 1.0),
+              child: ProjectShareCard(
+                project: project,
+                categoryColor: color,
+                categoryName: catName,
+              ),
+            ),
+          ),
+        ),
+        delay: const Duration(milliseconds: 100),
+      );
+
+      if (imageBytes != null) {
+        await _saveAndShareImage(imageBytes, 'project_${project.id}.png');
+      }
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل توليد بطاقة المشاركة: $e');
+    }
+  }
+
+  Future<void> _saveAndShareImage(Uint8List bytes, String fileName) async {
+    final directory = await getTemporaryDirectory();
+    final imagePath = await File('${directory.path}/$fileName').create();
+    await imagePath.writeAsBytes(bytes);
+
+    await Share.shareXFiles(
+      [XFile(imagePath.path)],
+      text: 'ساهم معنا في هذا المشروع الخيري 🌿 #ناس_الخير',
+    );
   }
 
   // إحصائيات

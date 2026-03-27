@@ -1,45 +1,37 @@
 {
   "project_info": {
-    "project_number": "867183793858",
-    "project_id": "nas-al-kheir",
-    "storage_bucket": "nas-al-kheir.firebasestorage.app"
+    "project_number": "197382034070",
+    "project_id": "nas-al-kheir-app",
+    "storage_bucket": "nas-al-kheir-app.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:867183793858:android:f8513a47ca64d0319dcd5b",
+        "mobilesdk_app_id": "1:197382034070:android:8a72a415ac4e82405768b7",
         "android_client_info": {
           "package_name": "com.nasalkheir.nas_al_kheir"
         }
       },
       "oauth_client": [
         {
-          "client_id": "867183793858-ri5bpudcma64jmjrebp1i2kk9nqinqnu.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.nasalkheir.nas_al_kheir",
-            "certificate_hash": "4e150b620c42e280a368d60237a5be568bafa98f"
-          }
-        },
-        {
-          "client_id": "867183793858-1pra87ekn1jrsnf9emvlaj6cqvbpdj17.apps.googleusercontent.com",
+          "client_id": "197382034070-uel8i4gfhs5f2r7ao1v2girk93lfho85.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCy34qxYiY_Mi3JoijYXI0id0ZZ61HHXrA"
+          "current_key": "AIzaSyA3TA21W0g0l-VQZYw-vh4ZyAVjIvA0g8w"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "867183793858-1pra87ekn1jrsnf9emvlaj6cqvbpdj17.apps.googleusercontent.com",
+              "client_id": "197382034070-uel8i4gfhs5f2r7ao1v2girk93lfho85.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "867183793858-f2rmt324tqtpkiijnvirk93mf7tnjuii.apps.googleusercontent.com",
+              "client_id": "197382034070-gb9lh5blslcrb006iuou799h52pcp91v.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
                 "bundle_id": "com.nasalkheir.nasAlKheir"

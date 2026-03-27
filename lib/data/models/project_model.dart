@@ -52,6 +52,8 @@ class ProjectModel {
   final String createdBy;
   final int donorsCount;
   final List<String> assignedWorkers;
+  final bool isSubscription; // حقل التبرع الدائم
+  final bool isMonthlyGoal; // ✨ NEW: حقل تمييز الهدف الشهري عن الإجمالي
 
   ProjectModel({
     required this.id,
@@ -67,6 +69,8 @@ class ProjectModel {
     required this.createdBy,
     this.donorsCount = 0,
     this.assignedWorkers = const [],
+    this.isSubscription = false,
+    this.isMonthlyGoal = false, // ✨ NEW
   });
 
   double get progressPercentage => budget > 0 ? (collected / budget * 100).clamp(0, 100) : 0;
@@ -86,6 +90,8 @@ class ProjectModel {
       'createdBy': createdBy,
       'donorsCount': donorsCount,
       'assignedWorkers': assignedWorkers,
+      'isSubscription': isSubscription,
+      'isMonthlyGoal': isMonthlyGoal, // ✨ NEW
     };
   }
 
@@ -100,12 +106,14 @@ class ProjectModel {
       deadline: map['deadline'] != null ? (map['deadline'] as Timestamp).toDate() : null,
       status: map['status'] ?? 'active',
       updates: List<ProjectUpdate>.from(map['updates']?.map((x) => ProjectUpdate.fromMap(x)) ?? []),
-      createdAt: map['createdAt'] is Timestamp 
+      createdAt: (map['createdAt'] is Timestamp) 
           ? (map['createdAt'] as Timestamp).toDate() 
           : DateTime.now(),
       createdBy: map['createdBy'] ?? '',
       donorsCount: map['donorsCount'] ?? 0,
       assignedWorkers: List<String>.from(map['assignedWorkers'] ?? []),
+      isSubscription: map['isSubscription'] ?? false,
+      isMonthlyGoal: map['isMonthlyGoal'] ?? false, // ✨ NEW
     );
   }
 
@@ -123,6 +131,8 @@ class ProjectModel {
     String? createdBy,
     int? donorsCount,
     List<String>? assignedWorkers,
+    bool? isSubscription,
+    bool? isMonthlyGoal, // ✨ NEW
   }) {
     return ProjectModel(
       id: id ?? this.id,
@@ -138,6 +148,8 @@ class ProjectModel {
       createdBy: createdBy ?? this.createdBy,
       donorsCount: donorsCount ?? this.donorsCount,
       assignedWorkers: assignedWorkers ?? this.assignedWorkers,
+      isSubscription: isSubscription ?? this.isSubscription,
+      isMonthlyGoal: isMonthlyGoal ?? this.isMonthlyGoal, // ✨ NEW
     );
   }
 }

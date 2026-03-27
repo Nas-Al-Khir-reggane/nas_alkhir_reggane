@@ -55,14 +55,18 @@ class AppTheme {
     end: Alignment.bottomCenter,
   );
 
-  // === الظلال ===
-  static List<BoxShadow> get cardShadow => [
-    BoxShadow(
-      color: Get.isDarkMode ? Colors.black.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.1),
-      blurRadius: 10,
-      offset: const Offset(0, 4),
-    ),
+  // === نظام الظلال والعمق (Shadows & Depth) ===
+  static List<BoxShadow> get shadowSm => [
+    BoxShadow(color: Get.isDarkMode ? Colors.black.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2)),
   ];
+  static List<BoxShadow> get shadowMd => [
+    BoxShadow(color: Get.isDarkMode ? Colors.black.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4)),
+  ];
+  static List<BoxShadow> get shadowLg => [
+    BoxShadow(color: Get.isDarkMode ? Colors.black.withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.12), blurRadius: 24, offset: const Offset(0, 8)),
+  ];
+
+  static List<BoxShadow> get cardShadow => shadowMd;
 
   static List<BoxShadow> greenGlow = [
     BoxShadow(color: const Color(0xFF00C853).withValues(alpha: 0.25), blurRadius: 20, spreadRadius: 2),
@@ -90,6 +94,46 @@ class AppTheme {
   static const double radiusMedium = 20;
   static const double radiusLarge = 28;
 
+  // === نظام التباعد (Spacing System) ===
+  static const double spacingXs = 4.0;
+  static const double spacingS = 8.0;
+  static const double spacingM = 16.0;
+  static const double spacingL = 24.0;
+  static const double spacingXl = 32.0;
+  static const double spacingXxl = 48.0;
+
+  // === الحركات والتفاعلات (Animations & Micro-interactions) ===
+  static const Duration durationFast = Duration(milliseconds: 150);
+  static const Duration durationNormal = Duration(milliseconds: 300);
+  static const Curve curveDefault = Curves.easeInOut;
+
+  // === الاستجابية (Responsiveness) ===
+  static double getScreenPadding(BuildContext context) {
+    double w = MediaQuery.of(context).size.width;
+    if (w >= 1024) return w * 0.25; // هوامش عريضة للديسك توب
+    if (w >= 768) return w * 0.15;  // هوامش متوسطة للتابلت
+    return spacingM;                // الديفولت للموبايل (16px)
+  }
+
+  // === التايبوغرافي (Typography) ===
+  static TextTheme get _baseTextTheme => const TextTheme(
+        displayLarge: TextStyle(fontFamily: 'Tajawal', fontSize: 32, fontWeight: FontWeight.w900, height: 1.2, letterSpacing: -0.5),
+        displayMedium: TextStyle(fontFamily: 'Tajawal', fontSize: 28, fontWeight: FontWeight.w800, height: 1.2, letterSpacing: -0.5),
+        displaySmall: TextStyle(fontFamily: 'Tajawal', fontSize: 24, fontWeight: FontWeight.w800, height: 1.3, letterSpacing: -0.5),
+        headlineLarge: TextStyle(fontFamily: 'Tajawal', fontSize: 22, fontWeight: FontWeight.w700, height: 1.3),
+        headlineMedium: TextStyle(fontFamily: 'Tajawal', fontSize: 20, fontWeight: FontWeight.w700, height: 1.3),
+        headlineSmall: TextStyle(fontFamily: 'Tajawal', fontSize: 18, fontWeight: FontWeight.w700, height: 1.3),
+        titleLarge: TextStyle(fontFamily: 'Tajawal', fontSize: 16, fontWeight: FontWeight.w700, height: 1.4, letterSpacing: 0.1),
+        titleMedium: TextStyle(fontFamily: 'Tajawal', fontSize: 14, fontWeight: FontWeight.w600, height: 1.4, letterSpacing: 0.1),
+        titleSmall: TextStyle(fontFamily: 'Tajawal', fontSize: 12, fontWeight: FontWeight.w600, height: 1.4, letterSpacing: 0.1),
+        bodyLarge: TextStyle(fontFamily: 'Tajawal', fontSize: 16, fontWeight: FontWeight.w400, height: 1.6),
+        bodyMedium: TextStyle(fontFamily: 'Tajawal', fontSize: 14, fontWeight: FontWeight.w400, height: 1.6),
+        bodySmall: TextStyle(fontFamily: 'Tajawal', fontSize: 12, fontWeight: FontWeight.w400, height: 1.6),
+        labelLarge: TextStyle(fontFamily: 'Tajawal', fontSize: 14, fontWeight: FontWeight.w700, height: 1.2, letterSpacing: 0.5),
+        labelMedium: TextStyle(fontFamily: 'Tajawal', fontSize: 12, fontWeight: FontWeight.w600, height: 1.2, letterSpacing: 0.5),
+        labelSmall: TextStyle(fontFamily: 'Tajawal', fontSize: 10, fontWeight: FontWeight.w500, height: 1.2, letterSpacing: 0.5),
+      );
+
   // === ThemeData ===
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
@@ -97,6 +141,7 @@ class AppTheme {
     fontFamily: 'Tajawal',
     scaffoldBackgroundColor: darkBg,
     cardColor: darkCard,
+    textTheme: _baseTextTheme.apply(bodyColor: textPrimaryDark, displayColor: textPrimaryDark),
     colorScheme: const ColorScheme.dark(
       primary: primaryGreen,
       secondary: goldAccent,
@@ -112,6 +157,7 @@ class AppTheme {
     fontFamily: 'Tajawal',
     scaffoldBackgroundColor: lightBg,
     cardColor: lightCard,
+    textTheme: _baseTextTheme.apply(bodyColor: textPrimaryLight, displayColor: textPrimaryLight),
     colorScheme: const ColorScheme.light(
       primary: primaryGreenDark,
       secondary: Color(0xFFFF8F00),

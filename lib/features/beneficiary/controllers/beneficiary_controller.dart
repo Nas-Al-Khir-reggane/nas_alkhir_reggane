@@ -10,11 +10,13 @@ import '../../auth/controllers/auth_controller.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/services/offline_queue_service.dart';
 import '../../../data/services/connectivity_service.dart';
+import '../../../data/services/notification_service.dart';
 
 class BeneficiaryController extends GetxController {
   RxList<ServiceRequestModel> myRequests = <ServiceRequestModel>[].obs;
   RxList<ServiceTypeModel> availableServices = <ServiceTypeModel>[].obs;
   RxBool isLoading = false.obs;
+  RxBool isLoadingServices = false.obs;
   Rx<UserModel?> currentBeneficiary = Rx<UserModel?>(null);
 
   StreamSubscription? _requestsSub;
@@ -53,16 +55,31 @@ class BeneficiaryController extends GetxController {
   }
 
   void loadServiceTypes() {
+    isLoadingServices.value = true;
     _serviceTypesSub = FirebaseFirestore.instance
         .collection('service_types')
         .where('isActive', isEqualTo: true)
         .snapshots()
         .listen((snap) {
-      availableServices.value = snap.docs.map((d) {
+      List<ServiceTypeModel> services = snap.docs.map((d) {
         final data = d.data();
         data['id'] = d.id;
         return ServiceTypeModel.fromMap(data);
       }).toList();
+
+      services.sort((a, b) {
+        if (a.id == 'other') return 1;
+        if (b.id == 'other') return -1;
+        int popCompare = b.popularity.compareTo(a.popularity);
+        if (popCompare != 0) return popCompare;
+        return a.name.compareTo(b.name);
+      });
+
+      availableServices.value = services;
+      isLoadingServices.value = false;
+    }, onError: (error) {
+      isLoadingServices.value = false;
+      if (kDebugMode) print('Error loading services: $error');
     });
   }
 
@@ -88,6 +105,7 @@ class BeneficiaryController extends GetxController {
         'requesterName': currentBeneficiary.value?.name,
         'phone': currentBeneficiary.value?.phone,
         'wilaya': currentBeneficiary.value?.wilaya,
+        'commune': currentBeneficiary.value?.commune, // إضافة البلدية من بيانات المستخدم
         'address': currentBeneficiary.value?.address,
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
@@ -95,8 +113,6 @@ class BeneficiaryController extends GetxController {
       };
 
       if (!_connectivity.isOnline.value) {
-        // ─── وضع بدون إنترنت: حفظ في الطابور ──────────────
-        // نحتاج تحويل FieldValue لنص لأن SharedPreferences لا يدعمه
         final queueData = Map<String, dynamic>.from(requestData);
         queueData['createdAt'] = '__serverTimestamp__';
         queueData['updatedAt'] = '__serverTimestamp__';
@@ -120,20 +136,28 @@ class BeneficiaryController extends GetxController {
           borderRadius: 16,
         );
       } else {
-        // ─── وضع متصل: إرسال مباشر ──────────────────────────
         final docRef = await FirebaseFirestore.instance
             .collection('service_requests')
             .add(requestData);
 
-        await _notifyAdmins(docRef.id, data['type']);
+        await FirebaseFirestore.instance
+            .collection('service_types')
+            .doc(data['type'])
+            .update({'popularity': FieldValue.increment(1)});
 
+        await _notifyAdminsOnNewRequest(docRef.id, data['type']);
+
+        Get.back();
         Get.snackbar(
           '✅ تم الإرسال',
           'سيتم معالجة طلبك في أقرب وقت',
+          snackPosition: SnackPosition.BOTTOM,
           backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
           colorText: AppTheme.successColor,
+          duration: const Duration(seconds: 4),
+          margin: const EdgeInsets.all(12),
+          borderRadius: 16,
         );
-        Get.back();
       }
     } catch (e) {
       Get.snackbar(
@@ -163,22 +187,19 @@ class BeneficiaryController extends GetxController {
     }
   }
 
-  Future<void> _notifyAdmins(String requestId, String type) async {
+  Future<void> _notifyAdminsOnNewRequest(String requestId, String type) async {
     try {
-      final admins = await FirebaseFirestore.instance
-          .collection('users')
-          .where('role', whereIn: ['admin', 'superAdmin']).get();
-
-      for (var admin in admins.docs) {
-        await FirebaseFirestore.instance.collection('notifications').add({
-          'userId': admin.id,
-          'title': '🔔 طلب خدمة جديد',
-          'body': 'طلب جديد ينتظر المعالجة',
+      // استخدام الدالة المركزية لضمان وصول الإشعار لكل المدراء بما فيهم المدير العام
+      await NotificationService.notifyAllAdmins(
+        type: 'new_request',
+        title: '🔔 طلب خدمة جديد',
+        body: 'طلب جديد ينتظر المعالجة',
+        data: {
           'requestId': requestId,
-          'isRead': false,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
+          'collection': 'service_requests',
+          'serviceType': type,
+        },
+      );
     } catch (e) {
       debugPrint('Error notifying admins: $e');
     }

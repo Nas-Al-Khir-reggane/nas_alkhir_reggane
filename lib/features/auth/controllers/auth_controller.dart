@@ -42,6 +42,7 @@ class AuthController extends GetxController {
     required String name,
     required String phone,
     required String wilaya,
+    required String commune,
     required String address,
     required String email,
     required String password,
@@ -56,6 +57,7 @@ class AuthController extends GetxController {
         email: email,
         phone: phone,
         wilaya: wilaya,
+        commune: commune,
         address: address,
         role: role,
         profileImage: profileImage,
@@ -84,10 +86,13 @@ class AuthController extends GetxController {
       User? firebaseUser = FirebaseAuth.instance.currentUser;
 
       if (firebaseUser != null) {
-        UserModel? user = await _authService.getCurrentUserData().timeout(
-          const Duration(seconds: 10),
-          onTimeout: () => null,
-        );
+        UserModel? user;
+        try {
+          user = await _authService.getCurrentUserData().timeout(const Duration(seconds: 8));
+        } catch (e) {
+          debugPrint("Offline or timeout: falling back to cached user");
+          user = await _authService.getCachedUserModel();
+        }
 
         if (user != null) {
           currentUser.value = user;

@@ -11,6 +11,8 @@ class DonationModel {
   final String status; // pending, confirmed
   final DateTime date;
   final String? notes;
+  final bool isRecurring; // تبرع شهري
+  final bool isAnonymous; // تبرع مجهول
 
   DonationModel({
     required this.id,
@@ -23,6 +25,8 @@ class DonationModel {
     this.status = 'pending',
     required this.date,
     this.notes,
+    this.isRecurring = false,
+    this.isAnonymous = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -37,6 +41,8 @@ class DonationModel {
       'status': status,
       'date': Timestamp.fromDate(date),
       'notes': notes,
+      'isRecurring': isRecurring,
+      'isAnonymous': isAnonymous,
     };
   }
 
@@ -50,8 +56,12 @@ class DonationModel {
       projectName: map['projectName'] ?? '',
       method: map['method'] ?? '',
       status: map['status'] ?? 'pending',
-      date: (map['date'] as Timestamp).toDate(),
+      date: map['date'] is Timestamp 
+          ? (map['date'] as Timestamp).toDate() 
+          : DateTime.now(),
       notes: map['notes'],
+      isRecurring: map['isRecurring'] ?? false,
+      isAnonymous: map['isAnonymous'] ?? false,
     );
   }
 
@@ -66,6 +76,8 @@ class DonationModel {
     String? status,
     DateTime? date,
     String? notes,
+    bool? isRecurring,
+    bool? isAnonymous,
   }) {
     return DonationModel(
       id: id ?? this.id,
@@ -78,6 +90,8 @@ class DonationModel {
       status: status ?? this.status,
       date: date ?? this.date,
       notes: notes ?? this.notes,
+      isRecurring: isRecurring ?? this.isRecurring,
+      isAnonymous: isAnonymous ?? this.isAnonymous,
     );
   }
 }

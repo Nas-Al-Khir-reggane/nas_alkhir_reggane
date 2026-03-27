@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/constants/app_constants.dart';
 import '../controllers/worker_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/models/service_request_model.dart';
@@ -417,7 +418,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(request.type, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
+                      Text(AppConstants.translateServiceType(request.type), style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
                       Text('#${request.id.substring(0, 8)}', style: const TextStyle(color: AppTheme.textHint, fontSize: 11)),
                     ],
                   ),

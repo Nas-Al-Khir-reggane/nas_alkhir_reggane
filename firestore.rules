@@ -2,74 +2,53 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // دوال مساعدة
-    function isLoggedIn() { return request.auth != null; }
-    function isOwner(userId) { return request.auth.uid == userId; }
-    function getUserRole() {
+    // دالة للتحقق من تسجيل الدخول
+    function isLoggedIn() {
+      return request.auth != null;
+    }
+
+    // دالة للتحقق من دور المستخدم (تستخدم فقط بعد إنشاء الحساب)
+    function getRole() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
-    function isAdmin() { return getUserRole() in ['admin', 'superAdmin']; }
-    function isApproved() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isApproved == true;
-    }
 
-    // المستخدمون
+    // --- قواعد مجموعة المستخدمين ---
     match /users/{userId} {
       allow read: if isLoggedIn();
-      allow update: if isOwner(userId) || isAdmin();
-      allow create: if isLoggedIn();
-      allow delete: if isAdmin();
+      allow create: if isLoggedIn() && request.auth.uid == userId;
+      allow update: if isLoggedIn() && (request.auth.uid == userId || getRole() == 'super_admin');
+      allow delete: if isLoggedIn() && getRole() == 'super_admin';
     }
 
-    // الطلبات
-    match /service_requests/{requestId} {
-      allow read: if isLoggedIn();
-      allow create: if isLoggedIn() && isApproved() &&
-                       request.resource.data.requesterId == request.auth.uid;
-      allow update: if isAdmin() ||
-                      (isOwner(resource.data.assignedTo)); 
-      allow delete: if isAdmin();
-    }
-
-    // التبرعات
-    match /donations/{donationId} {
-      allow read: if isLoggedIn();
-      allow create: if isLoggedIn() && isApproved();
-      allow update, delete: if isAdmin();
-    }
-
-    // المشاريع
-    match /projects/{projectId} {
-      allow read: if isLoggedIn();
-      allow write: if isAdmin();
-    }
-
-    // الإشعارات
+    // --- قواعد الإشعارات (تعديل: السماح للجميع بالإرسال لتصل للمدير) ---
     match /notifications/{notifId} {
-      allow read: if isOwner(resource.data.userId);
-      allow write: if isLoggedIn();
+      allow read: if isLoggedIn() && resource.data.userId == request.auth.uid;
+      allow write: if true; 
     }
 
-    // المحادثات
-    match /chats/{chatId}/messages/{messageId} {
-      allow read, write: if isLoggedIn();
-    }
-    match /chats/{chatId} {
-      allow read, write: if isLoggedIn();
-    }
-
-    // الإعدادات العامة
+    // --- قواعد أنواع الخدمات (إضافة: للجميع لرؤية الأيقونات وزيادة الشعبية) ---
     match /service_types/{typeId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow update: if true; 
+      allow write: if isLoggedIn() && getRole() == 'super_admin';
     }
-    match /task_types/{typeId} {
-      allow read: if true;
-      allow write: if isAdmin();
+
+    // --- قواعد طلبات الزوار (إضافة: للسماح بإرسال الطلبات) ---
+    match /guest_requests/{requestId} {
+      allow read: if isLoggedIn() && getRole() == 'super_admin';
+      allow create: if true;
+      allow update, delete: if isLoggedIn() && getRole() == 'super_admin';
     }
-    match /vehicles/{vehicleId} {
+
+    // --- قواعد المشاريع (إضافة: للجميع للرؤية) ---
+    match /projects/{projectId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isLoggedIn() && getRole() == 'super_admin';
+    }
+
+    // --- السماح بالوصول لباقي المجموعات للأعضاء المسجلين ---
+    match /{path=**} {
+      allow read, write: if isLoggedIn();
     }
   }
 }

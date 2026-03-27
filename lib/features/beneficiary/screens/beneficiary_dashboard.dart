@@ -9,6 +9,7 @@ import '../../auth/controllers/auth_controller.dart';
 import 'new_request_screen.dart';
 import '../../../data/models/service_request_model.dart';
 import '../../../data/services/notification_service.dart';
+import '../../../core/constants/app_constants.dart';
 
 class BeneficiaryDashboard extends StatefulWidget {
   const BeneficiaryDashboard({super.key});
@@ -570,11 +571,24 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('جميع طلباتي',
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('جميع طلباتي',
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary)),
+                    AppTheme.gradientButton(
+                      text: 'طلب جديد',
+                      icon: Icons.add,
+                      onPressed: () {
+                        Get.back();
+                        setState(() => _currentIndex = 1);
+                      },
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 Expanded(
                   child: Obx(() => controller.myRequests.isEmpty
@@ -744,7 +758,6 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
   Color _serviceTypeColor(String typeId) {
     final service = controller.availableServices.firstWhereOrNull((s) => s.id == typeId);
     if (service != null) {
-      // يمكنك تخصيص الألوان بناءً على نوع الخدمة
       if (typeId == 'funeral_transport') return Colors.deepPurple;
       return AppTheme.primaryGreen;
     }
@@ -758,7 +771,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
 
   String _serviceTypeName(String typeId) {
     final service = controller.availableServices.firstWhereOrNull((s) => s.id == typeId);
-    return service?.name ?? typeId;
+    return service?.name ?? AppConstants.translateServiceType(typeId);
   }
 
   String _timeAgo(DateTime dateTime) {
@@ -770,7 +783,6 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
   }
 }
 
-// ===== Arc Progress Painter (Beneficiary) =====
 class _BenefArcPainter extends CustomPainter {
   final double progress;
   const _BenefArcPainter({required this.progress});

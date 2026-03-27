@@ -18,6 +18,10 @@
         <!-- Google Maps API Key -->
         <meta-data android:name="com.google.android.geo.API_KEY" android:value="YOUR_API_KEY"/>
 
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="nas_al_kheir_channel" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -34,6 +38,12 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <!-- FCM Intent Filter -->
+            <intent-filter>
+                <action android:name="FLUTTER_NOTIFICATION_CLICK" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
         <meta-data

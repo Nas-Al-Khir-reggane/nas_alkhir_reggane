@@ -9,6 +9,7 @@ import '../../../data/models/service_request_model.dart';
 import '../../../data/models/chat_message_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/services/notification_service.dart';
+import '../../../core/constants/app_constants.dart';
 
 class WorkerController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -39,7 +40,7 @@ class WorkerController extends GetxController {
 
     // الطلبات الحالية
     _myTasksSub = _firestore
-        .collection('service_requests')
+        .collection(AppConstants.serviceRequestsCollection)
         .where('assignedTo', isEqualTo: currentWorker.value?.id)
         .where('status', whereIn: ['in_progress', 'pending'])
         .orderBy('createdAt', descending: true)
@@ -54,7 +55,7 @@ class WorkerController extends GetxController {
 
     // الطلبات المنجزة
     _completedTasksSub = _firestore
-        .collection('service_requests')
+        .collection(AppConstants.serviceRequestsCollection)
         .where('assignedTo', isEqualTo: currentWorker.value?.id)
         .where('status', isEqualTo: 'completed')
         .snapshots()
@@ -71,7 +72,7 @@ class WorkerController extends GetxController {
     if (currentWorker.value == null) return;
 
     _adminMessageSub = _firestore
-        .collection('chats')
+        .collection(AppConstants.chatCollection)
         .doc('group_team')
         .collection('messages')
         .orderBy('createdAt', descending: true)
@@ -89,7 +90,7 @@ class WorkerController extends GetxController {
   Future<void> toggleAvailability() async {
     final newStatus = !isAvailable.value;
     isAvailable.value = newStatus;
-    await _firestore.collection('users').doc(currentWorker.value?.id).update({'isAvailable': newStatus});
+    await _firestore.collection(AppConstants.usersCollection).doc(currentWorker.value?.id).update({'isAvailable': newStatus});
     
     Get.snackbar(
       newStatus ? '✅ أنت الآن متاح' : '⏸️ أنت الآن مشغول',
@@ -114,7 +115,7 @@ class WorkerController extends GetxController {
         imageUrl = await ref.getDownloadURL();
       }
 
-      await _firestore.collection('service_requests').doc(requestId).collection('updates').add({
+      await _firestore.collection(AppConstants.serviceRequestsCollection).doc(requestId).collection('updates').add({
         'workerId': currentWorker.value?.id,
         'workerName': currentWorker.value?.name,
         'type': type,
@@ -124,7 +125,7 @@ class WorkerController extends GetxController {
       });
 
       // تحديث آخر نشاط للعامل
-      await _firestore.collection('users').doc(currentWorker.value?.id).update({
+      await _firestore.collection(AppConstants.usersCollection).doc(currentWorker.value?.id).update({
         'lastActivity': FieldValue.serverTimestamp(),
       });
 
@@ -150,21 +151,26 @@ class WorkerController extends GetxController {
   }
 
   Future<void> completeTask(String requestId) async {
-    await _firestore.collection('service_requests').doc(requestId).update({
-      'status': 'completed',
-      'completedAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-    // تحديث إحصائات العامل
-    await _firestore.collection('users').doc(currentWorker.value?.id).update({
-      'completedTasks': FieldValue.increment(1),
-      'isAvailable': true,
-      'lastActivity': FieldValue.serverTimestamp(),
-    });
-    isAvailable.value = true;
-    
-    Get.snackbar('🎉 أحسنت!', 'تم إتمام المهمة بنجاح',
-        backgroundColor: AppTheme.successColor.withValues(alpha: 0.2), colorText: AppTheme.successColor);
+    try {
+      await _firestore.collection(AppConstants.serviceRequestsCollection).doc(requestId).update({
+        'status': 'completed',
+        'completedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      // تحديث إحصائات العامل
+      await _firestore.collection(AppConstants.usersCollection).doc(currentWorker.value?.id).update({
+        'completedTasks': FieldValue.increment(1),
+        'isAvailable': true,
+        'lastActivity': FieldValue.serverTimestamp(),
+      });
+      isAvailable.value = true;
+      
+      Get.snackbar('🎉 أحسنت!', 'تم إتمام المهمة بنجاح',
+          backgroundColor: AppTheme.successColor.withValues(alpha: 0.2), colorText: AppTheme.successColor);
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل إنهاء المهمة: $e',
+          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2), colorText: AppTheme.errorColor);
+    }
   }
 
   // إحصائات

@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 class AppConstants {
   static const String appName = "جمعية ناس الخير رقان";
 
-  // للتبديل بين الوضعين يدوياً بشكل صحيح
   static void toggleTheme() {
     if (Get.isDarkMode) {
       Get.changeThemeMode(ThemeMode.light);
@@ -28,31 +27,71 @@ class AppConstants {
     "56 - جانت", "57 - المغير", "58 - المنيعة"
   ];
 
+  // بلديات ولايات الجنوب الجزائري
+  static const Map<String, List<String>> wilayaCommunes = {
+    "01 - أدرار": ["أدرار", "تامست", "تمنطيط", "فنوغيل", "إن زجمير", "رقان", "سالي", "أولاد أحمد تيمي", "بودا"],
+    "03 - الأغواط": ["الأغواط", "أفلو", "عين ماضي", "حاسي الرمل", "قصر الحيران"],
+    "07 - بسكرة": ["بسكرة", "طولقة", "سيدي عقبة", "جمورة", "زريبة الوادي"],
+    "08 - بشار": ["بشار", "القنادسة", "تاغيت", "العبادلة", "بني ونيف", "لحمر"],
+    "11 - تمنراست": ["تمنراست", "أباليسا", "إدلس", "تاظروك", "عين أمغل"],
+    "17 - الجلفة": ["الجلفة", "حاسي بحبح", "عين وسارة", "مسعد", "الشارف"],
+    "30 - ورقلة": ["ورقلة", "حاسي مسعود", "الرويسات", "عين البيضاء", "أنقوسة"],
+    "32 - البيض": ["البيض", "بوقطب", "الأبيض سيدي الشيخ", "بريزينة", "الشلالة"],
+    "33 - إليزي": ["إليزي", "برج عمر إدريس", "دبداب"],
+    "37 - تندوف": ["تندوف", "أم العسل"],
+    "39 - الوادي": ["الوادي", "قمار", "الدبيلة", "الرقيبة", "حاسي خليفة"],
+    "45 - النعامة": ["النعامة", "مشرية", "عين الصفراء", "عسلة", "صفيصيفة"],
+    "47 - غرداية": ["غرداية", "القرارة", "متليلي", "بني يزقن", "ضاية بن ضحوة", "زلفانة"],
+    "49 - تيميمون": ["تيميمون", "أولاد سعيد", "قصر قدور", "شروين", "طلمين", "أوقروت"],
+    "50 - برج باجي مختار": ["برج باجي مختار", "تيمياوين"],
+    "51 - أولاد جلال": ["أولاد جلال", "الدوسن", "سيدي خالد"],
+    "52 - بني عباس": ["بني عباس", "إيغلي", "الواتة", "كرزاز", "تلمين"],
+    "53 - عين صالح": ["عين صالح", "إيغوستن", "إن غار"],
+    "54 - عين قزام": ["عين قزام", "تين زواتين"],
+    "55 - تقرت": ["تقرت", "النزلة", "تبسبست", "تماسين", "المقارين", "الطيبات"],
+    "56 - جانت": ["جانت", "برج الحواس"],
+    "57 - المغير": ["المغير", "جامعة", "أم الطيور", "تندلة"],
+    "58 - المنيعة": ["المنيعة", "حاسي القارة"],
+  };
+
+  static List<String> getCommunesForWilaya(String wilaya) {
+    return wilayaCommunes[wilaya] ?? ["مركز الولاية"];
+  }
+
   static const List<String> defaultServiceTypes = [
-    "نقل الجنازات",
-    "مساعدات غذائية",
-    "مساعدات مالية",
-    "مساعدة طبية",
-    "تعليم وكفالة أيتام",
-    "بناء وتعمير"
+    "نقل الجنازات", "مساعدات غذائية", "مساعدات مالية", "مساعدة طبية", "تعليم وكفالة أيتام", "بناء وتعمير"
   ];
 
-  static const String serviceFuneralTransport = 'funeral_transport';
-  static const String serviceFoodAid = 'food_aid';
-  static const String serviceFinancialAid = 'financial_aid';
-  static const String serviceMedicalAid = 'medical_aid';
-  static const String serviceEducation = 'education';
-  static const String serviceConstruction = 'construction';
+  static String translateServiceType(String type) {
+    if (type.isEmpty) return 'خدمة / مهمة';
+    String t = type.toLowerCase().trim().replaceAll('_', ' ');
+    
+    final Map<String, String> translations = {
+      'patient transport': 'نقل المرضى',
+      'funeral transport': 'إكرام الموتى',
+      'school bags': 'الحقيبة المدرسية',
+      'blood donation': 'تبرع بالدم',
+      'medical equipment': 'توفير معدات طبية',
+      'medical aid': 'الرعاية الطبية',
+      'food distribution': 'إطعام الطعام',
+      'food aid': 'إطعام الطعام',
+      'seasonal aid': 'مساعدات موسمية',
+      'orphan care': 'كفالة أيتام',
+      'water well': 'حفر الآبار',
+      'financial aid': 'تفريج كربة (مالي)',
+      'construction': 'ترميم بيوت الله والفقراء',
+      'education': 'تعليم وكفالة طالب',
+      'emergency': 'حالة طارئة',
+      'water_supply': 'سقي الماء',
+      'water supply': 'سقي الماء',
+      'orphans_care': 'كفالة أيتام',
+      'orphans care': 'كفالة أيتام',
+      'other': 'أخرى',
+    };
+    
+    return translations[t] ?? type;
+  }
 
-  static const List<String> defaultTaskTypes = [
-    "توصيل أمانة",
-    "زيارة ميدانية",
-    "شراء مستلزمات",
-    "نقل مرضى",
-    "تنظيم فعاليات"
-  ];
-
-  // Firestore Collections
   static const String usersCollection = "users";
   static const String projectsCollection = "projects";
   static const String donationsCollection = "donations";
@@ -61,4 +100,17 @@ class AppConstants {
   static const String chatCollection = "chats";
   static const String serviceTypesCollection = "service_types";
   static const String taskTypesCollection = "task_types";
+
+  static const List<Map<String, dynamic>> projectCategories = [
+    {'id': 'construction', 'name': 'البناء والترميم', 'icon': Icons.construction, 'color': Color(0xFF5D4037)},
+    {'id': 'orphan', 'name': 'كفالة الأيتام والتعليم', 'icon': Icons.child_care, 'color': Color(0xFF1565C0)},
+    {'id': 'food', 'name': 'إطعام الطعام والطرود', 'icon': Icons.shopping_basket, 'color': Color(
+        0xFF85C69B)},
+    {'id': 'water', 'name': 'سقي الماء وحفر الآبار', 'icon': Icons.water_drop, 'color': Color(0xFF0277BD)},
+    {'id': 'medical', 'name': 'مداواة المرضى والإسعاف', 'icon': Icons.healing, 'color': Color(0xFFC62828)},
+    {'id': 'housing', 'name': 'تفريج كرب الأسر والبيوت', 'icon': Icons.home, 'color': Color(0xFF795548)},
+    {'id': 'funeral', 'name': 'إكرام الموتى (نقل الجنائز)', 'icon': Icons.airport_shuttle, 'color': Color(0xFF4527A0)},
+    {'id': 'zakat', 'name': 'زكاة المال والصدقات', 'icon': Icons.savings, 'color': Color(0xFFD4AF37)},
+    {'id': 'general', 'name': 'أبواب الخير العامة', 'icon': Icons.volunteer_activism, 'color': Color(0xFF546E7A)},
+  ];
 }

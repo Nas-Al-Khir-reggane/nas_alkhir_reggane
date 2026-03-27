@@ -23,7 +23,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   UserModel? get displayUser {
     if (Get.arguments is UserModel) return Get.arguments as UserModel;
-    if (Get.arguments is String) return null; // We'll fetch it below if it's just an ID
     return authController.currentUser.value;
   }
 
@@ -48,7 +47,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final user = displayUser;
       final bool ownProfile = isOwnProfile;
 
-      // If we only have an ID, fetch the user data
       if (user == null && Get.arguments is String) {
         return FutureBuilder<DocumentSnapshot>(
           future: FirebaseFirestore.instance.collection('users').doc(Get.arguments as String).get(),
@@ -193,6 +191,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildProfileItem(context, Icons.email_outlined, "البريد الإلكتروني", user.email),
               _buildProfileItem(context, Icons.phone_outlined, "رقم الهاتف", user.phone),
               _buildProfileItem(context, Icons.location_on_outlined, "الولاية", user.wilaya),
+              _buildProfileItem(context, Icons.map_outlined, "البلدية", user.commune),
               _buildProfileItem(context, Icons.home_outlined, "العنوان", user.address),
             ],
           ),
@@ -314,8 +313,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final nameCtrl = TextEditingController(text: user.name);
     final phoneCtrl = TextEditingController(text: user.phone);
-    final wilayaCtrl = TextEditingController(text: user.wilaya);
     final addressCtrl = TextEditingController(text: user.address);
+    
+    String? selectedWilaya = AppConstants.algeriaWilayas.contains(user.wilaya) ? user.wilaya : null;
+    String? selectedCommune = user.commune;
     String? selectedImageUrl = user.profileImage;
     bool isUploadingInDialog = false;
 
@@ -371,11 +372,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         decoration: AppTheme.inputDecoration('رقم الهاتف', Icons.phone_outlined),
                       ),
                       const SizedBox(height: 12),
-                      TextField(
-                        controller: wilayaCtrl,
-                        style: TextStyle(color: AppTheme.textPrimary),
+                      DropdownButtonFormField<String>(
+                        value: selectedWilaya,
+                        dropdownColor: Theme.of(context).cardColor,
+                        style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
                         decoration: AppTheme.inputDecoration('الولاية', Icons.location_on_outlined),
+                        items: AppConstants.algeriaWilayas.map((w) => DropdownMenuItem(value: w, child: Text(w))).toList(),
+                        onChanged: (v) {
+                          setStateDialog(() {
+                            selectedWilaya = v;
+                            selectedCommune = null;
+                          });
+                        },
                       ),
+                      const SizedBox(height: 12),
+                      if (selectedWilaya != null)
+                        DropdownButtonFormField<String>(
+                          value: (selectedWilaya != null && AppConstants.getCommunesForWilaya(selectedWilaya!).contains(selectedCommune)) 
+                              ? selectedCommune 
+                              : null,
+                          dropdownColor: Theme.of(context).cardColor,
+                          style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
+                          decoration: AppTheme.inputDecoration('البلدية', Icons.map_outlined),
+                          items: AppConstants.getCommunesForWilaya(selectedWilaya!)
+                              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                              .toList(),
+                          onChanged: (v) => setStateDialog(() => selectedCommune = v),
+                        ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: addressCtrl,
@@ -459,11 +482,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Get.snackbar('تنبيه', 'الاسم مطلوب');
                               return;
                             }
+                            if (selectedWilaya == null || selectedCommune == null) {
+                              Get.snackbar('تنبيه', 'يرجى اختيار الولاية والبلدية');
+                              return;
+                            }
                             try {
                               await FirebaseFirestore.instance.collection('users').doc(user.id).update({
                                 'name': nameCtrl.text.trim(),
                                 'phone': phoneCtrl.text.trim(),
-                                'wilaya': wilayaCtrl.text.trim(),
+                                'wilaya': selectedWilaya,
+                                'commune': selectedCommune,
                                 'address': addressCtrl.text.trim(),
                                 'profileImage': selectedImageUrl,
                               });

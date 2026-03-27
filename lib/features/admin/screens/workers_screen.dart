@@ -747,7 +747,7 @@ class WorkersScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(10)),
                             child: const Icon(Icons.volunteer_activism, color: AppTheme.primaryGreen, size: 20),
                           ),
-                          title: Text(request['serviceName'] ?? 'طلب خدمة',
+                          title: Text(AppConstants.translateServiceType(request['serviceName'] ?? request['type'] ?? 'طلب خدمة'),
                               style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
                           subtitle: Text('${request['requesterName'] ?? ''} - ${request['wilaya'] ?? ''}',
                               style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),

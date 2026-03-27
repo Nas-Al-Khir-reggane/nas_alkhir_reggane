@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/service_request_model.dart';
 import '../controllers/beneficiary_controller.dart';
+import '../../../core/constants/app_constants.dart';
 
 class RequestStatusScreen extends StatelessWidget {
   final ServiceRequestModel request;
@@ -132,7 +133,7 @@ class RequestStatusScreen extends StatelessWidget {
     return Icons.help_outline;
   }
 
-  String _getTypeName(String type) => type; // المفترض الحصول عليه من القائمة
+  String _getTypeName(String type) => AppConstants.translateServiceType(type);
 
   String _urgencyLabel(String u) {
     switch (u) {

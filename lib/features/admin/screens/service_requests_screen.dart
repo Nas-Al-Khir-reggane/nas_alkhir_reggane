@@ -7,6 +7,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../data/models/service_request_model.dart';
 import '../controllers/admin_controller.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:animate_do/animate_do.dart';
 
 class ServiceRequestsScreen extends StatefulWidget {
   const ServiceRequestsScreen({super.key});
@@ -24,6 +25,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
   final RxString selectedServiceType = 'all'.obs;
   final RxString selectedUrgency = 'all'.obs;
   final RxString selectedWilaya = 'all'.obs;
+  final RxString selectedCommune = 'all'.obs; // إضافة فلتر البلدية
   final RxString selectedPeriod = 'all'.obs;
   final RxString selectedWorker = 'all'.obs;
   final RxBool showFilters = false.obs;
@@ -72,6 +74,9 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
     if (selectedWilaya.value != 'all') {
       query = query.where('wilaya', isEqualTo: selectedWilaya.value);
     }
+    if (selectedCommune.value != 'all') {
+      query = query.where('commune', isEqualTo: selectedCommune.value);
+    }
     if (selectedWorker.value != 'all') {
       query = query.where('assignedTo', isEqualTo: selectedWorker.value);
     }
@@ -83,6 +88,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
     selectedServiceType.value = 'all';
     selectedUrgency.value = 'all';
     selectedWilaya.value = 'all';
+    selectedCommune.value = 'all';
     selectedPeriod.value = 'all';
     selectedWorker.value = 'all';
   }
@@ -91,6 +97,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
       selectedServiceType.value != 'all' ||
       selectedUrgency.value != 'all' ||
       selectedWilaya.value != 'all' ||
+      selectedCommune.value != 'all' ||
       selectedPeriod.value != 'all' ||
       selectedWorker.value != 'all';
 
@@ -100,26 +107,11 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
       backgroundColor: AppTheme.backgroundColor,
       body: Column(
         children: [
-          // 1. Header مخصص متجانس مع شاشة المشاريع
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Get.back(),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceColor,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppTheme.glassBorder),
-                      ),
-                      child: Icon(Icons.arrow_back_ios_new_rounded,
-                          color: AppTheme.textPrimary, size: 18),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -132,11 +124,12 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                       Obx(() => StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection(showGuestRequests.value ? 'guest_requests' : AppConstants.serviceRequestsCollection)
+                            .where('status', whereNotIn: ['rejected'])
                             .snapshots(),
                         builder: (context, snapshot) {
                           int count = snapshot.hasData ? snapshot.data!.docs.length : 0;
                           totalCount = count;
-                          return Text('$count طلب مسجل',
+                          return Text('$count طلب نشط',
                               style: TextStyle(color: AppTheme.textSecondary, fontSize: 13));
                         },
                       )),
@@ -169,7 +162,6 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
             ),
           ),
 
-          // 2. نوع الطلبات (أعضاء / زوار)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Obx(() => Row(
@@ -221,17 +213,47 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
             )),
           ),
 
-          // 3. شريط البحث
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: TextField(
               controller: searchController,
               style: TextStyle(color: AppTheme.textPrimary),
-              decoration: AppTheme.inputDecoration('ابحث بالاسم أو الهاتف أو الولاية...', Icons.search_rounded),
+              decoration: AppTheme.inputDecoration('ابحث بالاسم أو الهاتف أو المنطقة...', Icons.search_rounded),
             ),
           ),
 
-          // 3. شريط الفلاتر
+          Obx(() => adminController.shouldShowSwipeHint.value
+              ? FadeInDown(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [AppTheme.primaryGreen.withValues(alpha: 0.1), AppTheme.primaryGreen.withValues(alpha: 0.05)]),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: AppTheme.primaryGreen, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'تلميحة: يمكنك سحب أي طلب لجهة اليمين لرفضه بسرعة.',
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                        IconButton(
+                          constraints: const BoxConstraints(),
+                          padding: EdgeInsets.zero,
+                          icon: const Icon(Icons.close, color: AppTheme.textHint, size: 18),
+                          onPressed: () => adminController.markSwipeHintAsShown(),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink()),
+
           Obx(() => showFilters.value
               ? AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
@@ -249,6 +271,10 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                         const SizedBox(width: 8),
                         _buildFilterChip('الولاية', selectedWilaya, ['الكل', ...AppConstants.algeriaWilayas],
                             ['all', ...AppConstants.algeriaWilayas]),
+                        const SizedBox(width: 8),
+                        if (selectedWilaya.value != 'all')
+                          _buildFilterChip('البلدية', selectedCommune, ['الكل', ...AppConstants.getCommunesForWilaya(selectedWilaya.value)],
+                              ['all', ...AppConstants.getCommunesForWilaya(selectedWilaya.value)]),
                         const SizedBox(width: 8),
                         _buildFilterChip('الفترة', selectedPeriod, ['الكل', 'اليوم', 'الأسبوع', 'الشهر'],
                             ['all', 'today', 'week', 'month']),
@@ -282,22 +308,23 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                 )
               : const SizedBox.shrink()),
 
-          // 5. التبويبات
           Container(
             color: AppTheme.surfaceColor,
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance.collection(showGuestRequests.value ? 'guest_requests' : AppConstants.serviceRequestsCollection).snapshots(),
               builder: (context, snapshot) {
                 countByStatus = {'الكل': 0, 'معلق': 0, 'جاري': 0, 'مكتمل': 0, 'مرفوض': 0};
-                if (snapshot.hasData) {
-                  countByStatus['الكل'] = snapshot.data!.docs.length;
-                  for (var doc in snapshot.data!.docs) {
-                    String status = doc['status'] ?? 'pending';
-                    if (status == 'pending') countByStatus['معلق'] = (countByStatus['معلق'] ?? 0) + 1;
-                    if (status == 'in_progress') countByStatus['جاري'] = (countByStatus['جاري'] ?? 0) + 1;
-                    if (status == 'completed') countByStatus['مكتمل'] = (countByStatus['مكتمل'] ?? 0) + 1;
-                    if (status == 'rejected') countByStatus['مرفوض'] = (countByStatus['مرفوض'] ?? 0) + 1;
-                  }
+                if (snapshot.hasError) return const Center(child: Text('خطأ في تحميل العدادات', style: TextStyle(color: AppTheme.errorColor)));
+                if (!snapshot.hasData) return const Center(child: SizedBox(height: 2, child: LinearProgressIndicator(color: AppTheme.primaryGreen)));
+
+                countByStatus['الكل'] = snapshot.data!.docs.length;
+                for (var doc in snapshot.data!.docs) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  String status = data['status'] ?? 'pending';
+                  if (status == 'pending') countByStatus['معلق'] = (countByStatus['معلق'] ?? 0) + 1;
+                  if (status == 'in_progress') countByStatus['جاري'] = (countByStatus['جاري'] ?? 0) + 1;
+                  if (status == 'completed') countByStatus['مكتمل'] = (countByStatus['مكتمل'] ?? 0) + 1;
+                  if (status == 'rejected') countByStatus['مرفوض'] = (countByStatus['مرفوض'] ?? 0) + 1;
                 }
 
                 return TabBar(
@@ -334,20 +361,31 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
             ),
           ),
 
-          // 6. قائمة الطلبات
           Expanded(
             child: Obx(() {
-              // إعادة البناء عند تغيير الفلاتر
-              selectedStatus.value;
-              selectedServiceType.value;
-              selectedUrgency.value;
-              selectedWilaya.value;
-              selectedWorker.value;
-              showGuestRequests.value;
+              final status = selectedStatus.value;
+              final isGuest = showGuestRequests.value;
 
               return StreamBuilder<QuerySnapshot>(
                 stream: _buildQuery().snapshots(),
                 builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error_outline, color: AppTheme.errorColor, size: 40),
+                          const SizedBox(height: 16),
+                          Text('حدث خطأ في عرض الطلبات', style: TextStyle(color: AppTheme.textPrimary)),
+                          const SizedBox(height: 8),
+                          Text('تأكد من اتصالك بالإنترنت', 
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                          TextButton(onPressed: () => setState(() {}), child: const Text('إعادة المحاولة')),
+                        ],
+                      ),
+                    );
+                  }
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen));
                   }
@@ -355,25 +393,29 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                     return _buildEmptyState();
                   }
 
-                  // فلترة محلية بالبحث فقط — بدون dismissedIds
-                  var filteredRequests = snapshot.data!.docs.where((doc) {
+                  var filteredDocs = snapshot.data!.docs.where((doc) {
                     var data = doc.data() as Map<String, dynamic>;
-                    String search = searchController.text.toLowerCase();
-                    if (search.isEmpty) return true;
-                    return data['requesterName'].toString().toLowerCase().contains(search) ||
-                        data['phone'].toString().contains(search) ||
-                        data['wilaya'].toString().toLowerCase().contains(search);
+                    if (status == 'all' && data['status'] == 'rejected') return false;
+                    String queryText = searchController.text.trim().toLowerCase();
+                    if (queryText.isEmpty) return true;
+                    String rName = (data['requesterName'] ?? data['name'] ?? '').toString().toLowerCase();
+                    String rPhone = (data['phone'] ?? '').toString();
+                    String rWilaya = (data['wilaya'] ?? '').toString().toLowerCase();
+                    String rCommune = (data['commune'] ?? '').toString().toLowerCase();
+                    return rName.contains(queryText) || rPhone.contains(queryText) || rWilaya.contains(queryText) || rCommune.contains(queryText);
                   }).toList();
 
-                  if (filteredRequests.isEmpty) return _buildEmptyState();
+                  if (filteredDocs.isEmpty) return _buildEmptyState();
 
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: filteredRequests.length,
+                    padding: const EdgeInsets.only(top: 8, bottom: 20),
+                    itemCount: filteredDocs.length,
                     itemBuilder: (context, index) {
+                      var doc = filteredDocs[index];
                       var request = ServiceRequestModel.fromMap({
-                        ...filteredRequests[index].data() as Map<String, dynamic>,
-                        'id': filteredRequests[index].id
+                        ...doc.data() as Map<String, dynamic>,
+                        'id': doc.id,
+                        'isGuest': isGuest,
                       });
                       return _buildRequestCard(request);
                     },
@@ -430,6 +472,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
           ),
           onSelected: (v) {
             value.value = v;
+            if (label == 'الولاية') selectedCommune.value = 'all';
           },
         ),
       );
@@ -468,25 +511,40 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
           key: Key(request.id),
           direction: DismissDirection.endToStart,
           confirmDismiss: (direction) async {
-            return await Get.dialog<bool>(
+            final result = await Get.dialog<bool>(
               AlertDialog(
                 backgroundColor: AppTheme.surfaceColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                title: Text('تأكيد الرفض', style: TextStyle(color: AppTheme.textPrimary)),
-                content: Text('هل أنت متأكد من رفض هذا الطلب؟', style: TextStyle(color: AppTheme.textSecondary)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                title: const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: AppTheme.errorColor),
+                    SizedBox(width: 8),
+                    Text('تأكيد الرفض', style: TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                content: const Text('هل أنت متأكد من رفض هذا الطلب؟ سيتم نقله إلى تبويب المرفوضات.',
+                    style: TextStyle(fontFamily: 'Tajawal')),
                 actions: [
-                  TextButton(onPressed: () => Get.back(result: false), child: const Text('إلغاء')),
+                  TextButton(
+                    onPressed: () => Get.back(result: false),
+                    child: const Text('إلغاء', style: TextStyle(color: AppTheme.textHint)),
+                  ),
                   ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.errorColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
                     onPressed: () => Get.back(result: true),
-                    child: const Text('رفض الطلب', style: TextStyle(color: Colors.white)),
+                    child: const Text('رفض الآن', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
+              barrierDismissible: false,
             );
+            return result ?? false;
           },
           onDismissed: (direction) {
-            // تحديث الحالة في Firestore — الـ Stream سيعكس التغيير تلقائياً
             adminController.updateRequestStatus(request.id, 'rejected', isGuest: showGuestRequests.value);
           },
           background: Container(
@@ -524,7 +582,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(request.type,
+                          Text(AppConstants.translateServiceType(request.typeName.isNotEmpty ? request.typeName : request.type),
                               style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 15)),
                           Text('#${request.id.substring(0, 8)}', style: const TextStyle(color: AppTheme.textHint, fontSize: 11)),
                         ],
@@ -536,17 +594,45 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                   ],
                 ),
                 const Divider(color: Colors.white10, height: 20),
-                Row(
-                  children: [
-                    const Icon(Icons.person_outline, color: AppTheme.textHint, size: 16),
-                    const SizedBox(width: 6),
-                    Text(request.requesterName, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                    const Spacer(),
-                    const Icon(Icons.location_on_outlined, color: AppTheme.textHint, size: 16),
-                    const SizedBox(width: 4),
-                    Text(request.wilaya, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                  ],
-                ),
+                (request.requesterId.isNotEmpty)
+                    ? StreamBuilder<DocumentSnapshot>(
+                        stream: FirebaseFirestore.instance.collection(AppConstants.usersCollection).doc(request.requesterId).snapshots(),
+                        builder: (context, snapshot) {
+                          String name = request.requesterName.isNotEmpty ? request.requesterName : 'مستخدم';
+                          String wilaya = request.wilaya.isNotEmpty ? request.wilaya : '—';
+                          String commune = request.commune.isNotEmpty ? request.commune : '';
+                          if (snapshot.hasData && snapshot.data!.exists) {
+                            var userData = snapshot.data!.data() as Map<String, dynamic>;
+                            if (name == 'مستخدم' || name.isEmpty) name = userData['name'] ?? 'مستخدم';
+                            if (wilaya == '—' || wilaya.isEmpty) wilaya = userData['wilaya'] ?? '—';
+                            if (commune.isEmpty) commune = userData['commune'] ?? '';
+                          }
+                          final location = commune.isNotEmpty ? '$wilaya - $commune' : wilaya;
+                          return Row(
+                            children: [
+                              const Icon(Icons.person_outline, color: AppTheme.textHint, size: 16),
+                              const SizedBox(width: 6),
+                              Expanded(child: Text(name, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13), overflow: TextOverflow.ellipsis)),
+                              const Icon(Icons.location_on_outlined, color: AppTheme.textHint, size: 16),
+                              const SizedBox(width: 4),
+                              Flexible(child: Text(location, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12), overflow: TextOverflow.ellipsis)),
+                            ],
+                          );
+                        },
+                      )
+                    : Row(
+                        children: [
+                          const Icon(Icons.person_outline, color: AppTheme.textHint, size: 16),
+                          const SizedBox(width: 6),
+                          Expanded(child: Text(request.requesterName.isNotEmpty ? request.requesterName : 'زائر', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13), overflow: TextOverflow.ellipsis)),
+                          const Icon(Icons.location_on_outlined, color: AppTheme.textHint, size: 16),
+                          const SizedBox(width: 4),
+                          Flexible(child: Builder(builder: (ctx) {
+                            final loc = [request.wilaya, request.commune].where((s) => s.isNotEmpty).join(' - ');
+                            return Text(loc.isEmpty ? '—' : loc, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12), overflow: TextOverflow.ellipsis);
+                          })),
+                        ],
+                      ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -555,7 +641,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                     Text(timeago.format(request.createdAt, locale: 'ar'),
                         style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
                     const Spacer(),
-                    if (request.assignedToName != null)
+                    if (request.assignedToName != null && request.assignedToName!.isNotEmpty)
                       Row(
                         children: [
                           StreamBuilder<DocumentSnapshot>(
@@ -569,7 +655,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                                 radius: 10,
                                 backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
                                 backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
-                                child: (imageUrl == null || imageUrl.isEmpty) 
+                                child: (imageUrl == null || imageUrl.isEmpty)
                                   ? Text(request.assignedToName![0], style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 10))
                                   : null,
                               );
@@ -581,38 +667,6 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                       ),
                   ],
                 ),
-                if (request.type.contains('جنازة') || request.type == 'funeral_transport')
-                  Container(
-                    margin: const EdgeInsets.only(top: 10),
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: AppTheme.backgroundColor, borderRadius: BorderRadius.circular(12)),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.person_off_outlined, color: AppTheme.textHint, size: 14),
-                            const SizedBox(width: 6),
-                            Text('المتوفى: ${request.details['deceasedName'] ?? "غير محدد"}',
-                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.route, color: AppTheme.textHint, size: 14),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                '${request.details['pickup'] ?? "؟"} ← ${request.details['delivery'] ?? "؟"}',
-                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -626,14 +680,6 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                         () => _showAssignWorkerDialog(request),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    if (request.type.contains('جنازة'))
-                      _buildActionButton(
-                        Icons.airport_shuttle,
-                        request.assignedCarId == null ? 'سيارة' : '✓',
-                        request.assignedCarId == null ? AppTheme.textHint : AppTheme.successColor,
-                        () => _showAssignVehicleDialog(request),
-                      ),
                     const SizedBox(width: 8),
                     _buildActionButton(Icons.update, 'الحالة', AppTheme.warningColor, () => _showStatusUpdateSheet(request)),
                   ],
@@ -652,37 +698,16 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
 
     if (isUrgency) {
       switch (status) {
-        case 'emergency':
-          color = AppTheme.errorColor;
-          label = 'طارئ';
-          break;
-        case 'urgent':
-          color = AppTheme.warningColor;
-          label = 'مستعجل';
-          break;
-        case 'normal':
-          color = AppTheme.successColor;
-          label = 'عادي';
-          break;
+        case 'emergency': color = AppTheme.errorColor; label = 'طارئ'; break;
+        case 'urgent': color = AppTheme.warningColor; label = 'مستعجل'; break;
+        case 'normal': color = AppTheme.successColor; label = 'عادي'; break;
       }
     } else {
       switch (status) {
-        case 'pending':
-          color = AppTheme.warningColor;
-          label = 'معلق';
-          break;
-        case 'in_progress':
-          color = Colors.blue;
-          label = 'جاري';
-          break;
-        case 'completed':
-          color = AppTheme.successColor;
-          label = 'مكتمل';
-          break;
-        case 'rejected':
-          color = AppTheme.errorColor;
-          label = 'مرفوض';
-          break;
+        case 'pending': color = AppTheme.warningColor; label = 'معلق'; break;
+        case 'in_progress': color = Colors.blue; label = 'جاري'; break;
+        case 'completed': color = AppTheme.successColor; label = 'مكتمل'; break;
+        case 'rejected': color = AppTheme.errorColor; label = 'مرفوض'; break;
       }
     }
 
@@ -744,7 +769,6 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                     fillColor: Theme.of(context).cardColor,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),
-                  onChanged: (v) => setState(() {}),
                 ),
               ),
               Expanded(
@@ -764,12 +788,12 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                         var worker = workers[index].data() as Map<String, dynamic>;
                         String workerId = workers[index].id;
                         String? imageUrl = worker['profileImage'];
-                        
+
                         return ListTile(
                           leading: CircleAvatar(
                             backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
                             backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
-                            child: (imageUrl == null || imageUrl.isEmpty) 
+                            child: (imageUrl == null || imageUrl.isEmpty)
                               ? Text(worker['name'][0], style: const TextStyle(color: AppTheme.primaryGreen))
                               : null,
                           ),

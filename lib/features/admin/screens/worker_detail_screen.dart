@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:timeago/timeago.dart' as timeago;
 import '../../../core/theme/app_theme.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../data/models/user_model.dart';
 import '../controllers/worker_management_controller.dart';
 
@@ -303,7 +304,7 @@ class WorkerDetailScreen extends StatelessWidget {
                                 padding: const EdgeInsets.all(8),
                                 child: const Icon(Icons.assignment, color: AppTheme.primaryGreen, size: 18),
                               ),
-                              title: Text(request['serviceName'] ?? 'طلب خدمة',
+                              title: Text(AppConstants.translateServiceType(request['serviceName'] ?? request['type'] ?? 'طلب خدمة'),
                                   style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500, fontSize: 14)),
                               subtitle: Text('${request['requesterName'] ?? ''} - ${request['wilaya'] ?? ''}',
                                   style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),

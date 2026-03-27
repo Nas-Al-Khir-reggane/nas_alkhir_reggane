@@ -7,7 +7,11 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart' as intl;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/animations/micro_interactions.dart';
 import '../controllers/admin_controller.dart';
+import '../../../core/animations/scroll_animations.dart';
+import '../../../core/animations/visual_effects.dart';
+import '../../../core/animations/sound_manager.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/models/service_request_model.dart';
 import '../../../data/models/user_model.dart';
@@ -15,7 +19,8 @@ import '../../../data/services/notification_service.dart';
 import 'service_requests_screen.dart' as real_requests;
 import 'projects_screen.dart';
 import 'workers_screen.dart';
-import '../../shared/screens/profile_screen.dart';
+import 'package:nas_al_kheir/core/widgets/geometric_progress.dart';
+import 'package:nas_al_kheir/features/admin/screens/project_detail_screen.dart';
 import 'project_detail_screen.dart';
 import 'request_detail_screen.dart';
 
@@ -88,14 +93,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
       },
       child: Directionality(
         textDirection: TextDirection.rtl,
-        child: Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          body: IndexedStack(
-            index: _currentIndex,
-            children: screens,
+        child: VisualEffects.ambientBackground(
+          isDark: Get.isDarkMode,
+          child: Scaffold(
+            backgroundColor: Colors.transparent, // Allow ambient to show
+            body: IndexedStack(
+              index: _currentIndex,
+              children: screens,
+            ),
+            bottomNavigationBar: _buildBottomBar(),
+            floatingActionButton: _shouldShowFAB() ? _buildFAB() : null,
           ),
-          bottomNavigationBar: _buildBottomBar(),
-          floatingActionButton: _shouldShowFAB() ? _buildFAB() : null,
         ),
       ),
     );
@@ -120,25 +128,45 @@ class _AdminDashboardState extends State<AdminDashboard> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
+          onTap: (index) {
+            setState(() => _currentIndex = index);
+            SoundManager.to.playNavigation();
+            
+            // عند الانتقال لتبويب الطلبات، نعتبر كل الحالات العاجلة الحالية "مقروءة"
+            if (index == 1) {
+              controller.markAllUrgentAsSeen();
+            }
+          },
           selectedItemColor: AppTheme.primaryGreen,
           unselectedItemColor: AppTheme.textHint,
           type: BottomNavigationBarType.fixed,
           selectedLabelStyle: const TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold, fontSize: 12),
           unselectedLabelStyle: const TextStyle(fontFamily: 'Tajawal', fontSize: 11),
           items: [
-            const BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard), label: 'الرئيسية'),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.dashboard_outlined), 
+              activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.dashboard)), 
+              label: 'الرئيسية'),
             BottomNavigationBarItem(
               icon: Obx(() => Badge(
-                    label: Text(controller.urgentRequests.length.toString()),
-                    isLabelVisible: controller.urgentRequests.isNotEmpty,
+                    label: Text(controller.unseenUrgentCount.value.toString()),
+                    isLabelVisible: controller.unseenUrgentCount.value > 0,
                     child: const Icon(Icons.assignment_outlined),
                   )),
-              activeIcon: const Icon(Icons.assignment),
+              activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.assignment)),
               label: 'الطلبات'),
-            const BottomNavigationBarItem(icon: Icon(Icons.folder_outlined), activeIcon: Icon(Icons.folder), label: 'المشاريع'),
-            const BottomNavigationBarItem(icon: Icon(Icons.group_outlined), activeIcon: Icon(Icons.group), label: 'الفريق'),
-            const BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings_outlined), activeIcon: Icon(Icons.admin_panel_settings), label: 'الإدارة'),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.folder_outlined), 
+              activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.folder)), 
+              label: 'المشاريع'),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.group_outlined), 
+              activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.group)), 
+              label: 'الفريق'),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.admin_panel_settings_outlined), 
+              activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.admin_panel_settings)), 
+              label: 'الإدارة'),
           ],
         ),
       ),
@@ -147,36 +175,38 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _buildFAB() {
     return FadeInUp(
-      duration: const Duration(milliseconds: 400),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: AppTheme.primaryGradient,
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primaryGreen.withValues(alpha: 0.3),
-              blurRadius: 12,
-              spreadRadius: 2,
-              offset: const Offset(0, 4),
-            )
-          ],
-        ),
-        child: FloatingActionButton.extended(
-          onPressed: () => _showActionMenu(),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          highlightElevation: 0,
-          hoverElevation: 0,
-          focusElevation: 0,
-          extendedPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          icon: const Icon(Icons.add_box_rounded, color: Colors.black, size: 22),
-          label: const Text(
-            'إجراء سريع',
-            style: TextStyle(
-              fontFamily: 'Tajawal',
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-              color: Colors.black,
+      duration: const Duration(milliseconds: 600),
+      child: VisualEffects.magneticButton(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: AppTheme.primaryGradient,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryGreen.withValues(alpha: 0.3),
+                blurRadius: 12,
+                spreadRadius: 2,
+                offset: const Offset(0, 4),
+              )
+            ],
+          ),
+          child: FloatingActionButton.extended(
+            onPressed: () => _showActionMenu(),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            highlightElevation: 0,
+            hoverElevation: 0,
+            focusElevation: 0,
+            extendedPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            icon: const Icon(Icons.add_box_rounded, color: Colors.black, size: 22),
+            label: const Text(
+              'إجراء سريع',
+              style: TextStyle(
+                fontFamily: 'Tajawal',
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: Colors.black,
+              ),
             ),
           ),
         ),
@@ -215,8 +245,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
               Get.back();
               WorkersScreen.showAddWorkerSheet(context);
             }),
+            _buildActionItem(Icons.settings_backup_restore, 'إعادة تهيئة البيانات الأساسية', () {
+              Get.back();
+              _showSeedConfirmation();
+            }),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showSeedConfirmation() {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppTheme.darkSurface,
+        title: const Text('تأكيد التهيئة', style: TextStyle(color: Colors.white)),
+        content: Text('سيتم إضافة أنواع الخدمات والمهام الأساسية إلى قاعدة البيانات. هل أنت متأكد؟', style: TextStyle(color: AppTheme.textSecondary)),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
+          AppTheme.gradientButton(
+            text: 'تأكيد',
+            onPressed: () {
+              Get.back();
+              controller.seedInitialData();
+            },
+          ),
+        ],
       ),
     );
   }
@@ -337,14 +391,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
 
   Widget _buildActionItem(IconData icon, String title, VoidCallback onTap) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-        child: Icon(icon, color: AppTheme.primaryGreen),
-      ),
-      title: Text(title, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontFamily: 'Tajawal')),
+    return MicroInteractions.bouncingButton(
       onTap: onTap,
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+          child: Icon(icon, color: AppTheme.primaryGreen),
+        ),
+        title: Text(title, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontFamily: 'Tajawal')),
+      ),
     );
   }
 
@@ -401,7 +457,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   );
                 }),
                 IconButton(
-                  onPressed: () => AppConstants.toggleTheme(),
+                  onPressed: () {
+                    AppConstants.toggleTheme();
+                    SoundManager.to.playToggle(!Get.isDarkMode);
+                  },
                   icon: Icon(Get.isDarkMode ? Icons.light_mode : Icons.dark_mode, color: AppTheme.primaryGreen),
                 ),
                 Obx(() => Stack(
@@ -428,7 +487,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ],
             ),
             const SizedBox(height: 20),
-            Obx(() => controller.urgentRequests.isNotEmpty
+            Obx(() => controller.unseenUrgentCount.value > 0
                 ? FadeIn(
                     child: GestureDetector(
                       onTap: () => setState(() => _currentIndex = 1),
@@ -589,21 +648,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           ))),
                     ),
                     const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: controller.serviceTypeDistribution
-                          .map((item) => Padding(
-                                padding: const EdgeInsets.only(bottom: 8.0),
-                                child: Row(
-                                  children: [
-                                    Container(width: 12, height: 12, decoration: BoxDecoration(color: item['color'], borderRadius: BorderRadius.circular(3))),
-                                    const SizedBox(width: 8),
-                                    Text(item['name'], style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-                                  ],
-                                ),
-                              ))
-                          .toList(),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: controller.serviceTypeDistribution
+                              .map((item) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 8.0),
+                                    child: Row(
+                                      children: [
+                                        Container(width: 12, height: 12, decoration: BoxDecoration(color: item['color'], borderRadius: BorderRadius.circular(3))),
+                                        const SizedBox(width: 8),
+                                        Expanded(child: Text(AppConstants.translateServiceType(item['name']), style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontFamily: 'Tajawal'), overflow: TextOverflow.ellipsis)),
+                                      ],
+                                    ),
+                                  ))
+                              .toList(),
+                        ),
+                      ),
                     )
                   ],
                 ),
@@ -660,54 +723,87 @@ class _AdminDashboardState extends State<AdminDashboard> {
             Obx(() => Column(
                   children: controller.activeProjectsList
                       .take(3)
-                      .map((project) => GestureDetector(
-                            onTap: () => Get.to(() => ProjectDetailScreen(project: project)),
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16)),
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                          child: Text(project.name,
-                                              style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis)),
-                                      Text('${project.budget > 0 ? ((project.collected / project.budget) * 100).toInt() : 0}%',
-                                          style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w700)),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: LinearProgressIndicator(
-                                      value: project.budget > 0 ? project.collected / project.budget : 0,
-                                      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                                      valueColor: AlwaysStoppedAnimation(
-                                        (project.budget > 0 && (project.collected / project.budget) > 0.75)
-                                            ? AppTheme.successColor
-                                            : (project.budget > 0 && (project.collected / project.budget) > 0.4)
-                                                ? AppTheme.primaryGreen
-                                                : AppTheme.warningColor,
-                                      ),
-                                      minHeight: 8,
+                      .map((project) {
+                        final progress = project.budget > 0 ? project.collected / project.budget : 0.0;
+                        return GestureDetector(
+                              onTap: () => Get.to(() => ProjectDetailScreen(project: project)),
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: AppTheme.glassDecoration,
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  children: [
+                                    HexagonalProgressIndicator(
+                                      progress: progress,
+                                      size: 55,
+                                      label: 'التقدم',
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Text('${project.collected.toInt()} دج', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                                      const Spacer(),
-                                      Text('من ${project.budget.toInt()} دج', style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
-                                    ],
-                                  ),
-                                ],
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            project.name,
+                                            style: TextStyle(
+                                                color: AppTheme.textPrimary, 
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 15,
+                                                fontFamily: 'Tajawal'
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                '${project.collected.toInt()} دج', 
+                                                style: const TextStyle(
+                                                    color: AppTheme.primaryGreen, 
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600
+                                                )
+                                              ),
+                                              const Spacer(),
+                                              Text(
+                                                'من ${project.budget.toInt()} دج', 
+                                                style: const TextStyle(
+                                                    color: AppTheme.textHint, 
+                                                    fontSize: 11
+                                                )
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            height: 3,
+                                            width: double.infinity,
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                                              borderRadius: BorderRadius.circular(2),
+                                            ),
+                                            child: FractionallySizedBox(
+                                              alignment: Alignment.centerRight,
+                                              widthFactor: progress.clamp(0.0, 1.0),
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: AppTheme.primaryGreen.withValues(alpha: 0.5),
+                                                  borderRadius: BorderRadius.circular(2),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Icon(Icons.arrow_forward_ios, color: AppTheme.primaryGreen.withValues(alpha: 0.3), size: 14),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ))
+                            );
+                      })
                       .toList(),
                 )),
             const SizedBox(height: 16),
@@ -736,24 +832,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               padding: const EdgeInsets.all(14),
                               child: Row(
                                 children: [
-                                  StreamBuilder<DocumentSnapshot>(
-                                    stream: FirebaseFirestore.instance.collection(AppConstants.usersCollection).doc(update.workerId).snapshots(),
-                                    builder: (context, userSnap) {
-                                      String? imageUrl;
-                                      if (userSnap.hasData && userSnap.data!.exists) {
-                                        imageUrl = (userSnap.data!.data() as Map<String, dynamic>)['profileImage'];
-                                      }
-                                      return CircleAvatar(
-                                        radius: 20,
-                                        backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
-                                        backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
-                                        child: (imageUrl == null || imageUrl.isEmpty) 
-                                          ? Text(update.workerName.isNotEmpty ? update.workerName[0] : '?',
-                                              style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w700))
-                                          : null,
-                                      );
-                                    }
-                                  ),
+                                  Obx(() {
+                                    final imageUrl = controller.workerAvatarsCache[update.workerId];
+                                    return CircleAvatar(
+                                      radius: 20,
+                                      backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                                      backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
+                                      child: (imageUrl == null || imageUrl.isEmpty) 
+                                        ? Text(update.workerName.isNotEmpty ? update.workerName[0] : '?',
+                                            style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w700))
+                                        : null,
+                                    );
+                                  }),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
@@ -845,35 +935,44 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildKPICard(String label, RxInt value, IconData icon, Gradient gradient, String suffix, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(20), boxShadow: AppTheme.darkShadow),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(12)),
-                  child: Icon(icon, color: Colors.white, size: 20),
+    return VisualEffects.glassMorphism(
+      borderRadius: BorderRadius.circular(20),
+      opacity: 0.1,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: gradient.withOpacity(0.8), // Slight transparency for glass effect
+            borderRadius: BorderRadius.circular(20),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
+                    child: Icon(icon, color: Colors.white, size: 18),
+                  ),
+                  if (suffix.isNotEmpty) Text(suffix, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Obx(() => FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: ScrollAnimations.numberCounter(
+                    value: value.value,
+                    isCurrency: suffix == 'دج',
+                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
                 ),
-                const Spacer(),
-                if (suffix.isNotEmpty) Text(suffix, style: const TextStyle(color: Colors.white70, fontSize: 10)),
-              ],
-            ),
-            const Spacer(),
-            Obx(() => Text(
-                value.value >= 1000000
-                    ? '${(value.value / 1000000).toStringAsFixed(1)}M'
-                    : value.value >= 1000
-                        ? '${(value.value / 1000).toStringAsFixed(1)}k'
-                        : value.value.toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800))),
-            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
-          ],
+              )),
+              Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+            ],
+          ),
         ),
       ),
     );
@@ -902,58 +1001,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text(request.type, style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
-                      const Spacer(),
-                      AppTheme.statusBadge(request.urgency),
-                    ],
-                  ),
-                  Text(request.requesterName, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                  Text('${request.wilaya} - ${_timeAgo(request.createdAt)}', style: const TextStyle(color: AppTheme.textHint, fontSize: 11)),
-                ],
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.arrow_forward_ios, color: AppTheme.primaryGreen, size: 16),
-              onPressed: () => Get.toNamed('/admin/request-detail', arguments: request)
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildUrgentRequestCardShort(ServiceRequestModel request) {
-    final color = request.urgency == 'emergency' ? AppTheme.emergencyColor : AppTheme.urgentColor;
-    return GestureDetector(
-      onTap: () => Get.toNamed('/admin/request-detail', arguments: request),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
-            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 10)]),
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.2), shape: BoxShape.circle),
-                child: Icon(Icons.emergency_outlined, color: color, size: 24)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(request.type, style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
-                      const Spacer(),
-                      AppTheme.statusBadge(request.urgency),
-                    ],
-                  ),
+                      Row(
+                        children: [
+                          Flexible(child: Text(AppConstants.translateServiceType(request.type), style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary, fontSize: 13), overflow: TextOverflow.ellipsis)),
+                          const SizedBox(width: 8),
+                          AppTheme.statusBadge(request.urgency),
+                        ],
+                      ),
+                  const SizedBox(height: 4),
                   Text(request.requesterName, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                   Text('${request.wilaya} - ${_timeAgo(request.createdAt)}', style: const TextStyle(color: AppTheme.textHint, fontSize: 11)),
                 ],
@@ -1033,16 +1088,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ),
         const SizedBox(height: 16),
-        if (user?.role == UserRole.superAdmin)
+        if (user?.role.name == 'superAdmin')
           _buildSettingsTile(Icons.people, 'إدارة المستخدمين', 'موافقة وإدارة الحسابات', () => Get.toNamed('/admin/users')),
-        _buildSettingsTile(Icons.group, 'فريق العمل', 'إدارة العمال والمتطوعين', () => setState(() => _currentIndex = 3)),
         _buildSettingsTile(Icons.miscellaneous_services, 'أنواع الخدمات', 'إضافة وتعديل أنواع الخدمات', () => Get.toNamed('/admin/service-types')),
         _buildSettingsTile(Icons.task, 'أنواع المهام', 'إضافة وتعديل أنواع المهام', () => Get.toNamed('/admin/task-types')),
         _buildSettingsTile(Icons.airport_shuttle, 'سيارات الجنازة', 'إدارة الأسطول', () => Get.toNamed('/admin/vehicles')),
         _buildSettingsTile(Icons.bar_chart, 'التقارير', 'تقارير شهرية وسنوية PDF', () => Get.toNamed('/admin/reports')),
-        _buildSettingsTile(Icons.chat, 'الدردشة مع الفريق', 'التواصل مع العمال', () => Get.toNamed('/chat/group')),
+        const SizedBox(height: 12),
+        _buildChatHighlightTile(),
+        const SizedBox(height: 12),
         const Divider(color: AppTheme.glassBorder, indent: 24, endIndent: 24),
-        _buildSettingsTile(Icons.person, 'حسابي (الملف الشخصي)', 'تعديل البيانات والصورة', () => Get.toNamed('/profile')),
         _buildSettingsTile(Icons.dark_mode, 'الوضع الداكن/النهاري', 'تبديل المظهر', () => AppConstants.toggleTheme(), showToggle: true),
         const Divider(color: AppTheme.glassBorder, indent: 24, endIndent: 24),
         _buildSettingsTile(Icons.logout, 'تسجيل الخروج', 'الخروج من الحساب', () => authController.logout(), isDestructive: true),
@@ -1069,6 +1124,33 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ? Switch(value: Get.isDarkMode, onChanged: (v) => AppConstants.toggleTheme())
             : Icon(Icons.arrow_forward_ios, color: AppTheme.textHint.withValues(alpha: 0.5), size: 14),
         onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildChatHighlightTile() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [AppTheme.primaryGreen, Colors.teal]),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: AppTheme.primaryGreen.withOpacity(0.3), blurRadius: 15, spreadRadius: 2)],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        leading: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: const BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
+          child: const Icon(Icons.forum_rounded, color: Colors.white, size: 26),
+        ),
+        title: const Text('غرفة الدردشة والتواصل', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+        subtitle: const Text('تواصل فورياً مع فريق العمل', style: TextStyle(color: Colors.white70, fontSize: 12)),
+        trailing: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: const BoxDecoration(color: Colors.black26, shape: BoxShape.circle),
+          child: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14),
+        ),
+        onTap: () => Get.toNamed('/chat/group'),
       ),
     );
   }

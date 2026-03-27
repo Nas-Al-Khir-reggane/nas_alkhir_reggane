@@ -3,6 +3,7 @@ class ServiceTypeModel {
   final String name;
   final String icon;
   final bool isActive;
+  final int popularity; 
   final List<String> fields;
 
   ServiceTypeModel({
@@ -10,6 +11,7 @@ class ServiceTypeModel {
     required this.name,
     required this.icon,
     this.isActive = true,
+    this.popularity = 0,
     this.fields = const [],
   });
 
@@ -19,6 +21,7 @@ class ServiceTypeModel {
       'name': name,
       'icon': icon,
       'isActive': isActive,
+      'popularity': popularity,
       'fields': fields,
     };
   }
@@ -29,6 +32,7 @@ class ServiceTypeModel {
       name: map['name'] ?? '',
       icon: map['icon'] ?? '',
       isActive: map['isActive'] ?? true,
+      popularity: map['popularity'] ?? 0,
       fields: List<String>.from(map['fields'] ?? []),
     );
   }

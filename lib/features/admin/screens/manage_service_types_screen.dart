@@ -24,7 +24,6 @@ class ManageServiceTypesScreen extends StatelessWidget {
       backgroundColor: AppTheme.backgroundColor,
       body: Column(
         children: [
-          // ─── Header مخصص متجانس ───
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
@@ -85,8 +84,6 @@ class ManageServiceTypesScreen extends StatelessWidget {
               ),
             ),
           ),
-
-          // ─── قائمة الخدمات ───
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance.collection('service_types').snapshots(),
@@ -180,7 +177,7 @@ class ManageServiceTypesScreen extends StatelessWidget {
               decoration: AppTheme.inputDecoration('اسم الخدمة', Icons.label_rounded),
             ),
             const SizedBox(height: 14),
-            Text('حقول البيانات المطلوبة من المستفيد',
+            Text('حقول البيانات المطلوبة من المستفيد (افصل بينها بفاصلة)',
                 style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
             const SizedBox(height: 6),
             TextField(
@@ -193,34 +190,40 @@ class ManageServiceTypesScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Get.back(),
-            child: Text('إلغاء', style: TextStyle(color: AppTheme.textSecondary)),
+            child: Text('إلغاء', style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'Tajawal')),
           ),
-          GestureDetector(
-            onTap: () {
-              if (nameController.text.isEmpty) return;
-              final fields = fieldsController.text
-                  .split(',')
-                  .map((e) => e.trim())
-                  .where((e) => e.isNotEmpty)
-                  .toList();
-              FirebaseFirestore.instance.collection('service_types').add({
-                'name': nameController.text,
-                'icon': 'category',
-                'isActive': true,
-                'fields': fields,
-                'createdAt': FieldValue.serverTimestamp(),
-              });
-              Get.back();
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text('حفظ باب الخير',
-                  style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700)),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryGreen,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
+            onPressed: () async {
+              if (nameController.text.isEmpty) return;
+              
+              // إظهار واجهة تحميل
+              Get.showOverlay(
+                asyncFunction: () async {
+                  final fields = fieldsController.text
+                      .split(',')
+                      .map((e) => e.trim())
+                      .where((e) => e.isNotEmpty)
+                      .toList();
+                  await FirebaseFirestore.instance.collection('service_types').add({
+                    'name': nameController.text,
+                    'icon': 'category',
+                    'isActive': true,
+                    'fields': fields,
+                    'createdAt': FieldValue.serverTimestamp(),
+                  });
+                  Get.back();
+                  Get.snackbar('✅ تم', 'تمت إضافة نوع الخدمة بنجاح', 
+                    backgroundColor: AppTheme.successColor.withOpacity(0.2),
+                    colorText: AppTheme.successColor);
+                },
+                loadingWidget: const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen)),
+              );
+            },
+            child: const Text('حفظ', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
           ),
         ],
       ),

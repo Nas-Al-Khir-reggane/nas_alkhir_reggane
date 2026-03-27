@@ -1,3 +1,4 @@
+import 'package:nas_al_kheir/core/widgets/geometric_progress.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -110,8 +111,9 @@ class ProjectDetailScreen extends StatelessWidget {
             ),
             actions: [
               IconButton(
-                icon: const Icon(Icons.share_outlined),
-                onPressed: () => projectController.shareProject(project),
+                icon: const Icon(Icons.share, color: Colors.white),
+                tooltip: 'مشاركة بطاقة احترافية',
+                onPressed: () => projectController.shareProjectImage(project, categoryColor, categoryName),
               ),
               PopupMenuButton<String>(
                 onSelected: (val) {
@@ -162,14 +164,11 @@ class ProjectDetailScreen extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: LinearProgressIndicator(
-                              value: project.budget > 0 ? project.collected / project.budget : 0,
-                              minHeight: 16,
-                              backgroundColor: AppTheme.darkSurface,
-                              valueColor: AlwaysStoppedAnimation(_getProgressColor(project.progressPercentage)),
-                            ),
+                          GoalGridProgress(
+                            budget: project.budget,
+                            collected: project.collected,
+                            categoryId: project.category,
+                            activeColor: categoryColor,
                           ),
                           const SizedBox(height: 16),
                           Row(
@@ -524,7 +523,7 @@ class ProjectDetailScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('إسناد عامل للمشروع', 
+            Text('إسناد عامل للمشروع',
                 style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             Expanded(
@@ -546,7 +545,7 @@ class ProjectDetailScreen extends StatelessWidget {
                           child: Text(worker['name'][0], style: const TextStyle(color: AppTheme.primaryGreen)),
                         ),
                         title: Text(worker['name'], style: TextStyle(color: AppTheme.textPrimary)),
-                        trailing: isAssigned 
+                        trailing: isAssigned
                           ? const Icon(Icons.check_circle, color: AppTheme.primaryGreen)
                           : const Icon(Icons.add_circle_outline, color: AppTheme.textHint),
                         onTap: () {

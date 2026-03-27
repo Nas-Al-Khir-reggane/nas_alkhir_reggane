@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../animations/app_transitions.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -17,10 +18,12 @@ import '../../features/admin/screens/worker_detail_screen.dart';
 import '../../features/admin/screens/vehicles_screen.dart';
 import '../../features/admin/screens/reports_screen.dart';
 import '../../features/admin/screens/add_project_screen.dart';
+import '../../features/admin/screens/admin_committed_donors.dart';
 import '../../features/worker/screens/worker_dashboard.dart';
 import '../../features/worker/screens/update_task_screen.dart';
 import '../../features/donor/screens/donor_dashboard.dart';
 import '../../features/donor/screens/donate_screen.dart';
+import '../../features/donor/screens/my_subscriptions_screen.dart';
 import '../../features/beneficiary/screens/beneficiary_dashboard.dart';
 import '../../features/beneficiary/screens/new_request_screen.dart';
 import '../../features/beneficiary/screens/request_status_screen.dart';
@@ -49,6 +52,7 @@ class AppRoutes {
   static const String adminProjects = '/admin/projects';
   static const String adminProjectDetail = '/admin/project-detail';
   static const String adminAddProject = '/admin/add-project';
+  static const String adminCommittedDonors = '/admin/committed-donors'; // ✨ NEW
   static const String adminWorkers = '/admin/workers';
   static const String adminWorkerDetail = '/admin/worker-detail';
   static const String adminVehicles = '/admin/vehicles';
@@ -59,6 +63,7 @@ class AppRoutes {
   
   static const String donorDashboard = '/donor/dashboard';
   static const String donorDonate = '/donor/donate';
+  static const String donorSubscriptions = '/donor/subscriptions'; // ✨ NEW
   
   static const String beneficiaryDashboard = '/beneficiary/dashboard';
   static const String beneficiaryNewRequest = '/beneficiary/new-request';
@@ -73,7 +78,33 @@ class AppRoutes {
   static const String notifications = '/notifications';
   static const String profile = '/profile';
 
-  static List<GetPage> getPages() => [
+  static List<GetPage> getPages() {
+    return _rawPages.map((page) {
+      CustomTransition? customTrans;
+      
+      if (page.name == splash || page.name == login || page.name == register || page.name == pending) {
+        customTrans = AppTransitions.fadeScale;
+      } 
+      else if (page.name.contains('dashboard') || page.name == notifications || page.name == profile) {
+        customTrans = AppTransitions.crossfadeOverlap;
+      } 
+      else {
+        customTrans = AppTransitions.directionalSlide;
+      }
+
+      return GetPage(
+        name: page.name,
+        page: page.page,
+        middlewares: page.middlewares,
+        customTransition: customTrans,
+        transitionDuration: AppTransitions.duration,
+        curve: AppTransitions.curve,
+        popGesture: true,
+      );
+    }).toList();
+  }
+
+  static final List<GetPage> _rawPages = [
     GetPage(name: splash, page: () => const SplashScreen()),
     GetPage(name: login, page: () => const LoginScreen()),
     GetPage(name: register, page: () => const RegisterScreen()),
@@ -105,6 +136,15 @@ class AppRoutes {
       middlewares: [AuthMiddleware()]
     ),
     GetPage(name: adminAddProject, page: () => const AddProjectScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(
+      name: adminCommittedDonors, 
+      page: () {
+        final proj = Get.arguments;
+        if (proj is! ProjectModel) return const Scaffold(body: Center(child: Text('خطأ في البيانات')));
+        return AdminCommittedDonors(project: proj);
+      },
+      middlewares: [AuthMiddleware()]
+    ),
     GetPage(name: adminWorkers, page: () => const WorkersScreen(), middlewares: [AuthMiddleware()]),
     GetPage(
       name: adminWorkerDetail, 
@@ -125,6 +165,7 @@ class AppRoutes {
     // Donor Routes
     GetPage(name: donorDashboard, page: () => const DonorDashboard(), middlewares: [AuthMiddleware()]),
     GetPage(name: donorDonate, page: () => const DonateScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(name: donorSubscriptions, page: () => const MySubscriptionsScreen(), middlewares: [AuthMiddleware()]),
     
     // Beneficiary Routes
     GetPage(name: beneficiaryDashboard, page: () => const BeneficiaryDashboard(), middlewares: [AuthMiddleware()]),

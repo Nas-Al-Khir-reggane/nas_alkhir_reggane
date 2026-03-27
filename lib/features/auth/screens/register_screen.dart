@@ -25,6 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _addressController = TextEditingController();
 
   String? _selectedWilaya;
+  String? _selectedCommune;
   UserRole _selectedRole = UserRole.beneficiary;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -55,7 +56,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          // خلفية زخرفية
           Positioned(
             top: -50,
             right: -50,
@@ -169,11 +169,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 prefixIcon: Icon(Icons.location_on_outlined, color: AppTheme.primaryGreen),
                               ),
                               items: AppConstants.algeriaWilayas.map((w) => DropdownMenuItem(value: w, child: Text(w))).toList(),
-                              onChanged: (v) => setState(() => _selectedWilaya = v),
+                              onChanged: (v) {
+                                setState(() {
+                                  _selectedWilaya = v;
+                                  _selectedCommune = null;
+                                });
+                              },
                               validator: (v) => v == null ? 'يرجى اختيار الولاية' : null,
                               dropdownColor: Theme.of(context).colorScheme.surface,
                               style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
                             ),
+                            const SizedBox(height: 14),
+                            if (_selectedWilaya != null)
+                              FadeInDown(
+                                duration: const Duration(milliseconds: 300),
+                                child: DropdownButtonFormField<String>(
+                                  value: _selectedCommune,
+                                  decoration: const InputDecoration(
+                                    labelText: 'البلدية',
+                                    prefixIcon: Icon(Icons.map_outlined, color: AppTheme.primaryGreen),
+                                  ),
+                                  items: AppConstants.getCommunesForWilaya(_selectedWilaya!)
+                                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                                      .toList(),
+                                  onChanged: (v) => setState(() => _selectedCommune = v),
+                                  validator: (v) => v == null ? 'يرجى اختيار البلدية' : null,
+                                  dropdownColor: Theme.of(context).colorScheme.surface,
+                                  style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
+                                ),
+                              ),
                             const SizedBox(height: 14),
                             _buildTextField(
                               context,
@@ -256,6 +280,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                             name: _nameController.text.trim(),
                                             phone: _phoneController.text.trim(),
                                             wilaya: _selectedWilaya!,
+                                            commune: _selectedCommune!,
                                             address: _addressController.text.trim(),
                                             email: _emailController.text.trim(),
                                             password: _passwordController.text.trim(),

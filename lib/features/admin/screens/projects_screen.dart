@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import '../../../core/animations/mount_animations.dart';
+import '../../../core/animations/visual_effects.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/project_model.dart';
 import '../controllers/project_controller.dart';
@@ -87,10 +89,13 @@ class ProjectsScreen extends StatelessWidget {
 
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: TextField(
-                  controller: projectController.searchController,
-                  decoration: AppTheme.inputDecoration('ابحث عن مشروع أو فئة...', Icons.search_rounded),
-                  style: TextStyle(color: AppTheme.textPrimary),
+                child: VisualEffects.glassMorphism(
+                  borderRadius: BorderRadius.circular(16),
+                  child: TextField(
+                    controller: projectController.searchController,
+                    decoration: AppTheme.inputDecoration('ابحث عن مشروع أو فئة...', Icons.search_rounded),
+                    style: TextStyle(color: AppTheme.textPrimary),
+                  ),
                 ),
               ),
 
@@ -121,15 +126,11 @@ class ProjectsScreen extends StatelessWidget {
                       itemCount: projectController.filteredProjects.length,
                       itemBuilder: (context, index) {
                         final project = projectController.filteredProjects[index];
-                        return AnimationConfiguration.staggeredList(
-                          position: index,
-                          duration: const Duration(milliseconds: 600),
-                          child: SlideAnimation(
-                            verticalOffset: 50.0,
-                            child: FadeInAnimation(
-                              child: _buildProfessionalProjectCard(context, project),
-                            ),
-                          ),
+                        return MountAnimations.staggeredListEntry(
+                          index: index,
+                          delayMs: 60,
+                          dropOffset: 40.0,
+                          child: _buildProfessionalProjectCard(context, project),
                         );
                       },
                     ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'dart:ui' as ui;
 import 'package:animate_do/animate_do.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -23,7 +24,8 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
-  String selectedWilaya = "01 - أدرار";
+  String? selectedWilaya;
+  String? selectedCommune;
 
   // Step 2 Controllers
   ServiceTypeModel? selectedService;
@@ -53,6 +55,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
         'requesterName': nameController.text,
         'phone': phoneController.text,
         'wilaya': selectedWilaya,
+        'commune': selectedCommune,
         'address': addressController.text,
         'type': selectedService!.id,
         'typeName': selectedService!.name,
@@ -61,6 +64,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
         'status': 'pending',
         'refNumber': refNumber,
         'createdAt': FieldValue.serverTimestamp(),
+        'isGuest': true,
         'details': {},
       };
 
@@ -74,7 +78,11 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
 
       await FirebaseFirestore.instance.collection('guest_requests').add(requestData);
 
-      // Notify Admins about new guest request
+      await FirebaseFirestore.instance
+          .collection('service_types')
+          .doc(selectedService!.id)
+          .update({'popularity': FieldValue.increment(1)});
+
       NotificationService.notifyAllAdmins(
         type: 'new_request',
         title: 'طلب خدمة جديد (زائر)',
@@ -98,7 +106,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
         slivers: [
           SliverAppBar(
             pinned: true,
-            title: const Text('طلب خدمة'),
+            title: const Text('طلب خدمة (زائر)', style: TextStyle(fontFamily: 'Tajawal')),
             leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Get.back()),
             backgroundColor: AppTheme.darkSurface,
             bottom: PreferredSize(
@@ -181,15 +189,40 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: selectedWilaya,
+                hint: Text('اختر الولاية', style: TextStyle(color: AppTheme.textHint, fontSize: 14)),
                 isExpanded: true,
                 dropdownColor: AppTheme.darkSurface,
                 items: AppConstants.algeriaWilayas.map((String value) {
                   return DropdownMenuItem<String>(value: value, child: Text(value, style: TextStyle(color: AppTheme.textPrimary)));
                 }).toList(),
-                onChanged: (val) => setState(() => selectedWilaya = val!),
+                onChanged: (val) => setState(() {
+                  selectedWilaya = val;
+                  selectedCommune = null;
+                }),
               ),
             ),
           ),
+          if (selectedWilaya != null) ...[
+            const SizedBox(height: 16),
+            Text('البلدية *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppTheme.glassBorder)),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: selectedCommune,
+                  hint: Text('اختر البلدية', style: TextStyle(color: AppTheme.textHint, fontSize: 14)),
+                  isExpanded: true,
+                  dropdownColor: AppTheme.darkSurface,
+                  items: AppConstants.getCommunesForWilaya(selectedWilaya!).map((String value) {
+                    return DropdownMenuItem<String>(value: value, child: Text(value, style: TextStyle(color: AppTheme.textPrimary)));
+                  }).toList(),
+                  onChanged: (val) => setState(() => selectedCommune = val),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           _buildLabeledField('العنوان التفصيلي *', Icons.home_outlined, addressController, maxLines: 2),
           const SizedBox(height: 24),
@@ -197,10 +230,15 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
             text: 'التالي',
             icon: Icons.arrow_forward,
             onPressed: () {
-              if (nameController.text.isNotEmpty && phoneController.text.isNotEmpty && addressController.text.isNotEmpty) {
+              if (nameController.text.isNotEmpty && 
+                  phoneController.text.isNotEmpty && 
+                  addressController.text.isNotEmpty &&
+                  selectedWilaya != null &&
+                  selectedCommune != null) {
                 setState(() => currentStep = 2);
               } else {
-                Get.snackbar('تنبيه', 'يرجى ملء جميع الحقول');
+                Get.snackbar('تنبيه', 'يرجى ملء جميع الحقول واختيار الولاية والبلدية', 
+                  backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
               }
             }
           ),
@@ -214,96 +252,189 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('نوع الخدمة المطلوبة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('نوع الخدمة المطلوبة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+              if (selectedService != null)
+                TextButton.icon(
+                  onPressed: () => _showServiceDetailsModal(selectedService!),
+                  icon: const Icon(Icons.edit_note, size: 18),
+                  label: const Text('تعديل التفاصيل'),
+                  style: TextButton.styleFrom(foregroundColor: AppTheme.primaryGreen),
+                ),
+            ],
+          ),
           const SizedBox(height: 16),
           
           StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('service_types').where('isActive', isEqualTo: true).snapshots(),
+            stream: FirebaseFirestore.instance.collection('service_types').snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return const CircularProgressIndicator();
-              final services = snapshot.data!.docs.map((d) => ServiceTypeModel.fromMap(d.data() as Map<String, dynamic>)).toList();
+              if (snapshot.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.error_outline, color: AppTheme.errorColor, size: 40),
+                        const SizedBox(height: 8),
+                        Text('فشل تحميل الخدمات', style: TextStyle(color: AppTheme.errorColor)),
+                        Text(snapshot.error.toString(), style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: Padding(
+                  padding: EdgeInsets.all(30.0),
+                  child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+                ));
+              }
+
+              final docs = snapshot.data?.docs ?? [];
+              final services = docs.map((d) => ServiceTypeModel.fromMap(d.data() as Map<String, dynamic>, d.id))
+                                  .where((s) => s.isActive).toList();
               
-              return GridView.count(
-                crossAxisCount: 2,
+              services.sort((a, b) {
+                if (a.id == 'other') return 1;
+                if (b.id == 'other') return -1;
+                return b.popularity.compareTo(a.popularity);
+              });
+
+              if (services.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Text('لا توجد خدمات متاحة حالياً', style: TextStyle(color: AppTheme.textSecondary)),
+                  ),
+                );
+              }
+
+              return GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: 1.2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                children: services.map((service) {
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.85,
+                ),
+                itemCount: services.length,
+                itemBuilder: (context, index) {
+                  final service = services[index];
                   final isSelected = selectedService?.id == service.id;
                   return GestureDetector(
-                    onTap: () => setState(() => selectedService = service),
-                    child: Container(
+                  onTap: () {
+                    setState(() => selectedService = service);
+                    _showServiceDetailsModal(service);
+                  },
+                  child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.2) : AppTheme.darkCard,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder, width: isSelected ? 2 : 1)
+                        color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.darkCard,
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(
+                          color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder,
+                          width: isSelected ? 2 : 1
+                        ),
+                        boxShadow: isSelected ? [BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.2), blurRadius: 10)] : null,
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.help_outline, color: AppTheme.textHint, size: 28),
-                          const SizedBox(height: 8),
-                          Text(service.name, textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textPrimary, fontSize: 12)),
+                          Icon(_getIconData(service.icon), 
+                            color: isSelected ? AppTheme.primaryGreen : AppTheme.textHint, 
+                            size: 24),
+                          const SizedBox(height: 6),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Text(service.name, 
+                              textAlign: TextAlign.center, 
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: isSelected ? AppTheme.textPrimary : AppTheme.textHint, 
+                                fontSize: 10, 
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                          ),
                         ],
                       ),
                     ),
                   );
-                }).toList(),
+                },
               );
             }
           ),
           
-          const SizedBox(height: 16),
-          if (selectedService?.id == 'funeral_transport') ...[
-            _buildLabeledField('اسم المتوفى *', Icons.person_off_outlined, deceasedNameController),
-            const SizedBox(height: 16),
-            Text('تحديد موقع الاستلام على الخريطة', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-            const SizedBox(height: 8),
+          const SizedBox(height: 30),
+          if (selectedService != null)
             Container(
-              height: 200,
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.glassBorder)),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: GoogleMap(
-                  initialCameraPosition: const CameraPosition(target: LatLng(28.5, -0.25), zoom: 10),
-                  onTap: (latLng) => setState(() => selectedLocation = latLng),
-                  markers: selectedLocation != null ? {Marker(markerId: const MarkerId('pickup'), position: selectedLocation!)} : {},
-                ),
+              margin: const EdgeInsets.only(bottom: 20),
+              padding: const EdgeInsets.all(16),
+              decoration: AppTheme.glassDecoration,
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
+                    child: Icon(_getIconData(selectedService!.icon), color: AppTheme.primaryGreen, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(selectedService!.name, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+                        Text(descriptionController.text.isNotEmpty ? descriptionController.text : 'اضغط لإضافة التفاصيل...', 
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.check_circle, color: (descriptionController.text.isNotEmpty || deceasedNameController.text.isNotEmpty) ? AppTheme.successColor : AppTheme.textHint, size: 20),
+                ],
               ),
             ),
-          ] else ...[
-            _buildLabeledField('وصف الطلب *', Icons.description_outlined, descriptionController, maxLines: 3),
-          ],
 
-          const SizedBox(height: 20),
-          Text('درجة الاستعجال *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-          const SizedBox(height: 8),
           Row(
             children: [
-              _buildUrgencyOption('normal', 'عادي', Icons.check_circle_outline, AppTheme.successColor),
-              _buildUrgencyOption('urgent', 'مستعجل', Icons.warning_outlined, AppTheme.urgentColor),
-              _buildUrgencyOption('emergency', 'طارئ', Icons.emergency_outlined, AppTheme.emergencyColor),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(child: OutlinedButton(onPressed: () => setState(() => currentStep = 1), child: const Text('رجوع'))),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => setState(() => currentStep = 1),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: AppTheme.glassBorder),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  ),
+                  child: const Text('رجوع', style: TextStyle(color: Colors.white)),
+                ),
+              ),
               const SizedBox(width: 12),
-              Expanded(child: AppTheme.gradientButton(
-                text: 'التالي',
-                icon: Icons.arrow_forward,
-                onPressed: () {
-                  if (selectedService != null) {
-                    setState(() => currentStep = 3);
-                  } else {
-                    Get.snackbar('تنبيه', 'يرجى اختيار نوع الخدمة');
+              Expanded(
+                child: AppTheme.gradientButton(
+                  text: 'التالي',
+                  icon: Icons.arrow_forward_rounded,
+                  onPressed: () {
+                    if (selectedService != null) {
+                      if (selectedService!.id == 'funeral_transport' && deceasedNameController.text.isEmpty) {
+                        Get.snackbar('تنبيه', 'يرجى إدخال اسم المتوفى', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+                        return;
+                      }
+                      if (selectedService!.id != 'funeral_transport' && descriptionController.text.isEmpty) {
+                        Get.snackbar('تنبيه', 'يرجى وصف الطلب بالتفصيل', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+                        return;
+                      }
+                      setState(() => currentStep = 3);
+                    } else {
+                      Get.snackbar('تنبيه', 'يرجى اختيار نوع الخدمة أولاً', 
+                        snackPosition: SnackPosition.BOTTOM,
+                        backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2),
+                        colorText: AppTheme.warningColor);
+                    }
                   }
-                }
-              )),
+                ),
+              ),
             ],
           ),
         ],
@@ -325,7 +456,8 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
               children: [
                 _buildSummaryRow('الاسم', nameController.text),
                 _buildSummaryRow('الهاتف', phoneController.text),
-                _buildSummaryRow('الولاية', selectedWilaya),
+                _buildSummaryRow('الولاية', selectedWilaya ?? ''),
+                _buildSummaryRow('البلدية', selectedCommune ?? ''),
                 _buildSummaryRow('الخدمة', selectedService?.name ?? ''),
                 _buildSummaryRow('الاستعجال', selectedUrgency == 'normal' ? 'عادي' : selectedUrgency == 'urgent' ? 'عاجل' : 'طوارئ'),
                 if (selectedService?.id == 'funeral_transport')
@@ -339,22 +471,51 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Icon(Icons.info_outline, color: AppTheme.primaryGreen, size: 20),
-                SizedBox(width: 12),
-                Expanded(child: Text('ستتلقى رسالة SMS برقم مرجعي لمتابعة طلبك', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4))),
+                const Icon(Icons.info_outline, color: AppTheme.primaryGreen, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text('ستتلقى رسالة SMS برقم مرجعي لمتابعة طلبك فور الموافقة عليه', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4))),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 30),
           Row(
             children: [
-              Expanded(child: OutlinedButton(onPressed: () => setState(() => currentStep = 2), child: const Text('رجوع'))),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => setState(() => currentStep = 2),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: AppTheme.glassBorder),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  ),
+                  child: const Text('رجوع', style: TextStyle(color: Colors.white)),
+                ),
+              ),
               const SizedBox(width: 12),
-              Expanded(child: isLoading 
-                ? const Center(child: CircularProgressIndicator()) 
-                : AppTheme.gradientButton(text: 'إرسال الطلب', icon: Icons.send, onPressed: submitGuestRequest)),
+              Expanded(
+                child: isLoading 
+                  ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen)) 
+                  : AppTheme.gradientButton(
+                      text: 'إرسال الطلب', 
+                      icon: Icons.send_rounded, 
+                      onPressed: submitGuestRequest
+                    ),
+              ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          Text(value, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -382,11 +543,12 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => selectedUrgency = id),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
           margin: const EdgeInsets.only(right: 6),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? color.withValues(alpha: 0.2) : AppTheme.darkCard,
+            color: isSelected ? color.withValues(alpha: 0.15) : AppTheme.darkCard,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: isSelected ? color : AppTheme.glassBorder, width: isSelected ? 2 : 1)
           ),
@@ -394,7 +556,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
             children: [
               Icon(icon, color: isSelected ? color : AppTheme.textHint, size: 20),
               const SizedBox(height: 4),
-              Text(name, style: TextStyle(color: isSelected ? color : AppTheme.textHint, fontSize: 11)),
+              Text(name, style: TextStyle(color: isSelected ? color : AppTheme.textHint, fontSize: 11, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
             ],
           ),
         ),
@@ -402,15 +564,181 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
     );
   }
 
-  Widget _buildSummaryRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: AppTheme.textHint)),
-          Text(value, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
-        ],
+  IconData _getIconData(String iconName) {
+    switch (iconName) {
+      case 'mosque': return Icons.mosque;
+      case 'shopping_basket': return Icons.shopping_basket;
+      case 'medication': return Icons.medication;
+      case 'payments': return Icons.payments;
+      case 'home_work': return Icons.home_work;
+      case 'menu_book': return Icons.menu_book;
+      case 'water_drop': return Icons.water_drop;
+      case 'volunteer_activism': return Icons.volunteer_activism;
+      case 'checkroom': return Icons.checkroom;
+      case 'inventory': return Icons.inventory;
+      case 'emergency': return Icons.emergency_outlined;
+      case 'ac_unit': return Icons.ac_unit;
+      case 'nightlight_round': return Icons.nightlight_round;
+      case 'bloodtype': return Icons.bloodtype;
+      case 'more_horiz': return Icons.more_horiz;
+      // Fallbacks
+      case 'medical': return Icons.medical_services_outlined;
+      case 'food': return Icons.restaurant;
+      case 'transport': return Icons.local_shipping_outlined;
+      case 'blood': return Icons.bloodtype_outlined;
+      case 'funeral': return Icons.airport_shuttle;
+      case 'money': return Icons.account_balance_wallet_outlined;
+      case 'other': return Icons.more_horiz;
+      default: return Icons.category_outlined;
+    }
+  }
+
+  void _showServiceDetailsModal(ServiceTypeModel service) {
+    Get.bottomSheet(
+      StatefulBuilder(
+        builder: (context, setModalState) {
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppTheme.darkSurface.withValues(alpha: 0.8),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                  border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2), width: 1.5),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(color: AppTheme.textHint.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
+                            child: Icon(_getIconData(service.icon), color: AppTheme.primaryGreen, size: 24),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('تفاصيل الطلب', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                                Text(service.name, style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Get.back(),
+                            icon: const Icon(Icons.close, color: AppTheme.errorColor),
+                          )
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      if (service.id == 'funeral_transport') ...[
+                        _buildModalField('اسم المتوفى *', Icons.person_off_outlined, deceasedNameController),
+                        const SizedBox(height: 20),
+                        Text('موقع الاستلام على الخريطة', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                        const SizedBox(height: 8),
+                        Container(
+                          height: 180,
+                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.glassBorder)),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: GoogleMap(
+                              initialCameraPosition: const CameraPosition(target: LatLng(26.7167, 0.1667), zoom: 12),
+                              onTap: (latLng) => setModalState(() => selectedLocation = latLng),
+                              markers: selectedLocation != null ? {Marker(markerId: const MarkerId('pickup'), position: selectedLocation!)} : {},
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        _buildModalField('وصف الطلب بالتفصيل *', Icons.description_outlined, descriptionController, maxLines: 4),
+                      ],
+                      const SizedBox(height: 24),
+                      Text('درجة الاستعجال *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _buildModalUrgencyOption(setModalState, 'normal', 'عادي', Icons.check_circle_outline, AppTheme.successColor),
+                          _buildModalUrgencyOption(setModalState, 'urgent', 'مستعجل', Icons.warning_outlined, AppTheme.urgentColor),
+                          _buildModalUrgencyOption(setModalState, 'emergency', 'طارئ', Icons.emergency_outlined, AppTheme.emergencyColor),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+                      AppTheme.gradientButton(
+                        text: 'تأكيد التفاصيل',
+                        icon: Icons.check_circle_outline,
+                        onPressed: () {
+                          setState(() {}); // Update the main UI to show details summary
+                          Get.back();
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+    );
+  }
+
+  Widget _buildModalField(String label, IconData icon, TextEditingController controller, {int maxLines = 1}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          maxLines: maxLines,
+          style: TextStyle(color: AppTheme.textPrimary),
+          decoration: AppTheme.inputDecoration(label, icon).copyWith(
+            fillColor: Colors.white.withValues(alpha: 0.03),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModalUrgencyOption(Function setModalState, String id, String name, IconData icon, Color color) {
+    final isSelected = selectedUrgency == id;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setModalState(() => selectedUrgency = id),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: isSelected ? color : AppTheme.glassBorder, width: isSelected ? 2 : 1),
+            boxShadow: isSelected ? [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 10)] : null,
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: isSelected ? color : AppTheme.textHint, size: 20),
+              const SizedBox(height: 4),
+              Text(name, style: TextStyle(color: isSelected ? color : AppTheme.textHint, fontSize: 11, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+            ],
+          ),
+        ),
       ),
     );
   }
