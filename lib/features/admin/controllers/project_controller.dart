@@ -209,7 +209,7 @@ ${project.description}
     
     try {
       // توليد الصورة من ويدجت البطاقة الاحترافية (خارج الشجرة)
-      final Uint8List? imageBytes = await screenshotController.captureFromWidget(
+      final Uint8List imageBytes = await screenshotController.captureFromWidget(
         Material(
           color: Colors.transparent,
           child: Directionality(
@@ -227,9 +227,7 @@ ${project.description}
         delay: const Duration(milliseconds: 100),
       );
 
-      if (imageBytes != null) {
-        await _saveAndShareImage(imageBytes, 'project_${project.id}.png');
-      }
+      await _saveAndShareImage(imageBytes, 'project_${project.id}.png');
     } catch (e) {
       Get.snackbar('خطأ', 'فشل توليد بطاقة المشاركة: $e');
     }

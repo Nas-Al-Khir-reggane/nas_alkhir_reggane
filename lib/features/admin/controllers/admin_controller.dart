@@ -316,12 +316,29 @@ class AdminController extends GetxController {
 
   Future<void> loadStats() async {
     try {
-      var donationsSnap = await _firestore.collection(AppConstants.donationsCollection).get();
-      double total = 0;
-      for (var doc in donationsSnap.docs) {
-        total += (doc.data()['amount'] ?? 0).toDouble();
+      // Prefer cached aggregate stats to avoid loading all donations.
+      // This doc is maintained by donation creation flows in-app.
+      try {
+        final statsDoc = await _firestore.collection('stats').doc('global').get();
+        if (statsDoc.exists) {
+          final data = statsDoc.data() as Map<String, dynamic>;
+          totalDonations.value = ((data['totalDonations'] ?? 0) as num).toInt();
+        } else {
+          totalDonations.value = 0;
+        }
+      } catch (e) {
+        // Fallback (legacy): keep previous behavior but with a cap to reduce cost.
+        final donationsSnap = await _firestore
+            .collection(AppConstants.donationsCollection)
+            .orderBy('date', descending: true)
+            .limit(2000)
+            .get();
+        double total = 0;
+        for (var doc in donationsSnap.docs) {
+          total += (doc.data()['amount'] ?? 0).toDouble();
+        }
+        totalDonations.value = total.toInt();
       }
-      totalDonations.value = total.toInt();
 
       var pendingSnap = await _firestore
           .collection(AppConstants.serviceRequestsCollection)
@@ -426,6 +443,8 @@ class AdminController extends GetxController {
       final now = DateTime.now();
       final List<Map<String, dynamic>> sixMonthsData = [];
       final monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+      final sinceSixMonths = DateTime(now.year, now.month - 5, 1);
+      final sinceSixMonthsTs = Timestamp.fromDate(sinceSixMonths);
 
       for (int i = 5; i >= 0; i--) {
         final month = DateTime(now.year, now.month - i, 1);
@@ -440,8 +459,15 @@ class AdminController extends GetxController {
       }
       donationsLastSixMonths.value = sixMonthsData;
 
-      final requestsSnap = await _firestore.collection(AppConstants.serviceRequestsCollection).get();
-      final guestRequestsSnap = await _firestore.collection('guest_requests').get();
+      // Restrict distribution queries to last ~6 months to avoid huge reads.
+      final requestsSnap = await _firestore
+          .collection(AppConstants.serviceRequestsCollection)
+          .where('createdAt', isGreaterThanOrEqualTo: sinceSixMonthsTs)
+          .get();
+      final guestRequestsSnap = await _firestore
+          .collection('guest_requests')
+          .where('createdAt', isGreaterThanOrEqualTo: sinceSixMonthsTs)
+          .get();
 
       final Map<String, int> typeCounts = {};
 

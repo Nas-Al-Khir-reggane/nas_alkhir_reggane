@@ -147,7 +147,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
                           // ✨ MODIFIED: Removed const
                           title: Text('مشروع تبرع دوري (كفالة)', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                           value: _isSubscription,
-                          activeColor: AppTheme.primaryGreen,
+                          activeThumbColor: AppTheme.primaryGreen,
                           onChanged: (val) => setState(() => _isSubscription = val),
                         ),
                       ],
@@ -288,7 +288,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
 
   Widget _categoryDropdown() {
     return DropdownButtonFormField<String>(
-      value: _selectedCategory,
+      initialValue: _selectedCategory,
       dropdownColor: AppTheme.cardColor,
       isExpanded: true,
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.textPrimary),

@@ -42,7 +42,7 @@ class ManageTaskTypesScreen extends StatelessWidget {
                   subtitle: Text(type.description, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                   trailing: Switch(
                     value: type.isActive,
-                    activeColor: AppTheme.primaryGreen,
+                    activeThumbColor: AppTheme.primaryGreen,
                     onChanged: (val) {
                       FirebaseFirestore.instance
                           .collection('task_types')

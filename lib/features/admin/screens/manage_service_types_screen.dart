@@ -117,7 +117,7 @@ class ManageServiceTypesScreen extends StatelessWidget {
                         leading: Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryGreen.withOpacity(0.1),
+                            color: AppTheme.primaryGreen.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: AppTheme.glassBorder),
                           ),
@@ -134,7 +134,7 @@ class ManageServiceTypesScreen extends StatelessWidget {
                         ),
                         trailing: Switch(
                           value: type.isActive,
-                          activeColor: AppTheme.primaryGreen,
+                          activeThumbColor: AppTheme.primaryGreen,
                           onChanged: (val) {
                             FirebaseFirestore.instance
                                 .collection('service_types')
@@ -217,7 +217,7 @@ class ManageServiceTypesScreen extends StatelessWidget {
                   });
                   Get.back();
                   Get.snackbar('✅ تم', 'تمت إضافة نوع الخدمة بنجاح', 
-                    backgroundColor: AppTheme.successColor.withOpacity(0.2),
+                    backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
                     colorText: AppTheme.successColor);
                 },
                 loadingWidget: const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen)),

@@ -142,7 +142,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: showFilters.value
-                            ? AppTheme.primaryGreen.withOpacity(0.15)
+                            ? AppTheme.primaryGreen.withValues(alpha: 0.15)
                             : AppTheme.surfaceColor,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
@@ -557,9 +557,9 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const Text('رفض سريع', style: TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 8),
-                const Icon(Icons.delete_outline, color: AppTheme.errorColor),
+                Text('رفض سريع', style: TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.bold)),
+                SizedBox(width: 8),
+                Icon(Icons.delete_outline, color: AppTheme.errorColor),
               ],
             ),
           ),
@@ -679,6 +679,13 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                         request.assignedTo == null ? AppTheme.primaryGreen : AppTheme.warningColor,
                         () => _showAssignWorkerDialog(request),
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildActionButton(
+                      Icons.airport_shuttle_rounded,
+                      'سيارة',
+                      Colors.teal,
+                      () => _showAssignVehicleDialog(request),
                     ),
                     const SizedBox(width: 8),
                     _buildActionButton(Icons.update, 'الحالة', AppTheme.warningColor, () => _showStatusUpdateSheet(request)),

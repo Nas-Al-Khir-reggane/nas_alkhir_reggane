@@ -20,9 +20,7 @@ import 'service_requests_screen.dart' as real_requests;
 import 'projects_screen.dart';
 import 'workers_screen.dart';
 import 'package:nas_al_kheir/core/widgets/geometric_progress.dart';
-import 'package:nas_al_kheir/features/admin/screens/project_detail_screen.dart';
 import 'project_detail_screen.dart';
-import 'request_detail_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -312,7 +310,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     dropdownColor: AppTheme.darkCard,
                     style: TextStyle(color: AppTheme.textPrimary),
                     decoration: AppTheme.inputDecoration('المشروع', Icons.folder_outlined),
-                    value: selectedProject,
+                    initialValue: selectedProject,
                     items: [
                       const DropdownMenuItem(value: 'general', child: Text('تبرع عام للجمعية')),
                       ...projects.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))),
@@ -334,7 +332,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   dropdownColor: AppTheme.darkCard,
                   style: TextStyle(color: AppTheme.textPrimary),
                   decoration: AppTheme.inputDecoration('طريقة الدفع', Icons.payment),
-                  value: selectedMethod,
+                  initialValue: selectedMethod,
                   items: const [
                     DropdownMenuItem(value: 'cash', child: Text('نقداً')),
                     DropdownMenuItem(value: 'bank', child: Text('تحويل بنكي')),
@@ -358,6 +356,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 }
                 try {
                   await FirebaseFirestore.instance.collection('donations').add({
+                    'donorId': 'admin_registered',
                     'donorName': donorNameCtrl.text,
                     'amount': amount,
                     'projectId': selectedProject,
@@ -372,7 +371,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     await FirebaseFirestore.instance
                         .collection('projects')
                         .doc(selectedProject)
-                        .update({'collected': FieldValue.increment(amount)});
+                        .update({
+                          'collected': FieldValue.increment(amount),
+                          'donorsCount': FieldValue.increment(1),
+                        });
                   }
                   Get.back();
                   Get.snackbar('✅ تم', 'تم تسجيل التبرع بنجاح',
@@ -818,7 +820,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   try {
                                     final project = controller.activeProjectsList.firstWhere((p) => p.id == update.projectId);
                                     Get.to(() => ProjectDetailScreen(project: project));
-                                  } catch (e) {}
+                                  } catch (e) {
+                                    debugPrint('❌ [AdminDashboard] field update navigation error: $e');
+                                  }
                                } else if (update.requestId != null) {
                                   Get.toNamed('/admin/request-detail', arguments: update.requestId);
                                }
@@ -878,7 +882,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 try {
                                   final project = controller.activeProjectsList.firstWhere((p) => p.id == donation.projectId);
                                   Get.to(() => ProjectDetailScreen(project: project));
-                                } catch (e) {}
+                                } catch (e) {
+                                  debugPrint('❌ [AdminDashboard] donation navigation error: $e');
+                                }
                               },
                               leading: donation.donorId.isEmpty || donation.donorId == 'anonymous'
                                   ? Container(
@@ -1134,7 +1140,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       decoration: BoxDecoration(
         gradient: const LinearGradient(colors: [AppTheme.primaryGreen, Colors.teal]),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: AppTheme.primaryGreen.withOpacity(0.3), blurRadius: 15, spreadRadius: 2)],
+        boxShadow: [BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.3), blurRadius: 15, spreadRadius: 2)],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
