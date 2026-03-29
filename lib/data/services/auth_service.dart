@@ -29,6 +29,17 @@ class AuthService {
     return null;
   }
 
+  // تسجيل دخول مجهول (للضيوف)
+  Future<User?> signInAnonymously() async {
+    try {
+      UserCredential result = await _auth.signInAnonymously();
+      return result.user;
+    } catch (e) {
+      debugPrint("Error in signInAnonymously: $e");
+      return null;
+    }
+  }
+
   // إنشاء حساب جديد
   Future<UserModel?> signUp(String email, String password, UserModel userData) async {
     try {

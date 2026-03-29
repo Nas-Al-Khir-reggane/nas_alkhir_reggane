@@ -7,6 +7,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../data/models/user_model.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ManageUsersScreen extends StatefulWidget {
   const ManageUsersScreen({super.key});
@@ -99,7 +100,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       child: Container(
         height: 50,
         decoration: BoxDecoration(
-          color: AppTheme.darkSurface,
+          color: AppTheme.surfaceColor,
           borderRadius: BorderRadius.circular(25),
           border: Border.all(color: AppTheme.glassBorder),
         ),
@@ -203,7 +204,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(user.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary)),
-                                Text(DateFormat('yyyy-MM-dd').format(user.createdAt), style: const TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                                Text(DateFormat('yyyy-MM-dd').format(user.createdAt), style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
                               ],
                             ),
                           ),
@@ -223,14 +224,14 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          color: AppTheme.darkBg,
+                          color: AppTheme.backgroundColor,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: AppTheme.glassBorder),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<UserRole>(
                             isExpanded: true,
-                            dropdownColor: AppTheme.darkSurface,
+                            dropdownColor: AppTheme.surfaceColor,
                             icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.primaryGreen),
                             value: selectedRole,
                             items: [
@@ -325,14 +326,14 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                               const SizedBox(width: 8),
                               Icon(Icons.phone_outlined, color: AppTheme.textHint, size: 14),
                               const SizedBox(width: 4),
-                              Text(user.phone, style: const TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                              Text(user.phone, style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
                             ],
                           )
                         ],
                       ),
                     ),
                     PopupMenuButton<String>(
-                      color: AppTheme.darkSurface,
+                      color: AppTheme.surfaceColor,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: AppTheme.glassBorder)),
                       icon: Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary),
                       onSelected: (val) {
@@ -381,7 +382,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       child: CircleAvatar(
         radius: 22,
         backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
-        backgroundImage: (user.profileImage != null && user.profileImage!.isNotEmpty) ? NetworkImage(user.profileImage!) : null,
+        backgroundImage: (user.profileImage != null && user.profileImage!.isNotEmpty) ? CachedNetworkImageProvider(user.profileImage!) as ImageProvider : null,
         child: (user.profileImage == null || user.profileImage!.isEmpty)
             ? Text(user.name.isNotEmpty ? user.name[0] : '?', style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 18))
             : null,
@@ -406,7 +407,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       children: [
         Icon(icon, color: AppTheme.textHint, size: 18),
         const SizedBox(width: 8),
-        Text('$label: ', style: const TextStyle(color: AppTheme.textHint, fontSize: 13)),
+        Text('$label: ', style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
         Text(value, style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
       ],
     );
@@ -419,7 +420,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         return Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: AppTheme.darkSurface,
+            color: AppTheme.surfaceColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
             border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.3), width: 1.5),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20)],
@@ -433,14 +434,14 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: AppTheme.darkBg,
+                  color: AppTheme.backgroundColor,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.glassBorder),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<UserRole>(
                     isExpanded: true,
-                    dropdownColor: AppTheme.darkSurface,
+                    dropdownColor: AppTheme.surfaceColor,
                     value: selectedRole,
                     style: TextStyle(color: AppTheme.textPrimary),
                     items: UserRole.values.where((r) => r != UserRole.guest).map((role) {
@@ -462,7 +463,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                       onPressed: () => Get.back(),
-                      child: const Text("إلغاء", style: TextStyle(color: Colors.white)),
+                      child: Text("إلغاء", style: TextStyle(color: AppTheme.textPrimary)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -492,7 +493,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppTheme.darkSurface,
+          color: AppTheme.surfaceColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         ),
         child: Column(

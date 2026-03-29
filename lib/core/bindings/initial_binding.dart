@@ -6,6 +6,7 @@ import '../../features/admin/controllers/project_controller.dart';
 import '../../features/worker/controllers/worker_controller.dart';
 import '../../features/donor/controllers/donor_controller.dart';
 import '../../features/beneficiary/controllers/beneficiary_controller.dart';
+import '../../features/chat/controllers/chat_controller.dart';
 import '../../data/services/notification_service.dart';
 import '../../data/services/offline_queue_service.dart';
 import '../../data/services/connectivity_service.dart';
@@ -33,5 +34,6 @@ class InitialBinding extends Bindings {
     Get.lazyPut(() => WorkerController(), fenix: true);
     Get.lazyPut(() => DonorController(), fenix: true);
     Get.lazyPut(() => BeneficiaryController(), fenix: true);
+    Get.lazyPut(() => ChatController(), fenix: true);
   }
 }

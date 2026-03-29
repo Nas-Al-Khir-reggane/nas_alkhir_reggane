@@ -9,8 +9,14 @@ class AuthMiddleware extends GetMiddleware {
   RouteSettings? redirect(String? route) {
     final authController = Get.find<AuthController>();
     
-    // إذا لم يكن المستخدم مسجلاً دخوله، وجهه لصفحة تسجيل الدخول
+    final args = Get.arguments as Map<String, dynamic>?;
+    final String? chatId = args?['chatId'];
+
+    // إذا لم يكن المستخدم مسجلاً دخوله، وجهه لصفحة تسجيل الدخول (إلا إذا كانت دردشة زائر)
     if (authController.currentUser.value == null) {
+      if (chatId != null && chatId.startsWith('guest_')) {
+        return null;
+      }
       if (FirebaseAuth.instance.currentUser != null) {
         return null; // Let the screen load and fetch the user data
       }

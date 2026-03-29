@@ -23,10 +23,10 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
   File? _imageFile;
 
   final List<Map<String, dynamic>> _updateTypes = [
-    {'id': 'progress', 'label': 'تقدم في العمل', 'icon': Icons.trending_up, 'color': AppTheme.primaryGreen},
+    {'id': 'progress', 'label': 'تقدم في العمل', 'icon': Icons.trending_up, 'color': Colors.green},
     {'id': 'arrived', 'label': 'وصلت للموقع', 'icon': Icons.location_on, 'color': Colors.blue},
-    {'id': 'issue', 'label': 'مشكلة / عائق', 'icon': Icons.warning_outlined, 'color': AppTheme.warningColor},
-    {'id': 'note', 'label': 'ملاحظة عامة', 'icon': Icons.note_outlined, 'color': AppTheme.textHint},
+    {'id': 'issue', 'label': 'مشكلة / عائق', 'icon': Icons.warning_amber_rounded, 'color': Colors.orange},
+    {'id': 'note', 'label': 'ملاحظة عامة', 'icon': Icons.note_outlined, 'color': Colors.grey},
   ];
 
   @override
@@ -50,7 +50,7 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
   void _submitUpdate() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedRequest == null) {
-        Get.snackbar('تنبيه', 'يرجى اختيار المهمة', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+        Get.snackbar('تنبيه', 'يرجى اختيار المهمة', backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.2));
         return;
       }
 
@@ -71,7 +71,7 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.darkBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('إضافة تحديث'),
         backgroundColor: Colors.transparent,
@@ -84,21 +84,21 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('اختر المهمة', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+              Text('اختر المهمة', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
               const SizedBox(height: 8),
               Obx(() => Container(
-                decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppTheme.glassBorder)),
+                decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14), border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1))),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<ServiceRequestModel>(
                     value: _selectedRequest,
                     isExpanded: true,
-                    dropdownColor: AppTheme.darkSurface,
-                    hint: Text('اختر المهمة...', style: TextStyle(color: AppTheme.textHint)),
+                    dropdownColor: Theme.of(context).canvasColor,
+                    hint: Text('اختر المهمة...', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                     items: workerController.myTasks.map((req) {
                       return DropdownMenuItem(
                         value: req,
-                        child: Text('${req.type} - ${req.requesterName}', style: TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
+                        child: Text('${req.type} - ${req.requesterName}', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14)),
                       );
                     }).toList(),
                     onChanged: (val) => setState(() => _selectedRequest = val),
@@ -107,7 +107,7 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
               )),
               
               const SizedBox(height: 20),
-              Text('نوع التحديث', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+              Text('نوع التحديث', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
               const SizedBox(height: 12),
               GridView.builder(
                 shrinkWrap: true,
@@ -127,16 +127,16 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
-                        color: isSelected ? type['color'].withValues(alpha: 0.2) : AppTheme.darkCard,
+                        color: isSelected ? type['color'].withValues(alpha: 0.2) : Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: isSelected ? type['color'] : AppTheme.glassBorder),
+                        border: Border.all(color: isSelected ? type['color'] : Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(type['icon'], color: isSelected ? type['color'] : AppTheme.textHint, size: 18),
+                          Icon(type['icon'], color: isSelected ? type['color'] : Theme.of(context).colorScheme.onSurfaceVariant, size: 18),
                           const SizedBox(width: 8),
-                          Text(type['label'], style: TextStyle(color: isSelected ? type['color'] : AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                          Text(type['label'], style: TextStyle(color: isSelected ? type['color'] : Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ),
@@ -145,18 +145,18 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
               ),
 
               const SizedBox(height: 24),
-              Text('الوصف', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+              Text('الوصف', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 4,
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 decoration: AppTheme.inputDecoration('اكتب ما تم إنجازه أو أي ملاحظات...', Icons.edit_note),
                 validator: (v) => v == null || v.isEmpty ? 'يرجى كتابة وصف' : null,
               ),
 
               const SizedBox(height: 20),
-              Text('إرفاق صورة', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+              Text('إرفاق صورة', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
               const SizedBox(height: 8),
               GestureDetector(
                 onTap: _pickImage,
@@ -164,9 +164,9 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
                   width: double.infinity,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: AppTheme.darkCard,
+                    color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.glassBorder, style: BorderStyle.solid),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1), style: BorderStyle.solid),
                   ),
                   child: _imageFile != null
                       ? Stack(
@@ -182,7 +182,7 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
                                 onTap: () => setState(() => _imageFile = null),
                                 child: Container(
                                   padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(color: AppTheme.errorColor, shape: BoxShape.circle),
+                                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
                                   child: const Icon(Icons.close, color: Colors.white, size: 16),
                                 ),
                               ),
@@ -192,9 +192,9 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.add_a_photo_outlined, color: AppTheme.textHint, size: 32),
+                            Icon(Icons.add_a_photo_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 32),
                             const SizedBox(height: 8),
-                            Text('التقط صورة للتوثيق', style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
+                            Text('التقط صورة للتوثيق', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                           ],
                         ),
                 ),
@@ -202,7 +202,7 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
 
               const SizedBox(height: 32),
               Obx(() => workerController.isLoading.value
-                  ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
+                  ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
                   : AppTheme.gradientButton(
                       text: 'إرسال التحديث الآن',
                       icon: Icons.send,

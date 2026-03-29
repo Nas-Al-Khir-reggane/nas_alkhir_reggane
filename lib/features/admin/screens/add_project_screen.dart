@@ -42,7 +42,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
         children: [
           SafeArea(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(AppTheme.getScreenPadding(context), 20, AppTheme.getScreenPadding(context), 10),
+              padding: EdgeInsets.fromLTRB(AppConstants.getScreenPaddingValue(context), 20, AppConstants.getScreenPaddingValue(context), 10),
               child: Row(
                 children: [
                   Container(
@@ -88,7 +88,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
 
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(AppTheme.getScreenPadding(context), 8, AppTheme.getScreenPadding(context), 32),
+              padding: EdgeInsets.fromLTRB(AppConstants.getScreenPaddingValue(context), 8, AppConstants.getScreenPaddingValue(context), 32),
               child: Form(
                 key: _formKey,
                 child: Column(

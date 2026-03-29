@@ -3,13 +3,16 @@ import 'package:get/get.dart';
 import 'dart:ui' as ui;
 import 'package:animate_do/animate_do.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../data/models/service_type_model.dart';
 import '../../../data/services/connectivity_service.dart';
 import '../../../data/services/offline_queue_service.dart';
 import '../../../data/services/notification_service.dart';
+import '../../auth/controllers/auth_controller.dart';
 
 class GuestRequestScreen extends StatefulWidget {
   const GuestRequestScreen({super.key});
@@ -37,7 +40,31 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
   String selectedUrgency = 'normal';
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController deceasedNameController = TextEditingController();
-  LatLng? selectedLocation;
+  final TextEditingController pickupLocationController = TextEditingController();
+  final TextEditingController burialLocationController = TextEditingController();
+  Set<String> selectedSubOptions = {};
+
+  final Map<String, List<String>> _serviceSubOptions = {
+    'الرعاية الطبية': ['أدوية', 'تحاليل طبية', 'أشعة', 'نقل مريض', 'عملية جراحية', 'علاج فيزيائي', 'معدات أكسجين'],
+    'مساعدة طبية': ['أدوية', 'تحاليل طبية', 'أشعة', 'نقل مريض', 'عملية جراحية', 'علاج فيزيائي', 'معدات أكسجين'],
+    'إطعام الطعام': ['قفة الفاهم', 'وجبة ساخنة', 'إفطار صائم', 'لحوم/عقيقة'],
+    'مساعدات غذائية': ['قفة الفاهم', 'وجبة ساخنة', 'إفطار صائم', 'لحوم/عقيقة'],
+    'ترميم بيوت الله والفقراء': ['مواد بناء', 'صيانة كهرباء/سباكة', 'تأثيث مسجد', 'تأثيث منزل فقير'],
+    'بناء وتعمير': ['مواد بناء', 'صيانة كهرباء/سباكة', 'تأثيث مسجد', 'تأثيث منزل فقير'],
+    'تعليم وكفالة طالب': ['أدوات مدرسية', 'محفظة مدرسية', 'دروس دعم', 'ملابس دخول مدرسي'],
+    'تعليم وكفالة أيتام': ['أدوات مدرسية', 'محفظة مدرسية', 'دروس دعم', 'ملابس دخول مدرسي'],
+    'كفالة اليتيم': ['كفالة مادية (شهرية)', 'كفالة طبية', 'كفالة مدرسية'],
+    'كفالة أيتام': ['كفالة مادية (شهرية)', 'كفالة طبية', 'كفالة مدرسية'],
+    'سقيا الماء': ['المساهمة في بئر', 'توصيل شبكة مياه', 'تعبئة صهريج ماء', 'مبرد ماء لمسجد'],
+    'سقي الماء': ['المساهمة في بئر', 'توصيل شبكة مياه', 'تعبئة صهريج ماء', 'مبرد ماء لمسجد'],
+    'حملة دفء الشتاء': ['أغطية (بطانيات)', 'ملابس شتوية', 'مدفأة كهربائية/غاز', 'ترميم سقف'],
+    'كسوة العيد والفقراء': ['ملابس أطفال', 'ملابس كبار', 'أحذية'],
+    'صدقات موسمية (هلالات/زكاة)': ['زكاة الفطر', 'زكاة المال', 'فدية صيام', 'أضحية العيد'],
+    'تجهيز بيوت المحتاجين': ['ثلاجة', 'غسالة', 'أفرشة/زرابي', 'أواني مطبخ'],
+    'نقل المرضى (إسعاف)': ['داخل الولاية', 'خارج الولاية', 'نقل مريض غسيل كلوي'],
+    'تفريج كربة (مالي)': ['إيجار متأخر', 'ديون صيدلية', 'ديون بقالة', 'فاتورة كهرباء/ماء'],
+    'مساعدات مالية': ['إيجار متأخر', 'ديون صيدلية', 'ديون بقالة', 'فاتورة كهرباء/ماء'],
+  };
 
   final List<String> stepLabels = ['معلوماتك', 'الخدمة', 'التأكيد'];
 
@@ -48,6 +75,8 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
     addressController.dispose();
     descriptionController.dispose();
     deceasedNameController.dispose();
+    pickupLocationController.dispose();
+    burialLocationController.dispose();
     super.dispose();
   }
 
@@ -55,17 +84,20 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
     setState(() => isLoading = true);
     try {
       final refNumber = 'NAK-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+      final normalizedPhone = phoneController.text.trim().replaceAll(' ', '');
       
       Map<String, dynamic> requestData = {
         'requesterName': nameController.text,
-        'phone': phoneController.text,
+        'phone': normalizedPhone,
         'wilaya': selectedWilaya,
         'commune': selectedCommune,
         'address': addressController.text,
         'type': selectedService!.id,
         'typeName': selectedService!.name,
         'urgency': selectedUrgency,
-        'description': descriptionController.text,
+        'description': selectedSubOptions.isNotEmpty 
+            ? 'الخيارات: ${selectedSubOptions.join('، ')}\n${descriptionController.text.isNotEmpty ? 'ملاحظات: ${descriptionController.text}' : ''}'.trim()
+            : descriptionController.text,
         'status': 'pending',
         'refNumber': refNumber,
         'createdAt': FieldValue.serverTimestamp(),
@@ -76,8 +108,8 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
       if (selectedService!.id == 'funeral_transport') {
         requestData['details'] = {
           'deceasedName': deceasedNameController.text,
-          'latitude': selectedLocation?.latitude,
-          'longitude': selectedLocation?.longitude,
+          'pickupLocation': pickupLocationController.text,
+          'burialLocation': burialLocationController.text,
         };
       }
 
@@ -91,7 +123,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
           data: queueData,
         );
 
-        Get.offNamed('/guest/success', arguments: {'refNumber': refNumber, 'phone': phoneController.text});
+        Get.offNamed('/guest/success', arguments: {'refNumber': refNumber, 'phone': normalizedPhone});
         return;
       }
 
@@ -109,7 +141,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
         data: {'refNumber': refNumber},
       );
 
-      Get.offNamed('/guest/success', arguments: {'refNumber': refNumber, 'phone': phoneController.text});
+      Get.offNamed('/guest/success', arguments: {'refNumber': refNumber, 'phone': normalizedPhone});
     } catch (e) {
       Get.snackbar('خطأ', 'فشل إرسال الطلب: $e', backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2));
     } finally {
@@ -122,8 +154,10 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: scheme.surface,
-      body: CustomScrollView(
-        slivers: [
+      body: Stack(
+        children: [
+          CustomScrollView(
+            slivers: [
           SliverAppBar(
             pinned: true,
             title: const Text('طلب خدمة (زائر)', style: TextStyle(fontFamily: 'Tajawal')),
@@ -144,19 +178,19 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                               height: 28,
                               decoration: BoxDecoration(
                                 gradient: currentStep >= step ? AppTheme.primaryGradient : null,
-                                color: currentStep < step ? AppTheme.darkCard : null,
+                                color: currentStep < step ? AppTheme.cardColor : null,
                                 shape: BoxShape.circle,
                                 border: Border.all(color: currentStep >= step ? Colors.transparent : AppTheme.glassBorder)
                               ),
                               child: Center(
                                 child: Text(step.toString(), 
-                                  style: TextStyle(color: currentStep >= step ? Colors.black : AppTheme.textHint, 
+                                  style: TextStyle(color: currentStep >= step ? (Get.isDarkMode ? Colors.black : Colors.white) : AppTheme.textHint, 
                                   fontWeight: FontWeight.bold, fontSize: 13)),
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(stepLabels[step - 1], 
-                              style: TextStyle(color: currentStep >= step ? AppTheme.primaryGreen : AppTheme.textHint, fontSize: 10)),
+                              style: TextStyle(color: currentStep >= step ? AppTheme.primaryGreen : AppTheme.textHint, fontSize: 12, fontWeight: FontWeight.w600)),
                           ],
                         ),
                         if (step < 3)
@@ -175,13 +209,152 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: (currentStep == 2 && selectedService != null) ? 180 : 30),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 if (currentStep == 1) _buildStep1(),
                 if (currentStep == 2) _buildStep2(),
                 if (currentStep == 3) _buildStep3(),
               ]),
+            ),
+          ),
+        ],
+      ),
+      if (currentStep == 2 && selectedService != null)
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: FadeInUp(
+            duration: const Duration(milliseconds: 400),
+            child: Container(
+              padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 30),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor.withValues(alpha: 0.85),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: (Get.isDarkMode ? Colors.black : Colors.grey).withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, -5),
+                  )
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(12),
+                        decoration: AppTheme.glassDecoration.copyWith(
+                          color: AppTheme.textPrimary.withValues(alpha: 0.05),
+                          border: Border.all(color: AppTheme.glassBorder, width: 0.5),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
+                              child: Icon(AppConstants.getIconFromName(selectedService!.icon), color: AppTheme.primaryGreen, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(selectedService!.name, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+                                  Text((descriptionController.text.isNotEmpty || selectedSubOptions.isNotEmpty) 
+                                        ? [if (selectedSubOptions.isNotEmpty) selectedSubOptions.join('، '), if (descriptionController.text.isNotEmpty) descriptionController.text].join(' - ')
+                                        : 'اضغط للتعديل...', 
+                                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit_note, color: AppTheme.primaryGreen),
+                              onPressed: () => _showServiceDetailsModal(selectedService!),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 1,
+                            child: OutlinedButton(
+                              onPressed: () => setState(() => currentStep = 1),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                side: const BorderSide(color: AppTheme.glassBorder),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                              ),
+                              child: Text('رجوع', style: TextStyle(color: AppTheme.textPrimary)),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: AppTheme.gradientButton(
+                              text: 'التالي',
+                              icon: Icons.arrow_forward_rounded,
+                              onPressed: () {
+                                if (selectedService!.id == 'funeral_transport') {
+                                  if (deceasedNameController.text.isEmpty || pickupLocationController.text.isEmpty || burialLocationController.text.isEmpty) {
+                                    Get.snackbar('تنبيه', 'يرجى ملء جميع معلومات الدفن والنقل', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+                                    return;
+                                  }
+                                }
+                                if (selectedService!.id != 'funeral_transport' && descriptionController.text.isEmpty && selectedSubOptions.isEmpty) {
+                                  Get.snackbar('تنبيه', 'يرجى وصف الطلب أو تحديد نوع المساعدة', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+                                  return;
+                                }
+                                setState(() => currentStep = 3);
+                              }
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          ),
+        // Guest support chat button — shown on steps 1 & 2
+        if (currentStep != 3)
+          Positioned(
+            bottom: (currentStep == 2 && selectedService != null) ? 180 : 24,
+            left: 20,
+            child: GestureDetector(
+              onTap: _showGuestChatSheet,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: AppTheme.greenGlow,
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.support_agent, color: Colors.black, size: 18),
+                    SizedBox(width: 6),
+                    Text('💬 دردشة مع الدعم',
+                        style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            fontFamily: 'Tajawal')),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -195,7 +368,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('معلوماتك الشخصية', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-          Text('هذه المعلومات لمتابعة طلبك', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          Text('هذه المعلومات لمتابعة طلبك', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
           const SizedBox(height: 20),
           _buildLabeledField('الاسم الكامل *', Icons.person_outline, nameController),
           const SizedBox(height: 16),
@@ -205,13 +378,13 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppTheme.glassBorder)),
+            decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppTheme.glassBorder)),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: selectedWilaya,
                 hint: Text('اختر الولاية', style: TextStyle(color: AppTheme.textHint, fontSize: 14)),
                 isExpanded: true,
-                dropdownColor: AppTheme.darkSurface,
+                dropdownColor: AppTheme.surfaceColor,
                 items: AppConstants.algeriaWilayas.map((String value) {
                   return DropdownMenuItem<String>(value: value, child: Text(value, style: TextStyle(color: AppTheme.textPrimary)));
                 }).toList(),
@@ -228,13 +401,13 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppTheme.glassBorder)),
+              decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppTheme.glassBorder)),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: selectedCommune,
                   hint: Text('اختر البلدية', style: TextStyle(color: AppTheme.textHint, fontSize: 14)),
                   isExpanded: true,
-                  dropdownColor: AppTheme.darkSurface,
+                  dropdownColor: AppTheme.surfaceColor,
                   items: AppConstants.getCommunesForWilaya(selectedWilaya!).map((String value) {
                     return DropdownMenuItem<String>(value: value, child: Text(value, style: TextStyle(color: AppTheme.textPrimary)));
                   }).toList(),
@@ -299,7 +472,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                         const Icon(Icons.error_outline, color: AppTheme.errorColor, size: 40),
                         const SizedBox(height: 8),
                         Text('فشل تحميل الخدمات', style: TextStyle(color: AppTheme.errorColor)),
-                        Text(snapshot.error.toString(), style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                        Text(snapshot.error.toString(), style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                       ],
                     ),
                   ),
@@ -346,13 +519,19 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                   final isSelected = selectedService?.id == service.id;
                   return GestureDetector(
                   onTap: () {
-                    setState(() => selectedService = service);
+                    setState(() {
+                      if (selectedService?.id != service.id) {
+                        selectedSubOptions.clear();
+                        descriptionController.clear();
+                      }
+                      selectedService = service;
+                    });
                     _showServiceDetailsModal(service);
                   },
                   child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.darkCard,
+                        color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.cardColor,
                         borderRadius: BorderRadius.circular(15),
                         border: Border.all(
                           color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder,
@@ -375,8 +554,8 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: isSelected ? AppTheme.textPrimary : AppTheme.textHint, 
-                                fontSize: 10, 
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                                fontSize: 12, 
+                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600)),
                           ),
                         ],
                       ),
@@ -386,77 +565,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
               );
             }
           ),
-          
           const SizedBox(height: 30),
-          if (selectedService != null)
-            Container(
-              margin: const EdgeInsets.only(bottom: 20),
-              padding: const EdgeInsets.all(16),
-              decoration: AppTheme.glassDecoration,
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
-                    child: Icon(AppConstants.getIconFromName(selectedService!.icon), color: AppTheme.primaryGreen, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(selectedService!.name, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
-                        Text(descriptionController.text.isNotEmpty ? descriptionController.text : 'اضغط لإضافة التفاصيل...', 
-                          maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.check_circle, color: (descriptionController.text.isNotEmpty || deceasedNameController.text.isNotEmpty) ? AppTheme.successColor : AppTheme.textHint, size: 20),
-                ],
-              ),
-            ),
-
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => setState(() => currentStep = 1),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: const BorderSide(color: AppTheme.glassBorder),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  ),
-                  child: const Text('رجوع', style: TextStyle(color: Colors.white)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: AppTheme.gradientButton(
-                  text: 'التالي',
-                  icon: Icons.arrow_forward_rounded,
-                  onPressed: () {
-                    if (selectedService != null) {
-                      if (selectedService!.id == 'funeral_transport' && deceasedNameController.text.isEmpty) {
-                        Get.snackbar('تنبيه', 'يرجى إدخال اسم المتوفى', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
-                        return;
-                      }
-                      if (selectedService!.id != 'funeral_transport' && descriptionController.text.isEmpty) {
-                        Get.snackbar('تنبيه', 'يرجى وصف الطلب بالتفصيل', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
-                        return;
-                      }
-                      setState(() => currentStep = 3);
-                    } else {
-                      Get.snackbar('تنبيه', 'يرجى اختيار نوع الخدمة أولاً', 
-                        snackPosition: SnackPosition.BOTTOM,
-                        backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2),
-                        colorText: AppTheme.warningColor);
-                    }
-                  }
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -480,8 +589,11 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                 _buildSummaryRow('البلدية', selectedCommune ?? ''),
                 _buildSummaryRow('الخدمة', selectedService?.name ?? ''),
                 _buildSummaryRow('الاستعجال', selectedUrgency == 'normal' ? 'عادي' : selectedUrgency == 'urgent' ? 'عاجل' : 'طوارئ'),
-                if (selectedService?.id == 'funeral_transport')
+                if (selectedService?.id == 'funeral_transport') ...[
                   _buildSummaryRow('المتوفى', deceasedNameController.text),
+                  _buildSummaryRow('مكان النقل', pickupLocationController.text),
+                  _buildSummaryRow('الوجهة/المقبرة', burialLocationController.text),
+                ],
               ],
             ),
           ),
@@ -493,7 +605,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
               children: [
                 const Icon(Icons.info_outline, color: AppTheme.primaryGreen, size: 20),
                 const SizedBox(width: 12),
-                Expanded(child: Text('ستتلقى رسالة SMS برقم مرجعي لمتابعة طلبك فور الموافقة عليه', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4))),
+                Expanded(child: Text('ستتلقى رسالة SMS برقم مرجعي لمتابعة طلبك فور الموافقة عليه', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14, height: 1.4, fontWeight: FontWeight.w500))),
               ],
             ),
           ),
@@ -560,6 +672,136 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
 
 
 
+  void _showGuestChatSheet() {
+    final guestNameCtrl = TextEditingController(text: nameController.text);
+    final guestPhoneCtrl = TextEditingController(text: phoneController.text);
+    Get.bottomSheet(
+      StatefulBuilder(
+        builder: (ctx, setState) {
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceColor.withValues(alpha: 0.88),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                  border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2), width: 1.5),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.glassBorder, borderRadius: BorderRadius.circular(2)))),
+                    const SizedBox(height: 20),
+                    const Text('💬 دردشة مع الدعم', style: TextStyle(color: AppTheme.primaryGreen, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+                    const SizedBox(height: 6),
+                    Text('سيتواصل معك أحد المدراء في أقرب وقت', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontFamily: 'Tajawal')),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: guestNameCtrl,
+                      style: TextStyle(color: AppTheme.textPrimary),
+                      decoration: AppTheme.inputDecoration('اسمك (مطلوب)', Icons.person_outline),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: guestPhoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      style: TextStyle(color: AppTheme.textPrimary),
+                      decoration: AppTheme.inputDecoration('رقم هاتفك (مطلوب)', Icons.phone_outlined),
+                    ),
+                    const SizedBox(height: 20),
+                    AppTheme.gradientButton(
+                      text: 'بدء المحادثة',
+                      icon: Icons.send_rounded,
+                      onPressed: () async {
+                        if (guestNameCtrl.text.isEmpty || guestPhoneCtrl.text.isEmpty) {
+                          Get.snackbar('تنبيه', 'يرجى إدخال الاسم ورقم الهاتف', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+                          return;
+                        }
+                        
+                        final normalizedPhone = guestPhoneCtrl.text.trim().replaceAll(' ', '');
+                        final chatId = 'guest_$normalizedPhone';
+                        
+                        // ✨ الخطوة الحاسمة: تسجيل الدخول المجهول لتجنب PERMISSION_DENIED
+                        final auth = Get.find<AuthController>();
+                        if (FirebaseAuth.instance.currentUser == null) {
+                          debugPrint('🔐 GuestRequestScreen: Starting Anonymous Login...');
+                          await auth.signInAnonymously();
+                        }
+                        
+                        try {
+                          await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
+                          'type': 'guest',
+                          'guestName': guestNameCtrl.text,
+                          'guestPhone': normalizedPhone,
+                          'lastMessage': 'محادثة جديدة من زائر',
+                          'lastMessageAt': FieldValue.serverTimestamp(),
+                          'createdAt': FieldValue.serverTimestamp(),
+                        }, SetOptions(merge: true));
+
+                        // Add Welcome Message
+                        await FirebaseFirestore.instance.collection('chats').doc(chatId).collection('messages').add({
+                          'senderId': 'support',
+                          'senderName': 'الدعم الفني',
+                          'message': 'مرحباً بك في جمعية ناس الخير بك بمدينة رقان، كيف يمكننا مساعدتك؟',
+                          'createdAt': FieldValue.serverTimestamp(),
+                          'isRead': false,
+                        });
+
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setString('guest_name', guestNameCtrl.text);
+                        await prefs.setString('guest_phone', normalizedPhone);
+
+                        // Notify Admins
+                        try {
+                          await NotificationService.notifyAllAdmins(
+                            type: 'guest_message',
+                            title: 'محادثة جديدة من زائر 💬',
+                            body: 'قام ${guestNameCtrl.text} ببدء محادثة جديدة',
+                            data: {
+                              'chatId': chatId,
+                              'senderName': guestNameCtrl.text,
+                              'senderPhone': normalizedPhone,
+                            },
+                          );
+                          } catch (e) {
+                            debugPrint('❌ Error notifying admins of new guest chat: $e');
+                          }
+                        } catch (e) {
+                           debugPrint('⚠️ Firestore/Permission Error: $e');
+                           // إذا فشل الإشعار أو الكتابة الأولية، سنحاول المتابعة للشاشة التالية
+                           // فالدردشة ستحاول تهيئة نفسها مرة أخرى هناك
+                        }
+
+                        Get.back(); // close bottom sheet
+                        // Navigate to chat
+                        Get.toNamed(AppRoutes.chatPrivate, arguments: {
+                          'chatId': chatId,
+                          'userName': 'الدعم الفني',
+                          'userId': 'support', // Explicitly set support as target
+                        });
+                        Get.snackbar(
+                          'تم ✅',
+                          'سيتواصل معك المدير على رقم $normalizedPhone',
+                          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                          duration: const Duration(seconds: 4),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+    );
+  }
+
   void _showServiceDetailsModal(ServiceTypeModel service) {
     Get.bottomSheet(
       StatefulBuilder(
@@ -571,7 +813,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppTheme.darkSurface.withValues(alpha: 0.8),
+                  color: AppTheme.surfaceColor.withValues(alpha: 0.8),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
                   border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2), width: 1.5),
                 ),
@@ -614,23 +856,49 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                       const SizedBox(height: 24),
                       if (service.id == 'funeral_transport') ...[
                         _buildModalField('اسم المتوفى *', Icons.person_off_outlined, deceasedNameController),
-                        const SizedBox(height: 20),
-                        Text('موقع الاستلام على الخريطة', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                        const SizedBox(height: 8),
-                        Container(
-                          height: 180,
-                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.glassBorder)),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: GoogleMap(
-                              initialCameraPosition: const CameraPosition(target: LatLng(26.7167, 0.1667), zoom: 12),
-                              onTap: (latLng) => setModalState(() => selectedLocation = latLng),
-                              markers: selectedLocation != null ? {Marker(markerId: const MarkerId('pickup'), position: selectedLocation!)} : {},
-                            ),
-                          ),
-                        ),
+                        const SizedBox(height: 16),
+                        _buildModalField('مكان التواجد (مستشفى، منزل...) *', Icons.location_on_outlined, pickupLocationController),
+                        const SizedBox(height: 16),
+                        _buildModalField('الوجهة (المقبرة أو مكان آخر) *', Icons.account_balance_outlined, burialLocationController),
                       ] else ...[
-                        _buildModalField('وصف الطلب بالتفصيل *', Icons.description_outlined, descriptionController, maxLines: 4),
+                        if (_serviceSubOptions.containsKey(service.name)) ...[
+                          Text('حدد نوع المساعدة المطلوبة *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _serviceSubOptions[service.name]!.map((option) {
+                              final isSelected = selectedSubOptions.contains(option);
+                              return ChoiceChip(
+                                label: Text(option),
+                                selected: isSelected,
+                                selectedColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                                backgroundColor: AppTheme.textPrimary.withValues(alpha: 0.05),
+                                labelStyle: TextStyle(
+                                  color: isSelected ? AppTheme.primaryGreen : AppTheme.textPrimary,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  fontSize: 12,
+                                ),
+                                side: BorderSide(
+                                  color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder,
+                                ),
+                                onSelected: (selected) {
+                                  setModalState(() {
+                                    if (selected) {
+                                      selectedSubOptions.add(option);
+                                    } else {
+                                      selectedSubOptions.remove(option);
+                                    }
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 20),
+                          _buildModalField('ملاحظات إضافية (اختياري)', Icons.description_outlined, descriptionController, maxLines: 3),
+                        ] else ...[
+                          _buildModalField('وصف الطلب بالتفصيل *', Icons.description_outlined, descriptionController, maxLines: 4),
+                        ],
                       ],
                       const SizedBox(height: 24),
                       Text('درجة الاستعجال *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
@@ -676,7 +944,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
           maxLines: maxLines,
           style: TextStyle(color: AppTheme.textPrimary),
           decoration: AppTheme.inputDecoration(label, icon).copyWith(
-            fillColor: Colors.white.withValues(alpha: 0.03),
+            fillColor: AppTheme.textPrimary.withValues(alpha: 0.03),
           ),
         ),
       ],
@@ -693,7 +961,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
           margin: const EdgeInsets.symmetric(horizontal: 4),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? color.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.03),
+            color: isSelected ? color.withValues(alpha: 0.15) : AppTheme.textPrimary.withValues(alpha: 0.03),
             borderRadius: BorderRadius.circular(15),
             border: Border.all(color: isSelected ? color : AppTheme.glassBorder, width: isSelected ? 2 : 1),
             boxShadow: isSelected ? [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 10)] : null,

@@ -3,11 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../controllers/beneficiary_controller.dart';
+import '../../chat/controllers/chat_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
 import 'new_request_screen.dart';
 import '../../../data/models/service_request_model.dart';
+import '../../../data/models/user_model.dart';
 import '../../../data/services/notification_service.dart';
 import '../../../core/constants/app_constants.dart';
 
@@ -27,21 +30,21 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
   Future<bool> _onWillPop() async {
     final result = await Get.dialog<bool>(
       AlertDialog(
-        backgroundColor: AppTheme.darkSurface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('تأكيد الخروج',
+        title: Text('تأكيد الخروج',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
         content: Text('هل أنت متأكد من أنك تريد الخروج من التطبيق؟',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'Tajawal')),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal')),
         actions: [
           Row(
             children: [
               Expanded(
                 child: TextButton(
                   onPressed: () => Get.back(result: false),
-                  child: const Text('إلغاء', style: TextStyle(color: AppTheme.textHint, fontFamily: 'Tajawal')),
+                  child: Text('إلغاء', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal')),
                 ),
               ),
               const SizedBox(width: 12),
@@ -65,50 +68,71 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+        if (_currentIndex != 0) {
+          setState(() => _currentIndex = 0);
+          return;
+        }
         final shouldPop = await _onWillPop();
         if (shouldPop) {
           SystemNavigator.pop();
         }
       },
       child: Scaffold(
-        backgroundColor: AppTheme.darkBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         body: IndexedStack(
           index: _currentIndex,
           children: [
             _buildHomeTab(),
             const NewRequestScreen(),
             _buildActivitiesTab(),
+            _buildContactTab(),
           ],
         ),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
-            color: AppTheme.darkSurface,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: AppTheme.darkShadow,
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -2))
+            ],
           ),
           child: BottomNavigationBar(
             currentIndex: _currentIndex,
             onTap: (index) => setState(() => _currentIndex = index),
             backgroundColor: Colors.transparent,
             elevation: 0,
-            selectedItemColor: AppTheme.primaryGreen,
-            unselectedItemColor: AppTheme.textHint,
+            selectedItemColor: Theme.of(context).colorScheme.primary,
+            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
             type: BottomNavigationBarType.fixed,
-            items: const [
-              BottomNavigationBarItem(
+            items: [
+              const BottomNavigationBarItem(
                 icon: Icon(Icons.home_outlined),
                 activeIcon: Icon(Icons.home),
                 label: 'الرئيسية',
               ),
-              BottomNavigationBarItem(
+              const BottomNavigationBarItem(
                 icon: Icon(Icons.add_circle_outline),
                 activeIcon: Icon(Icons.add_circle),
                 label: 'طلب جديد',
               ),
-              BottomNavigationBarItem(
+              const BottomNavigationBarItem(
                 icon: Icon(Icons.newspaper_outlined),
                 activeIcon: Icon(Icons.newspaper),
                 label: 'الأنشطة',
+              ),
+              BottomNavigationBarItem(
+                icon: Obx(() {
+                  final chatController = Get.find<ChatController>();
+                  return Badge(
+                    label: Text(chatController.totalUnreadCount.value.toString()),
+                    isLabelVisible: chatController.totalUnreadCount.value > 0,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    textColor: Theme.of(context).colorScheme.onPrimary,
+                    child: const Icon(Icons.chat_bubble_outline),
+                  );
+                }),
+                activeIcon: const Icon(Icons.chat_bubble),
+                label: 'تواصل',
               ),
             ],
           ),
@@ -130,11 +154,11 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('أهلاً,',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w500)),
                   Obx(() => Text(
                         controller.currentBeneficiary.value?.name ?? 'المستفيد',
                         style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 20,
                             fontWeight: FontWeight.w700),
                       )),
@@ -142,13 +166,13 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.person, color: AppTheme.primaryGreen),
+                icon: Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
                 onPressed: () => Get.toNamed('/profile'),
               ),
               Obx(() => Stack(
                 children: [
                    IconButton(
-                    icon: Icon(Icons.notifications_outlined, color: AppTheme.textSecondary),
+                    icon: Icon(Icons.notifications_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
                     onPressed: () => Get.toNamed('/notifications'),
                   ),
                   if (notificationService.unreadCount.value > 0)
@@ -157,11 +181,11 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                       top: 8,
                       child: Container(
                         padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(color: AppTheme.errorColor, shape: BoxShape.circle),
+                        decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
                         constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
                         child: Text(
                           notificationService.unreadCount.value.toString(),
-                          style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onError, fontSize: 10, fontWeight: FontWeight.w900, height: 1),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -179,12 +203,13 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                   ),
                   padding: const EdgeInsets.all(12),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.add, color: Colors.black, size: 20),
+                      Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary, size: 20),
                       const SizedBox(width: 6),
                       Text('طلب جديد',
                           style: TextStyle(
-                              color: Colors.black,
+                              color: Theme.of(context).colorScheme.onPrimary,
                               fontWeight: FontWeight.w700,
                               fontSize: 13)),
                     ],
@@ -196,9 +221,9 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
           const SizedBox(height: 20),
           Container(
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [AppTheme.darkCard, AppTheme.darkSurface]),
+              gradient: LinearGradient(colors: [Theme.of(context).cardColor, Theme.of(context).colorScheme.surface]),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.glassBorder),
+              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
             ),
             child: Padding(
               padding: EdgeInsets.all(20),
@@ -209,16 +234,16 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                     children: [
                       Text('جمعية ناس الخير رقان',
                           style: TextStyle(
-                              color: AppTheme.primaryGreen,
+                              color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.w700,
                               fontSize: 16)),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text('نحن هنا لمساعدتك\nلا تتردد في طلب أي خدمة',
-                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.5)),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14, height: 1.5, fontWeight: FontWeight.w500)),
                     ],
                   ),
-                  Spacer(),
-                  Icon(Icons.volunteer_activism, color: AppTheme.primaryGreen, size: 50),
+                  const Spacer(),
+                  Icon(Icons.volunteer_activism, color: Theme.of(context).colorScheme.primary, size: 50),
                 ],
               ),
             ),
@@ -229,14 +254,18 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
           Obx(() => controller.myRequests.isEmpty
               ? Container(
                   width: double.infinity,
-                  decoration: AppTheme.glassDecoration,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                  ),
                   padding: const EdgeInsets.all(30),
                   child: Column(
                     children: [
-                      const Icon(Icons.inbox, color: AppTheme.textHint, size: 40),
+                      Icon(Icons.inbox, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 40),
                       const SizedBox(height: 12),
                       Text('لا توجد طلبات بعد',
-                          style: TextStyle(color: AppTheme.textHint), textAlign: TextAlign.center),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant), textAlign: TextAlign.center),
                       const SizedBox(height: 12),
                       AppTheme.gradientButton(
                         text: 'اطلب خدمة الآن',
@@ -253,23 +282,25 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
-                          color: AppTheme.darkCard,
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(18),
-                          boxShadow: AppTheme.cardShadow,
+                          boxShadow: [
+                            BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
+                          ],
                           border: Border.all(
-                              color: _urgencyBorderColor(request.urgency).withValues(alpha: 0.3)),
+                              color: _urgencyBorderColor(request.urgency, context).withValues(alpha: 0.3)),
                         ),
                         padding: const EdgeInsets.all(16),
                         child: Row(
                           children: [
                             Container(
                               decoration: BoxDecoration(
-                                color: _serviceTypeColor(request.type).withValues(alpha: 0.15),
+                                color: _serviceTypeColor(request.type, context).withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               padding: const EdgeInsets.all(10),
                               child: Icon(_serviceTypeIcon(request.type),
-                                  color: _serviceTypeColor(request.type), size: 22),
+                                  color: _serviceTypeColor(request.type, context), size: 22),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -278,19 +309,19 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                                 children: [
                                   Text(_serviceTypeName(request.type),
                                       style: TextStyle(
-                                          color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+                                          color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
                                   const SizedBox(height: 4),
-                                  _buildRequestProgressBar(request.status),
+                                  _buildRequestProgressBar(request.status, context),
                                   const SizedBox(height: 4),
                                   Text(_timeAgo(request.createdAt),
-                                      style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w500)),
                                 ],
                               ),
                             ),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                AppTheme.statusBadge(request.status),
+                                _buildStatusBadge(request.status, context),
                                 if (request.status == 'completed' &&
                                     request.toMap()['rating'] == null)
                                   GestureDetector(
@@ -298,12 +329,12 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                                     child: Container(
                                       margin: const EdgeInsets.only(top: 6),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.goldAccent.withValues(alpha: 0.15),
+                                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       child: Text('قيّم الخدمة ⭐',
-                                          style: TextStyle(color: AppTheme.goldAccent, fontSize: 11)),
+                                          style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w700)),
                                     ),
                                   ),
                               ],
@@ -329,11 +360,11 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(
-            child: Text('عذراً، تعذر جلب الأنشطة', style: TextStyle(color: AppTheme.errorColor)),
+            child: Text('عذراً، تعذر جلب الأنشطة', style: TextStyle(color: Theme.of(context).colorScheme.error)),
           );
         }
         if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen));
+          return Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary));
         }
         final projects = snapshot.data!.docs;
         if (projects.isEmpty) {
@@ -341,9 +372,9 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.volunteer_activism, color: AppTheme.textHint, size: 60),
+                Icon(Icons.volunteer_activism, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 60),
                 const SizedBox(height: 16),
-                Text('لا توجد أنشطة حالية', style: TextStyle(color: AppTheme.textHint)),
+                Text('لا توجد أنشطة حالية', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
               ],
             ),
           );
@@ -360,18 +391,18 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
             final progress = goal > 0 ? (collected / goal).clamp(0.0, 1.0) : 0.0;
             final progressPercent = (progress * 100).toInt();
             final remaining = (goal - collected).clamp(0.0, double.infinity);
-            const categoryColor = AppTheme.primaryGreen;
+            final categoryColor = Theme.of(context).colorScheme.primary;
 
             return Container(
               margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color(0x2E4CAF50),
-                    Color(0xFF1C1C2E),
-                    Color(0xFF1C1C2E),
+                    categoryColor.withValues(alpha: 0.18),
+                    Theme.of(context).cardColor,
+                    Theme.of(context).cardColor,
                   ],
                 ),
                 borderRadius: BorderRadius.circular(28),
@@ -402,14 +433,14 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(color: categoryColor.withValues(alpha: 0.5)),
                           ),
-                          child: const Icon(Icons.volunteer_activism, color: categoryColor, size: 26),
+                          child: Icon(Icons.volunteer_activism, color: categoryColor, size: 26),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(name, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontSize: 16)),
+                              Text(name, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w800, fontSize: 16)),
                               const SizedBox(height: 3),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -417,7 +448,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                                   color: categoryColor.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: const Text('نشط', style: TextStyle(color: categoryColor, fontSize: 10, fontWeight: FontWeight.w700)),
+                                child: Text('نشط', style: TextStyle(color: categoryColor, fontSize: 12, fontWeight: FontWeight.w800)),
                               ),
                             ],
                           ),
@@ -434,14 +465,18 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                         SizedBox(
                           width: 100, height: 100,
                           child: CustomPaint(
-                            painter: _BenefArcPainter(progress: progress),
+                            painter: _BenefArcPainter(
+                              progress: progress, 
+                              backgroundColor: Theme.of(context).colorScheme.surface,
+                              activeColor: categoryColor,
+                            ),
                             child: Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text('$progressPercent%',
-                                      style: const TextStyle(color: categoryColor, fontWeight: FontWeight.w900, fontSize: 22, height: 1)),
-                                  const Text('اكتمل', style: TextStyle(color: AppTheme.textHint, fontSize: 9)),
+                                      style: TextStyle(color: categoryColor, fontWeight: FontWeight.w900, fontSize: 24, height: 1)),
+                                  Text('اكتمل', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w600)),
                                 ],
                               ),
                             ),
@@ -455,13 +490,13 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                               if (description.isNotEmpty)
                                 Text(description,
                                     maxLines: 2, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, height: 1.4)),
+                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, height: 1.5)),
                               const SizedBox(height: 10),
-                              _activityStatRow('جُمع', '${collected.toInt()} دج', categoryColor),
+                              _activityStatRow(context, 'جُمع', '${collected.toInt()} دج', categoryColor),
                               const SizedBox(height: 5),
-                              _activityStatRow('الهدف', '${goal.toInt()} دج', AppTheme.textSecondary),
+                              _activityStatRow(context, 'الهدف', '${goal.toInt()} دج', Theme.of(context).colorScheme.onSurfaceVariant),
                               const SizedBox(height: 5),
-                              _activityStatRow('المتبقى', '${remaining.toInt()} دج', AppTheme.warningColor),
+                              _activityStatRow(context, 'المتبقى', '${remaining.toInt()} دج', Theme.of(context).colorScheme.error),
                             ],
                           ),
                         ),
@@ -477,16 +512,15 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 10,
-                        backgroundColor: AppTheme.darkSurface,
-                        valueColor: const AlwaysStoppedAnimation<Color>(categoryColor),
+                        backgroundColor: Theme.of(context).colorScheme.surface,
+                        valueColor: AlwaysStoppedAnimation<Color>(categoryColor),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 14),
-                  const Divider(color: AppTheme.glassBorder, height: 1),
-
-                  // Share button
+                  const SizedBox(height: 12),
+                  Divider(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1), height: 1),
+                  const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.all(12),
                     child: GestureDetector(
@@ -503,16 +537,16 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: AppTheme.darkSurface,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppTheme.glassBorder),
+                          border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.share_outlined, color: AppTheme.textSecondary, size: 16),
+                            Icon(Icons.share_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 16),
                             const SizedBox(width: 6),
-                            Text('شارك هذا المشروع', style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w600, fontSize: 13)),
+                            Text('شارك هذا المشروع', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700, fontSize: 14)),
                           ],
                         ),
                       ),
@@ -527,12 +561,12 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
     );
   }
 
-  Widget _activityStatRow(String label, String value, Color valueColor) {
+  Widget _activityStatRow(BuildContext context, String label, String value, Color valueColor) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
-        Text(value, style: TextStyle(color: valueColor, fontWeight: FontWeight.w700, fontSize: 13)),
+        Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.9), fontSize: 13, fontWeight: FontWeight.w500)),
+        Text(value, style: TextStyle(color: valueColor, fontWeight: FontWeight.w800, fontSize: 14)),
       ],
     );
   }
@@ -544,11 +578,11 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
       children: [
         Text(title,
             style: TextStyle(
-                color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.w700)),
         if (action.isNotEmpty)
           TextButton(
             onPressed: onTap,
-            child: Text(action, style: TextStyle(color: AppTheme.primaryGreen)),
+            child: Text(action, style: TextStyle(color: Theme.of(context).colorScheme.primary)),
           ),
       ],
     );
@@ -563,9 +597,9 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
         expand: false,
         builder: (context, scrollController) {
           return Container(
-            decoration: const BoxDecoration(
-              color: AppTheme.darkSurface,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -578,7 +612,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                         style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
-                            color: AppTheme.textPrimary)),
+                            color: Theme.of(context).colorScheme.onSurface)),
                     AppTheme.gradientButton(
                       text: 'طلب جديد',
                       icon: Icons.add,
@@ -592,9 +626,9 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                 const SizedBox(height: 16),
                 Expanded(
                   child: Obx(() => controller.myRequests.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Text('لا توجد طلبات بعد',
-                              style: TextStyle(color: AppTheme.textHint)))
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)))
                       : ListView.builder(
                           controller: scrollController,
                           itemCount: controller.myRequests.length,
@@ -609,10 +643,10 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                               child: Container(
                                 margin: const EdgeInsets.only(bottom: 10),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.darkCard,
+                                  color: Theme.of(context).cardColor,
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                      color: _urgencyBorderColor(request.urgency)
+                                      color: _urgencyBorderColor(request.urgency, context)
                                           .withValues(alpha: 0.3)),
                                 ),
                                 padding: const EdgeInsets.all(14),
@@ -620,13 +654,13 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                                   children: [
                                     Container(
                                       decoration: BoxDecoration(
-                                        color: _serviceTypeColor(request.type)
+                                        color: _serviceTypeColor(request.type, context)
                                             .withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       padding: const EdgeInsets.all(8),
                                       child: Icon(_serviceTypeIcon(request.type),
-                                          color: _serviceTypeColor(request.type),
+                                          color: _serviceTypeColor(request.type, context),
                                           size: 20),
                                     ),
                                     const SizedBox(width: 12),
@@ -636,11 +670,11 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                                         children: [
                                           Text(_serviceTypeName(request.type),
                                               style: TextStyle(
-                                                  color: AppTheme.textPrimary,
+                                                  color: Theme.of(context).colorScheme.onSurface,
                                                   fontWeight: FontWeight.w600)),
                                           Text(_timeAgo(request.createdAt),
                                               style: TextStyle(
-                                                  color: AppTheme.textHint,
+                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                                   fontSize: 11)),
                                         ],
                                       ),
@@ -662,7 +696,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
     );
   }
 
-  Widget _buildRequestProgressBar(String status) {
+  Widget _buildRequestProgressBar(String status, BuildContext context) {
     final List<String> stages = ['pending', 'in_progress', 'completed'];
     int currentStageIndex = stages.indexOf(status);
     if (currentStageIndex == -1 && status == 'rejected') currentStageIndex = -1;
@@ -681,19 +715,19 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                 width: 18,
                 height: 18,
                 decoration: BoxDecoration(
-                  color: isReached ? AppTheme.primaryGreen : AppTheme.darkSurface,
+                  color: isReached ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
                   shape: BoxShape.circle,
-                  border: Border.all(color: isReached ? AppTheme.primaryGreen : AppTheme.glassBorder),
+                  border: Border.all(color: isReached ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
                 ),
                 child: isReached
-                    ? const Icon(Icons.check, color: Colors.black, size: 10)
+                    ? Icon(Icons.check, color: Theme.of(context).colorScheme.onPrimary, size: 10)
                     : null,
               ),
               if (s != 'completed')
                 Expanded(
                   child: Container(
                     height: 2,
-                    color: (idx < currentStageIndex) ? AppTheme.primaryGreen : AppTheme.glassBorder,
+                    color: (idx < currentStageIndex) ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                   ),
                 ),
             ],
@@ -710,9 +744,9 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
     Get.dialog(
       StatefulBuilder(
         builder: (context, setModalState) => AlertDialog(
-          backgroundColor: AppTheme.darkSurface,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('كيف كانت الخدمة؟', style: TextStyle(color: AppTheme.textPrimary)),
+          title: Text('كيف كانت الخدمة؟', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -730,7 +764,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
               const SizedBox(height: 16),
               TextField(
                 controller: commentController,
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 decoration: AppTheme.inputDecoration('تعليق (اختياري)...', Icons.comment),
               ),
             ],
@@ -747,21 +781,21 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
     );
   }
 
-  Color _urgencyBorderColor(String urgency) {
+  Color _urgencyBorderColor(String urgency, BuildContext context) {
     switch (urgency) {
-      case 'emergency': return AppTheme.emergencyColor;
-      case 'urgent': return AppTheme.urgentColor;
-      default: return AppTheme.primaryGreen;
+      case 'emergency': return Theme.of(context).colorScheme.error;
+      case 'urgent': return Theme.of(context).colorScheme.primary.withValues(alpha: 0.7);
+      default: return Theme.of(context).colorScheme.primary;
     }
   }
 
-  Color _serviceTypeColor(String typeId) {
+  Color _serviceTypeColor(String typeId, BuildContext context) {
     final service = controller.availableServices.firstWhereOrNull((s) => s.id == typeId);
     if (service != null) {
-      if (typeId == 'funeral_transport') return Colors.deepPurple;
-      return AppTheme.primaryGreen;
+      if (typeId == 'funeral_transport') return Theme.of(context).colorScheme.secondary;
+      return Theme.of(context).colorScheme.primary;
     }
-    return AppTheme.primaryGreen;
+    return Theme.of(context).colorScheme.primary;
   }
 
   IconData _serviceTypeIcon(String typeId) {
@@ -781,11 +815,128 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
     if (duration.inMinutes > 0) return 'منذ ${duration.inMinutes} دقيقة';
     return 'الآن';
   }
+
+  Widget _buildContactTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 50),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('تواصل مع الإدارة',
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontFamily: 'Tajawal')),
+              Text('لأي استفسار عن طلبك، راسل أحد المدراء مباشرة',
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, fontFamily: 'Tajawal')),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .where('role', whereIn: ['admin', 'superAdmin'])
+                .where('isActive', isEqualTo: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary));
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return Center(
+                  child: Text('لا يوجد مدراء متاحون حالياً',
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal')),
+                );
+              }
+              final admins = snapshot.data!.docs
+                  .map((d) => UserModel.fromMap(d.data() as Map<String, dynamic>, d.id))
+                  .toList();
+              return ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: admins.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final admin = admins[index];
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      leading: CircleAvatar(
+                        radius: 24,
+                        backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                        backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty)
+                            ? CachedNetworkImageProvider(admin.profileImage!) as ImageProvider
+                            : null,
+                        child: (admin.profileImage == null || admin.profileImage!.isEmpty)
+                            ? Text(admin.name.isNotEmpty ? admin.name[0] : 'A',
+                                style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold))
+                            : null,
+                      ),
+                      title: Text(admin.name,
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+                      subtitle: Text(
+                          admin.role == UserRole.superAdmin ? 'مدير عام' : 'مدير إداري',
+                          style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 12, fontFamily: 'Tajawal')),
+                      trailing: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.chat_bubble_outline, color: Theme.of(context).colorScheme.primary, size: 20),
+                      ),
+                      onTap: () => Get.toNamed('/chat/private',
+                          arguments: {'userId': admin.id, 'userName': admin.name}),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusBadge(String status, BuildContext context) {
+    Color color;
+    switch (status) {
+      case 'completed': color = Theme.of(context).colorScheme.primary; break;
+      case 'rejected': color = Theme.of(context).colorScheme.error; break;
+      case 'in_progress': color = Theme.of(context).colorScheme.secondary; break;
+      default: color = Theme.of(context).colorScheme.primary.withValues(alpha: 0.7);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        AppConstants.translateStatus(status),
+        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
 }
+
 
 class _BenefArcPainter extends CustomPainter {
   final double progress;
-  const _BenefArcPainter({required this.progress});
+  final Color backgroundColor;
+  final Color activeColor;
+  const _BenefArcPainter({required this.progress, required this.backgroundColor, required this.activeColor});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -796,7 +947,7 @@ class _BenefArcPainter extends CustomPainter {
     const sweepAngle = 4.712;
 
     final bgPaint = Paint()
-      ..color = const Color(0xFF2A2A3E)
+      ..color = backgroundColor
       ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -804,14 +955,14 @@ class _BenefArcPainter extends CustomPainter {
 
     if (progress > 0) {
       final fgPaint = Paint()
-        ..color = AppTheme.primaryGreen
+        ..color = activeColor
         ..strokeWidth = strokeWidth
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round;
       canvas.drawArc(Rect.fromCircle(center: center, radius: radius), startAngle, sweepAngle * progress, false, fgPaint);
 
       final glowPaint = Paint()
-        ..color = AppTheme.primaryGreen.withValues(alpha: 0.25)
+        ..color = activeColor.withValues(alpha: 0.25)
         ..strokeWidth = strokeWidth + 4
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round

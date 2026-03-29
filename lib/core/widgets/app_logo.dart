@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 
 class AppLogo extends StatelessWidget {
   final double size;
   final bool showGlow;
-  const AppLogo({super.key, this.size = 100, this.showGlow = true});
+  final Color? color;
+  
+  const AppLogo({
+    super.key, 
+    this.size = 150,
+    this.showGlow = false,
+    this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -13,22 +19,21 @@ class AppLogo extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: AppTheme.primaryGradient,
-        boxShadow: showGlow ? AppTheme.greenGlow : null,
-        border: Border.all(color: AppTheme.glassBorder, width: 2),
+        boxShadow: showGlow ? [
+          BoxShadow(
+            color: (color ?? Colors.black).withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          )
+        ] : null,
       ),
       child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.volunteer_activism, color: Colors.black, size: size * 0.35),
-            Text('ناس الخير', style: TextStyle(
-              fontFamily: 'Tajawal',
-              color: Colors.black,
-              fontSize: size * 0.15,
-              fontWeight: FontWeight.w800,
-            )),
-          ],
+        child: Image.asset(
+          'assets/images/nas_alkhir_app.png',
+          width: size,
+          height: size,
+          fit: BoxFit.contain,
+          color: color,
         ),
       ),
     );

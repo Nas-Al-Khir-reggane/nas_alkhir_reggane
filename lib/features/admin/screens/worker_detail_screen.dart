@@ -8,6 +8,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../data/models/user_model.dart';
 import '../controllers/worker_management_controller.dart';
+import '../../../core/routes/app_routes.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class WorkerDetailScreen extends StatelessWidget {
   final UserModel worker;
@@ -31,7 +33,7 @@ class WorkerDetailScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.darkBg,
+      backgroundColor: AppTheme.backgroundColor,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -39,7 +41,11 @@ class WorkerDetailScreen extends StatelessWidget {
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: const BoxDecoration(gradient: AppTheme.darkBgGradient),
+                decoration: BoxDecoration(
+                  gradient: Get.isDarkMode 
+                      ? AppTheme.darkBgGradient 
+                      : LinearGradient(colors: [AppTheme.primaryGreen.withValues(alpha: 0.1), AppTheme.backgroundColor])
+                ),
                 child: SafeArea(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -54,7 +60,7 @@ class WorkerDetailScreen extends StatelessWidget {
                                   radius: 45,
                                   backgroundColor: roleColor.withValues(alpha: 0.3),
                                   backgroundImage: (worker.profileImage != null && worker.profileImage!.isNotEmpty)
-                                      ? NetworkImage(worker.profileImage!)
+                                      ? CachedNetworkImageProvider(worker.profileImage!) as ImageProvider
                                       : null,
                                   child: (worker.profileImage == null || worker.profileImage!.isEmpty)
                                       ? Text(worker.name.isNotEmpty ? worker.name[0] : '?',
@@ -70,7 +76,7 @@ class WorkerDetailScreen extends StatelessWidget {
                                     decoration: BoxDecoration(
                                       color: worker.isAvailable ? AppTheme.successColor : AppTheme.warningColor,
                                       shape: BoxShape.circle,
-                                      border: Border.all(color: AppTheme.darkBg, width: 2),
+                                      border: Border.all(color: AppTheme.backgroundColor, width: 2),
                                     ),
                                   ),
                                 ),
@@ -95,7 +101,7 @@ class WorkerDetailScreen extends StatelessWidget {
                                   const SizedBox(height: 6),
                                   Row(
                                     children: [
-                                      const Icon(Icons.location_on, color: AppTheme.textHint, size: 14),
+                                      Icon(Icons.location_on, color: AppTheme.textHint, size: 14),
                                       const SizedBox(width: 4),
                                       Text(worker.wilaya,
                                           style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
@@ -122,7 +128,7 @@ class WorkerDetailScreen extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.chat_bubble_outline, color: AppTheme.primaryGreen),
-                onPressed: () => Get.toNamed('/chat', arguments: {'workerId': worker.id, 'workerName': worker.name}),
+                onPressed: () => Get.toNamed(AppRoutes.chatPrivate, arguments: {'targetUserId': worker.id, 'targetUserName': worker.name}),
               ),
               PopupMenuButton<String>(
                 icon: Icon(Icons.more_vert, color: AppTheme.textPrimary),
@@ -179,7 +185,7 @@ class WorkerDetailScreen extends StatelessWidget {
                         children: [
                           Text(worker.rating.toStringAsFixed(1),
                               style: TextStyle(color: AppTheme.textPrimary, fontSize: 36, fontWeight: FontWeight.w800)),
-                          const Text('من 5.0', style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
+                          Text('من 5.0', style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
                         ],
                       ),
                       const SizedBox(width: 20),
@@ -196,7 +202,7 @@ class WorkerDetailScreen extends StatelessWidget {
                                       ))),
                           const SizedBox(height: 4),
                           Text('${worker.ratingCount} تقييم',
-                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 14, fontWeight: FontWeight.w500)),
                         ],
                       ),
                       const Spacer(),
@@ -234,9 +240,9 @@ class WorkerDetailScreen extends StatelessWidget {
                         .snapshots(),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Center(
+                        return Center(
                             child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
+                          padding: const EdgeInsets.symmetric(vertical: 20),
                           child: Text('لا توجد تحديثات ميدانية بعد',
                               style: TextStyle(color: AppTheme.textHint, fontSize: 14)),
                         ));
@@ -244,7 +250,7 @@ class WorkerDetailScreen extends StatelessWidget {
                       final update = snapshot.data!.docs.first.data() as Map<String, dynamic>;
                       return Container(
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(14)),
+                        decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(14)),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -253,7 +259,7 @@ class WorkerDetailScreen extends StatelessWidget {
                                 const Icon(Icons.history, color: AppTheme.primaryGreen, size: 16),
                                 const SizedBox(width: 8),
                                 Text(timeago.format((update['createdAt'] as Timestamp).toDate(), locale: 'ar'),
-                                    style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
+                                    style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
                               ],
                             ),
                             const SizedBox(height: 8),
@@ -280,9 +286,9 @@ class WorkerDetailScreen extends StatelessWidget {
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                       if (snapshot.data!.docs.isEmpty) {
-                        return const Center(
+                        return Center(
                             child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
+                          padding: const EdgeInsets.symmetric(vertical: 20),
                           child: Text('لا توجد مهام مسجلة', style: TextStyle(color: AppTheme.textHint)),
                         ));
                       }
@@ -294,7 +300,7 @@ class WorkerDetailScreen extends StatelessWidget {
                           final request = snapshot.data!.docs[index].data() as Map<String, dynamic>;
                           return Container(
                             margin: const EdgeInsets.only(bottom: 10),
-                            decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(14)),
+                            decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(14)),
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                               leading: Container(
@@ -307,7 +313,7 @@ class WorkerDetailScreen extends StatelessWidget {
                               title: Text(AppConstants.translateServiceType(request['serviceName'] ?? request['type'] ?? 'طلب خدمة'),
                                   style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500, fontSize: 14)),
                               subtitle: Text('${request['requesterName'] ?? ''} - ${request['wilaya'] ?? ''}',
-                                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w500)),
                               trailing: Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -318,7 +324,7 @@ class WorkerDetailScreen extends StatelessWidget {
                                       request['updatedAt'] != null
                                           ? timeago.format((request['updatedAt'] as Timestamp).toDate(), locale: 'ar')
                                           : '',
-                                      style: TextStyle(color: AppTheme.textHint, fontSize: 10)),
+                                      style: TextStyle(color: AppTheme.textHint, fontSize: 11, fontWeight: FontWeight.w500)),
                                 ],
                               ),
                             ),
@@ -340,7 +346,7 @@ class WorkerDetailScreen extends StatelessWidget {
 
   Widget _buildPerformanceStat(String label, String value, IconData icon, Color color) {
     return Container(
-      decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(16)),
       padding: const EdgeInsets.all(12),
       child: Row(
         children: [
@@ -357,7 +363,7 @@ class WorkerDetailScreen extends StatelessWidget {
               children: [
                 Text(value,
                     style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontSize: 16)),
-                Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
               ],
             ),
           ),
@@ -412,7 +418,7 @@ class WorkerDetailScreen extends StatelessWidget {
     Get.dialog(
       StatefulBuilder(builder: (context, setDialogState) {
         return AlertDialog(
-          backgroundColor: AppTheme.darkSurface,
+          backgroundColor: AppTheme.surfaceColor,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text('تقييم ${worker.name}', style: TextStyle(color: AppTheme.textPrimary)),
           content: Column(

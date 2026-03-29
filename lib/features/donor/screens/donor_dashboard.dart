@@ -8,8 +8,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/routes/app_routes.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../controllers/donor_controller.dart';
+import '../../chat/controllers/chat_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../chat/screens/chat_screen.dart';
 import 'donate_screen.dart';
 import 'my_subscriptions_screen.dart';
 import '../../../data/models/project_model.dart';
@@ -34,21 +37,21 @@ class _DonorDashboardState extends State<DonorDashboard> {
   Future<bool> _onWillPop() async {
     final result = await Get.dialog<bool>(
       AlertDialog(
-        backgroundColor: AppTheme.darkSurface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('تأكيد الخروج',
+        title: Text('تأكيد الخروج',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
         content: Text('هل أنت متأكد من أنك تريد الخروج من التطبيق؟',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'Tajawal')),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal')),
         actions: [
           Row(
             children: [
               Expanded(
                 child: TextButton(
                   onPressed: () => Get.back(result: false),
-                  child: const Text('إلغاء', style: TextStyle(color: AppTheme.textHint, fontFamily: 'Tajawal')),
+                  child: Text('إلغاء', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal')),
                 ),
               ),
               const SizedBox(width: 12),
@@ -72,13 +75,17 @@ class _DonorDashboardState extends State<DonorDashboard> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+        if (_currentIndex != 0) {
+          setState(() => _currentIndex = 0);
+          return;
+        }
         final shouldPop = await _onWillPop();
         if (shouldPop) {
           SystemNavigator.pop();
         }
       },
       child: Scaffold(
-        backgroundColor: AppTheme.darkBg,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: IndexedStack(
           index: _currentIndex,
           children: [
@@ -86,41 +93,58 @@ class _DonorDashboardState extends State<DonorDashboard> {
             _buildProjectsTab(),
             const MySubscriptionsScreen(),
             const DonateScreen(),
+            _buildContactTab(),
           ],
         ),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
-            color: AppTheme.darkSurface,
+            color: Theme.of(context).cardColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: AppTheme.darkShadow,
+            boxShadow: [
+              BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
+            ],
           ),
           child: BottomNavigationBar(
             currentIndex: _currentIndex,
             onTap: (index) => setState(() => _currentIndex = index),
             backgroundColor: Colors.transparent,
             elevation: 0,
-            selectedItemColor: AppTheme.primaryGreen,
-            unselectedItemColor: AppTheme.textHint,
+            selectedItemColor: Theme.of(context).colorScheme.primary,
+            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             type: BottomNavigationBarType.fixed,
-            items: const [
-              BottomNavigationBarItem(
+            items: [
+              const BottomNavigationBarItem(
                 icon: Icon(Icons.dashboard_outlined),
                 activeIcon: Icon(Icons.dashboard),
                 label: 'لوحتي',
               ),
-              BottomNavigationBarItem(
+              const BottomNavigationBarItem(
                 icon: Icon(Icons.folder_outlined),
                 activeIcon: Icon(Icons.folder),
                 label: 'المشاريع',
               ),
-              BottomNavigationBarItem(
+              const BottomNavigationBarItem(
                 icon: Icon(Icons.child_care_outlined),
                 activeIcon: Icon(Icons.child_care),
                 label: 'كفالاتي',
               ),
-              BottomNavigationBarItem(
+              const BottomNavigationBarItem(
                 icon: Icon(Icons.volunteer_activism),
                 label: 'تبرع الآن',
+              ),
+              BottomNavigationBarItem(
+                icon: Obx(() {
+                  final chatController = Get.find<ChatController>();
+                  return Badge(
+                    label: Text(chatController.totalUnreadCount.value.toString()),
+                    isLabelVisible: chatController.totalUnreadCount.value > 0,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    textColor: Theme.of(context).colorScheme.onPrimary,
+                    child: const Icon(Icons.chat_bubble_outline),
+                  );
+                }),
+                activeIcon: const Icon(Icons.chat_bubble),
+                label: 'تواصل معنا',
               ),
             ],
           ),
@@ -142,11 +166,11 @@ class _DonorDashboardState extends State<DonorDashboard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('أهلاً,',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
                   Obx(() => Text(
                         donorController.donorName,
                         style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 20,
                             fontWeight: FontWeight.w700),
                       )),
@@ -154,25 +178,25 @@ class _DonorDashboardState extends State<DonorDashboard> {
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.person_outline, color: AppTheme.primaryGreen, size: 28),
+                icon: Icon(Icons.person_outline, color: Theme.of(context).colorScheme.primary, size: 28),
                 onPressed: () => Get.toNamed('/profile'),
               ),
               GestureDetector(
                 onTap: () => donorController.showCertificate(),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppTheme.goldAccent.withValues(alpha: 0.15),
+                    color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.4)),
+                    border: Border.all(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.4)),
                   ),
                   padding: const EdgeInsets.all(10),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.card_membership, color: AppTheme.goldAccent, size: 18),
-                      SizedBox(width: 6),
+                      Icon(Icons.card_membership, color: Theme.of(context).colorScheme.secondary, size: 18),
+                      const SizedBox(width: 6),
                       Text('شهادتي',
                           style: TextStyle(
-                              color: AppTheme.goldAccent,
+                              color: Theme.of(context).colorScheme.secondary,
                               fontSize: 12,
                               fontWeight: FontWeight.w600)),
                     ],
@@ -183,7 +207,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
               Obx(() => Stack(
                 children: [
                    IconButton(
-                    icon: Icon(Icons.notifications_outlined, color: AppTheme.textSecondary),
+                    icon: Icon(Icons.notifications_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
                     onPressed: () => Get.toNamed('/notifications'),
                   ),
                   if (notificationService.unreadCount.value > 0)
@@ -193,7 +217,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       child: Container(
                         padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
-                          color: AppTheme.errorColor,
+                          color: Theme.of(context).colorScheme.error,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
@@ -216,7 +240,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       'إجمالي تبرعاتي',
                       '${projectController.formatNumber(donorController.totalDonated.value)} دج',
                       Icons.volunteer_activism,
-                      AppTheme.goldGradient,
+                      LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)]),
                       onTap: _showAllDonations,
                     )),
               ),
@@ -226,7 +250,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       'عدد التبرعات',
                       donorController.donationsCount.value.toString(),
                       Icons.receipt_long,
-                      AppTheme.primaryGradient,
+                      LinearGradient(colors: [Theme.of(context).colorScheme.secondary, Theme.of(context).colorScheme.secondary.withValues(alpha: 0.7)]),
                       onTap: _showAllDonations,
                     )),
               ),
@@ -243,7 +267,11 @@ class _DonorDashboardState extends State<DonorDashboard> {
                     GestureDetector(
                       onTap: _showAllDonations,
                       child: Container(
-                        decoration: AppTheme.glassDecoration,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                        ),
                         padding: const EdgeInsets.all(16),
                         child: Row(
                           children: [
@@ -264,8 +292,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                         titleStyle: const TextStyle(
                                             color: Colors.white,
                                             fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            fontFamily: 'Tajawal'),
+                                            fontWeight: FontWeight.w600),
                                       );
                                     }).toList(),
                                     centerSpaceRadius: 35,
@@ -299,14 +326,14 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                             children: [
                                               Text(item['projectName'],
                                                   style: TextStyle(
-                                                      color: AppTheme.textSecondary,
+                                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                                       fontSize: 11),
                                                   maxLines: 1,
                                                   overflow: TextOverflow.ellipsis),
                                               Text(
                                                   '${projectController.formatNumber(item['total'] as num)} دج',
                                                   style: TextStyle(
-                                                      color: AppTheme.textPrimary,
+                                                      color: Theme.of(context).colorScheme.onSurface,
                                                       fontSize: 12,
                                                       fontWeight: FontWeight.w600)),
                                             ],
@@ -331,19 +358,22 @@ class _DonorDashboardState extends State<DonorDashboard> {
           Obx(() => donorController.myDonations.isEmpty
               ? Container(
                   width: double.infinity,
-                  decoration: AppTheme.glassDecoration,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                  ),
                   padding: const EdgeInsets.all(30),
                   child: Column(
                     children: [
-                      const Icon(Icons.volunteer_activism, color: AppTheme.textHint, size: 40),
+                      Icon(Icons.volunteer_activism, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 40),
                       const SizedBox(height: 12),
-                      const Text('لم تقم بأي تبرع بعد',
-                          style: TextStyle(color: AppTheme.textHint), textAlign: TextAlign.center),
+                      Text('لم تقم بأي تبرع بعد',
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant), textAlign: TextAlign.center),
                       const SizedBox(height: 12),
-                      AppTheme.gradientButton(
-                        text: 'تبرع الآن',
-                        icon: Icons.favorite,
+                      ElevatedButton(
                         onPressed: () => setState(() => _currentIndex = 3),
+                        child: const Text('تبرع الآن'),
                       ),
                     ],
                   ),
@@ -362,8 +392,11 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         decoration: BoxDecoration(
-                          color: AppTheme.darkCard,
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
+                          ],
                         ),
                         padding: const EdgeInsets.all(14),
                         child: Row(
@@ -371,8 +404,8 @@ class _DonorDashboardState extends State<DonorDashboard> {
                             Container(
                               decoration: BoxDecoration(
                                 color: donation.donorId == 'anonymous'
-                                    ? AppTheme.textHint.withValues(alpha: 0.15)
-                                    : AppTheme.goldAccent.withValues(alpha: 0.15),
+                                    ? Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15)
+                                    : Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               padding: const EdgeInsets.all(10),
@@ -381,8 +414,8 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                     ? Icons.person_off
                                     : Icons.volunteer_activism,
                                 color: donation.donorId == 'anonymous'
-                                    ? AppTheme.textHint
-                                    : AppTheme.goldAccent,
+                                    ? Theme.of(context).colorScheme.onSurfaceVariant
+                                    : Theme.of(context).colorScheme.primary,
                                 size: 20,
                               ),
                             ),
@@ -393,7 +426,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                 children: [
                                   Text(donation.projectName,
                                       style: TextStyle(
-                                          color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+                                          color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
                                   Row(
                                     children: [
                                       Text(
@@ -401,19 +434,19 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                               ? 'مجهول'
                                               : _methodLabel(donation.method),
                                           style: TextStyle(
-                                              color: AppTheme.textSecondary, fontSize: 12)),
+                                              color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                                       const SizedBox(width: 8),
                                       Container(
                                         width: 4,
                                         height: 4,
-                                        decoration: const BoxDecoration(
-                                            color: AppTheme.textHint, shape: BoxShape.circle),
+                                        decoration: BoxDecoration(
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5), shape: BoxShape.circle),
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
                                           DateFormat('yyyy/MM/dd').format(donation.date),
-                                          style: const TextStyle(
-                                              color: AppTheme.textHint, fontSize: 11)),
+                                          style: TextStyle(
+                                              color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
                                     ],
                                   ),
                                 ],
@@ -424,12 +457,19 @@ class _DonorDashboardState extends State<DonorDashboard> {
                               children: [
                                 Text(
                                     '${projectController.formatNumber(donation.amount)} دج',
-                                    style: const TextStyle(
-                                        color: AppTheme.goldAccent,
+                                    style: TextStyle(
+                                        color: Theme.of(context).colorScheme.primary,
                                         fontWeight: FontWeight.w700,
                                         fontSize: 15)),
                                 const SizedBox(height: 4),
-                                AppTheme.statusBadge(donation.status),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(donation.status, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 10)),
+                                ),
                               ],
                             ),
                           ],
@@ -454,7 +494,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
-                          color: AppTheme.darkCard,
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(18),
                         ),
                         padding: const EdgeInsets.all(16),
@@ -466,11 +506,11 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                 Expanded(
                                   child: Text(project.name,
                                       style: TextStyle(
-                                          color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+                                          color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
                                 ),
                                 Text('${project.progressPercentage.toInt()}%',
-                                    style: const TextStyle(
-                                        color: AppTheme.primaryGreen, fontWeight: FontWeight.w700)),
+                                    style: TextStyle(
+                                        color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700)),
                               ],
                             ),
                             const SizedBox(height: 8),
@@ -478,13 +518,13 @@ class _DonorDashboardState extends State<DonorDashboard> {
                               borderRadius: BorderRadius.circular(8),
                               child: LinearProgressIndicator(
                                 value: progress,
-                                backgroundColor: AppTheme.darkSurface,
+                                backgroundColor: Theme.of(context).colorScheme.surface,
                                 minHeight: 8,
                                 valueColor: AlwaysStoppedAnimation(
-                                  project.progressPercentage >= 80 ? AppTheme.successColor
-                                    : project.progressPercentage >= 50 ? AppTheme.primaryGreen
-                                    : project.progressPercentage >= 20 ? AppTheme.warningColor
-                                    : AppTheme.errorColor,
+                                  project.progressPercentage >= 80 ? Colors.green
+                                    : project.progressPercentage >= 50 ? Theme.of(context).colorScheme.primary
+                                    : project.progressPercentage >= 20 ? Colors.orange
+                                    : Theme.of(context).colorScheme.error,
                                 ),
                               ),
                             ),
@@ -492,13 +532,13 @@ class _DonorDashboardState extends State<DonorDashboard> {
                             Row(
                               children: [
                                 Text(
-                                    '${projectController.formatNumber(project.collected)} dج',
-                                    style: const TextStyle(
-                                        color: AppTheme.primaryGreen, fontSize: 12)),
+                                    '${projectController.formatNumber(project.collected)} دج',
+                                    style: TextStyle(
+                                        color: Theme.of(context).colorScheme.primary, fontSize: 12)),
                                 const Spacer(),
                                 Text(
                                     'من ${projectController.formatNumber(project.budget)} دج',
-                                    style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
+                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                               ],
                             ),
                           ],
@@ -543,29 +583,29 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       width: 90,
                       margin: const EdgeInsets.only(left: 12),
                       decoration: BoxDecoration(
-                        color: AppTheme.darkCard,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.1)),
+                        border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           CircleAvatar(
                             radius: 25,
-                            backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                             backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty)
-                                ? NetworkImage(admin.profileImage!)
+                                ? CachedNetworkImageProvider(admin.profileImage!) as ImageProvider
                                 : null,
                             child: (admin.profileImage == null || admin.profileImage!.isEmpty)
-                                ? Text(admin.name[0], style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold))
+                                ? Text(admin.name[0], style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold))
                                 : null,
                           ),
                           const SizedBox(height: 6),
                           Text(admin.name.split(' ')[0], 
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 11, fontWeight: FontWeight.w600),
                             maxLines: 1, overflow: TextOverflow.ellipsis),
                           Text(admin.role == UserRole.superAdmin ? 'مدير عام' : 'مدير',
-                            style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 9)),
+                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 9)),
                         ],
                       ),
                     ),
@@ -588,14 +628,14 @@ class _DonorDashboardState extends State<DonorDashboard> {
         expand: false,
         builder: (context, scrollController) {
           return Container(
-            decoration: const BoxDecoration(color: AppTheme.darkSurface, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+            decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[600], borderRadius: BorderRadius.circular(2)))),
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(2)))),
                 const SizedBox(height: 20),
-                Text('الفريق الإداري', style: GoogleFonts.tajawal(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text('الفريق الإداري', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                 const SizedBox(height: 16),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
@@ -613,14 +653,14 @@ class _DonorDashboardState extends State<DonorDashboard> {
                           final admin = UserModel.fromMap(admins[index].data() as Map<String, dynamic>, admins[index].id);
                           return ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                              backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty) ? NetworkImage(admin.profileImage!) : null,
-                              child: (admin.profileImage == null || admin.profileImage!.isEmpty) ? Text(admin.name[0], style: const TextStyle(color: AppTheme.primaryGreen)) : null,
+                              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                              backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty) ? CachedNetworkImageProvider(admin.profileImage!) as ImageProvider : null,
+                              child: (admin.profileImage == null || admin.profileImage!.isEmpty) ? Text(admin.name[0], style: TextStyle(color: Theme.of(context).colorScheme.primary)) : null,
                             ),
-                            title: Text(admin.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                            subtitle: Text(admin.role == UserRole.superAdmin ? 'مدير عام' : 'مدير إداري', style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12)),
+                            title: Text(admin.name, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
+                            subtitle: Text(admin.role == UserRole.superAdmin ? 'مدير عام' : 'مدير إداري', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 12)),
                             trailing: IconButton(
-                              icon: const Icon(Icons.chat_bubble_outline, color: AppTheme.primaryGreen),
+                              icon: Icon(Icons.chat_bubble_outline, color: Theme.of(context).colorScheme.primary),
                               onPressed: () => Get.toNamed('/chat/private', arguments: {'userId': admin.id, 'userName': admin.name}),
                             ),
                             onTap: () => Get.toNamed('/profile', arguments: admin),
@@ -646,7 +686,6 @@ class _DonorDashboardState extends State<DonorDashboard> {
         decoration: BoxDecoration(
           gradient: gradient,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: AppTheme.darkShadow,
         ),
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -677,11 +716,11 @@ class _DonorDashboardState extends State<DonorDashboard> {
       children: [
         Text(title,
             style: TextStyle(
-                color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.w700)),
         if (action.isNotEmpty)
           TextButton(
             onPressed: onTap,
-            child: Text(action, style: const TextStyle(color: AppTheme.primaryGreen)),
+            child: Text(action, style: TextStyle(color: Theme.of(context).colorScheme.primary)),
           ),
       ],
     );
@@ -690,7 +729,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
   Widget _buildProjectsTab() {
     return Obx(() {
       if (donorController.activeProjects.isEmpty) {
-        return const Center(child: Text('لا توجد مشاريع نشطة حالياً', style: TextStyle(color: AppTheme.textHint)));
+        return Center(child: Text('لا توجد مشاريع نشطة حالياً', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)));
       }
       return ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -716,20 +755,9 @@ class _DonorDashboardState extends State<DonorDashboard> {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            categoryColor.withValues(alpha: 0.18),
-            AppTheme.darkCard,
-            AppTheme.darkCard,
-          ],
-        ),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: categoryColor.withValues(alpha: 0.4), width: 1.5),
-        boxShadow: [
-          BoxShadow(color: categoryColor.withValues(alpha: 0.25), blurRadius: 20, offset: const Offset(0, 8)),
-        ],
       ),
       child: Column(
         children: [
@@ -739,11 +767,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
             child: Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [categoryColor.withValues(alpha: 0.35), categoryColor.withValues(alpha: 0.08)],
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                ),
+                color: categoryColor.withValues(alpha: 0.08),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: Row(
@@ -762,11 +786,11 @@ class _DonorDashboardState extends State<DonorDashboard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row( // ✨ FIXED: Added Row to avoid overlapping with name
+                        Row(
                           children: [
                             Expanded(
                               child: Text(project.name,
-                                    style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontSize: 17, height: 1.2)),
+                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w800, fontSize: 17, height: 1.2)),
                             ),
                             if (project.isSubscription) ...[
                               const SizedBox(width: 8),
@@ -795,7 +819,14 @@ class _DonorDashboardState extends State<DonorDashboard> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  AppTheme.statusBadge(project.status),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(project.status, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 10)),
+                  ),
                 ],
               ),
             ),
@@ -811,14 +842,14 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   SizedBox(
                     width: 110, height: 110,
                     child: CustomPaint(
-                      painter: _ArcProgressPainter(progress: progress, color: categoryColor, backgroundColor: AppTheme.darkSurface),
+                      painter: _ArcProgressPainter(progress: progress, color: categoryColor, backgroundColor: Theme.of(context).colorScheme.surface),
                       child: Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text('$progressPercent%',
                                 style: TextStyle(color: categoryColor, fontWeight: FontWeight.w900, fontSize: 24, height: 1)),
-                            Text('اكتمل', style: TextStyle(color: AppTheme.textHint, fontSize: 10)),
+                            Text('اكتمل', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
                           ],
                         ),
                       ),
@@ -832,13 +863,13 @@ class _DonorDashboardState extends State<DonorDashboard> {
                         if (project.description.isNotEmpty)
                           Text(project.description,
                               maxLines: 2, overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, height: 1.4)),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12, height: 1.4)),
                         const SizedBox(height: 12),
                         _buildStatRow('جُمع', '${projectController.formatNumber(project.collected)} دج', categoryColor),
                         const SizedBox(height: 6),
-                        _buildStatRow('الهدف', '${projectController.formatNumber(project.budget)} دج', AppTheme.textSecondary),
+                        _buildStatRow('الهدف', '${projectController.formatNumber(project.budget)} دج', Theme.of(context).colorScheme.onSurfaceVariant),
                         const SizedBox(height: 6),
-                        _buildStatRow('المتبقى', '${projectController.formatNumber(remaining)} دج', AppTheme.warningColor),
+                        _buildStatRow('المتبقى', '${projectController.formatNumber(remaining)} دج', Theme.of(context).colorScheme.error),
                       ],
                     ),
                   ),
@@ -854,9 +885,9 @@ class _DonorDashboardState extends State<DonorDashboard> {
               children: [
                 Row(
                   children: [
-                    Text('شريط التقدم', style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                    Text('شريط التقدم', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
                     const Spacer(),
-                    Text('$progressPercent%', style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                    Text('$progressPercent%', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -865,7 +896,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   child: LinearProgressIndicator(
                     value: progress,
                     minHeight: 12,
-                    backgroundColor: AppTheme.darkSurface,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
                     valueColor: AlwaysStoppedAnimation(categoryColor),
                   ),
                 ),
@@ -874,7 +905,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
           ),
 
           const SizedBox(height: 16),
-          const Divider(color: AppTheme.glassBorder, height: 1),
+          const Divider(height: 1),
 
           // Action Buttons
           Padding(
@@ -895,16 +926,16 @@ class _DonorDashboardState extends State<DonorDashboard> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: AppTheme.darkSurface,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.glassBorder),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.share_outlined, color: AppTheme.textSecondary, size: 18),
+                          Icon(Icons.share_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 18),
                           const SizedBox(width: 6),
-                          Text('مشاركة', style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w600, fontSize: 13)),
+                          Text('مشاركة', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w600, fontSize: 13)),
                         ],
                       ),
                     ),
@@ -921,17 +952,17 @@ class _DonorDashboardState extends State<DonorDashboard> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: AppTheme.greenGlow,
                       ),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(project.isSubscription ? Icons.repeat : Icons.volunteer_activism, color: Colors.black, size: 18),
+                          Icon(project.isSubscription ? Icons.repeat : Icons.volunteer_activism, color: Theme.of(context).colorScheme.onPrimary, size: 18),
                           const SizedBox(width: 6),
                           Text(project.isSubscription ? 'التزام شهري' : 'تبرع لهذا المشروع',
-                              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w800, fontSize: 13)),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w800, fontSize: 13)),
                         ],
                       ),
                     ),
@@ -949,7 +980,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
+        Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
         Text(value, style: TextStyle(color: valueColor, fontWeight: FontWeight.w700, fontSize: 13)),
       ],
     );
@@ -973,26 +1004,21 @@ class _DonorDashboardState extends State<DonorDashboard> {
         expand: false,
         builder: (context, scrollController) {
           return Container(
-            decoration: const BoxDecoration(
-              color: AppTheme.darkSurface,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 40, height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(color: AppTheme.glassBorder, borderRadius: BorderRadius.circular(2)),
-                  alignment: Alignment.center,
-                ),
+                Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)))),
                 Text('جميع تبرعاتي',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface)),
                 const SizedBox(height: 16),
                 Expanded(
                   child: Obx(() => donorController.myDonations.isEmpty
-                      ? const Center(child: Text('لا توجد تبرعات بعد', style: TextStyle(color: AppTheme.textHint)))
+                      ? Center(child: Text('لا توجد تبرعات بعد', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)))
                       : ListView.builder(
                           controller: scrollController,
                           itemCount: donorController.myDonations.length,
@@ -1009,22 +1035,22 @@ class _DonorDashboardState extends State<DonorDashboard> {
                               },
                               child: Container(
                                 margin: const EdgeInsets.only(bottom: 10),
-                                decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(14)),
+                                decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14)),
                                 padding: const EdgeInsets.all(14),
                                 child: Row(
                                   children: [
                                     Container(
-                                      decoration: BoxDecoration(color: AppTheme.goldAccent.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
                                       padding: const EdgeInsets.all(10),
-                                      child: const Icon(Icons.volunteer_activism, color: AppTheme.goldAccent, size: 20),
+                                      child: Icon(Icons.volunteer_activism, color: Theme.of(context).colorScheme.primary, size: 20),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(donation.projectName, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
-                                          Text(_methodLabel(donation.method), style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                                          Text(donation.projectName, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
+                                          Text(_methodLabel(donation.method), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                                         ],
                                       ),
                                     ),
@@ -1032,8 +1058,12 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                       crossAxisAlignment: CrossAxisAlignment.end,
                                       children: [
                                         Text('${projectController.formatNumber(donation.amount)} دج',
-                                            style: const TextStyle(color: AppTheme.goldAccent, fontWeight: FontWeight.w700)),
-                                        AppTheme.statusBadge(donation.status),
+                                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700)),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                                          child: Text(donation.status, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 9)),
+                                        ),
                                       ],
                                     ),
                                   ],
@@ -1049,6 +1079,167 @@ class _DonorDashboardState extends State<DonorDashboard> {
         },
       ),
       isScrollControlled: true,
+    );
+  }
+
+  Widget _buildContactTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 50),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('تواصل معنا',
+                  style: TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSurface)),
+              Text('تواصل مع فريق إدارة ناس الخير',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Donors group room
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: GestureDetector(
+            onTap: () => Get.to(() => const ChatScreen(
+                  isGroupChat: true,
+                  chatId: 'group_donors',
+                  groupName: 'غرفة المتبرعين',
+                )),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.people_alt_rounded, color: Theme.of(context).colorScheme.onPrimary, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('غرفة المتبرعين',
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.onPrimary,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15)),
+                        Text('انضم لمجتمع المتبرعين',
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7), fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios, color: Theme.of(context).colorScheme.onPrimary, size: 16),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Text('تواصل خاص مع الإدارة',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .where('role', whereIn: ['admin', 'superAdmin'])
+                .where('isActive', isEqualTo: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(
+                    child: CircularProgressIndicator(
+                        color: Theme.of(context).colorScheme.primary));
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return Center(
+                  child: Text('لا يوجد مدراء متاحون حالياً',
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                );
+              }
+              final admins = snapshot.data!.docs
+                  .map((d) => UserModel.fromMap(
+                      d.data() as Map<String, dynamic>, d.id))
+                  .toList();
+              return ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: admins.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final admin = admins[index];
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                    ),
+                    child: ListTile(
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      leading: CircleAvatar(
+                        radius: 24,
+                        backgroundColor:
+                            Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                        backgroundImage: (admin.profileImage != null &&
+                                admin.profileImage!.isNotEmpty)
+                            ? CachedNetworkImageProvider(admin.profileImage!) as ImageProvider
+                            : null,
+                        child: (admin.profileImage == null ||
+                                admin.profileImage!.isEmpty)
+                            ? Text(
+                                admin.name.isNotEmpty ? admin.name[0] : 'A',
+                                style: TextStyle(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.bold))
+                            : null,
+                      ),
+                      title: Text(admin.name,
+                          style: GoogleFonts.tajawal(
+                      color: Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.bold)),
+                      subtitle: Text(
+                          admin.role == UserRole.superAdmin
+                              ? 'مدير عام'
+                              : 'مدير إداري',
+                          style: GoogleFonts.tajawal(
+                              color: Theme.of(context).colorScheme.primary, fontSize: 12)),
+                      trailing: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.chat_bubble_outline,
+                            color: AppTheme.primaryGreen, size: 20),
+                      ),
+                      onTap: () => Get.toNamed('/chat/private',
+                          arguments: {
+                            'userId': admin.id,
+                            'userName': admin.name
+                          }),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

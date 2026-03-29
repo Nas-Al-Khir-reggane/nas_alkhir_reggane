@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart' as intl;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/services/theme_service.dart';
 import '../../../core/animations/micro_interactions.dart';
 import '../controllers/admin_controller.dart';
+import '../../chat/controllers/chat_controller.dart';
 import '../../../core/animations/scroll_animations.dart';
 import '../../../core/animations/visual_effects.dart';
 import '../../../core/animations/sound_manager.dart';
@@ -16,10 +19,12 @@ import '../../auth/controllers/auth_controller.dart';
 import '../../../data/models/service_request_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/notification_service.dart';
+import '../../chat/screens/admin_inbox_screen.dart';
 import 'service_requests_screen.dart' as real_requests;
 import 'projects_screen.dart';
 import 'workers_screen.dart';
 import 'package:nas_al_kheir/core/widgets/geometric_progress.dart';
+import '../../../core/widgets/app_logo.dart';
 import 'project_detail_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -42,17 +47,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('تأكيد الخروج',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
         content: Text('هل أنت متأكد من أنك تريد الخروج من التطبيق؟',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'Tajawal')),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal')),
         actions: [
           Row(
             children: [
               Expanded(
                 child: TextButton(
                   onPressed: () => Get.back(result: false),
-                  child: Text('إلغاء', style: TextStyle(color: AppTheme.textHint, fontFamily: 'Tajawal')),
+                  child: Text('إلغاء', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal')),
                 ),
               ),
               const SizedBox(width: 12),
@@ -77,6 +82,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       const real_requests.ServiceRequestsScreen(),
       ProjectsScreen(),
       const WorkersScreen(),
+      const AdminInboxScreen(),
       _buildManagementTab(),
     ];
 
@@ -84,6 +90,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+        if (_currentIndex != 0) {
+          setState(() => _currentIndex = 0);
+          return;
+        }
         final shouldPop = await _onWillPop();
         if (shouldPop) {
           SystemNavigator.pop();
@@ -92,7 +102,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: VisualEffects.ambientBackground(
-          isDark: Get.isDarkMode,
+          isDark: Theme.of(context).brightness == Brightness.dark,
           child: Scaffold(
             backgroundColor: Colors.transparent, // Allow ambient to show
             body: IndexedStack(
@@ -113,12 +123,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return role == UserRole.superAdmin || role == UserRole.admin;
   }
 
+  // Inbox tab is index 4
+  static const int _inboxIndex = 4;
+
   Widget _buildBottomBar() {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: AppTheme.darkShadow,
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -2))
+        ],
       ),
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -129,21 +144,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
           onTap: (index) {
             setState(() => _currentIndex = index);
             SoundManager.to.playNavigation();
-            
-            // عند الانتقال لتبويب الطلبات، نعتبر كل الحالات العاجلة الحالية "مقروءة"
-            if (index == 1) {
-              controller.markAllUrgentAsSeen();
-            }
+            if (index == 1) controller.markAllUrgentAsSeen();
           },
-          selectedItemColor: AppTheme.primaryGreen,
-          unselectedItemColor: AppTheme.textHint,
+          selectedItemColor: Theme.of(context).colorScheme.primary,
+          unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
           type: BottomNavigationBarType.fixed,
           selectedLabelStyle: const TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold, fontSize: 12),
           unselectedLabelStyle: const TextStyle(fontFamily: 'Tajawal', fontSize: 11),
           items: [
             BottomNavigationBarItem(
-              icon: const Icon(Icons.dashboard_outlined), 
-              activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.dashboard)), 
+              icon: const Icon(Icons.dashboard_outlined),
+              activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.dashboard)),
               label: 'الرئيسية'),
             BottomNavigationBarItem(
               icon: Obx(() => Badge(
@@ -154,16 +165,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
               activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.assignment)),
               label: 'الطلبات'),
             BottomNavigationBarItem(
-              icon: const Icon(Icons.folder_outlined), 
-              activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.folder)), 
+              icon: const Icon(Icons.folder_outlined),
+              activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.folder)),
               label: 'المشاريع'),
             BottomNavigationBarItem(
-              icon: const Icon(Icons.group_outlined), 
-              activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.group)), 
+              icon: const Icon(Icons.group_outlined),
+              activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.group)),
               label: 'الفريق'),
             BottomNavigationBarItem(
-              icon: const Icon(Icons.admin_panel_settings_outlined), 
-              activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.admin_panel_settings)), 
+              icon: Obx(() {
+                final chatController = Get.find<ChatController>();
+                return Badge(
+                  label: Text(chatController.totalUnreadCount.value.toString()),
+                  isLabelVisible: chatController.totalUnreadCount.value > 0,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  textColor: Theme.of(context).colorScheme.onPrimary,
+                  child: const Icon(Icons.inbox_outlined),
+                );
+              }),
+              activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.inbox)),
+              label: 'الرسائل'),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.admin_panel_settings_outlined),
+              activeIcon: MicroInteractions.navIcon(isActive: true, child: const Icon(Icons.admin_panel_settings)),
               label: 'الإدارة'),
           ],
         ),
@@ -177,11 +201,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
       child: VisualEffects.magneticButton(
         child: Container(
           decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
+            gradient: LinearGradient(
+              colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.8)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.primaryGreen.withValues(alpha: 0.3),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                 blurRadius: 12,
                 spreadRadius: 2,
                 offset: const Offset(0, 4),
@@ -196,14 +224,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
             hoverElevation: 0,
             focusElevation: 0,
             extendedPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            icon: const Icon(Icons.add_box_rounded, color: Colors.black, size: 22),
-            label: const Text(
+            icon: Icon(Icons.add_box_rounded, color: Theme.of(context).colorScheme.onPrimary, size: 22),
+            label: Text(
               'إجراء سريع',
               style: TextStyle(
                 fontFamily: 'Tajawal',
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: Colors.black,
+                color: Theme.of(context).colorScheme.onPrimary,
               ),
             ),
           ),
@@ -223,9 +251,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
-            Text('إجراءات سريعة', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w800, fontFamily: 'Tajawal')),
+            Text('إجراءات سريعة', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.w800, fontFamily: 'Tajawal')),
             const SizedBox(height: 16),
             _buildActionItem(Icons.volunteer_activism, 'تسجيل تبرع جديد', () {
               Get.back();
@@ -256,9 +284,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   void _showSeedConfirmation() {
     Get.dialog(
       AlertDialog(
-        backgroundColor: AppTheme.darkSurface,
-        title: const Text('تأكيد التهيئة', style: TextStyle(color: Colors.white)),
-        content: Text('سيتم إضافة أنواع الخدمات والمهام الأساسية إلى قاعدة البيانات. هل أنت متأكد؟', style: TextStyle(color: AppTheme.textSecondary)),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text('تأكيد التهيئة', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+        content: Text('سيتم إضافة أنواع الخدمات والمهام الأساسية إلى قاعدة البيانات. هل أنت متأكد؟', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         actions: [
           TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
           AppTheme.gradientButton(
@@ -283,32 +311,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Get.dialog(
       StatefulBuilder(builder: (context, setDialogState) {
         return AlertDialog(
-          backgroundColor: AppTheme.darkSurface,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text('تسجيل تبرع جديد',
-              style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w700)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: donorNameCtrl,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: AppTheme.inputDecoration('اسم المتبرع *', Icons.person_outline),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: amountCtrl,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: AppTheme.inputDecoration('المبلغ (دج) *', Icons.attach_money),
                 ),
                 const SizedBox(height: 12),
                 Obx(() {
                   final projects = controller.activeProjectsList;
                   return DropdownButtonFormField<String>(
-                    dropdownColor: AppTheme.darkCard,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    dropdownColor: Theme.of(context).cardColor,
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontFamily: 'Tajawal'),
                     decoration: AppTheme.inputDecoration('المشروع', Icons.folder_outlined),
                     initialValue: selectedProject,
                     items: [
@@ -329,8 +357,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 }),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  dropdownColor: AppTheme.darkCard,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  dropdownColor: Theme.of(context).cardColor,
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontFamily: 'Tajawal'),
                   decoration: AppTheme.inputDecoration('طريقة الدفع', Icons.payment),
                   initialValue: selectedMethod,
                   items: const [
@@ -355,6 +383,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   return;
                 }
                 try {
+                  final primaryColor = Theme.of(context).colorScheme.primary;
+                  final onSurfaceColor = Theme.of(context).colorScheme.onSurface;
                   await FirebaseFirestore.instance.collection('donations').add({
                     'donorId': 'admin_registered',
                     'donorName': donorNameCtrl.text,
@@ -378,8 +408,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   }
                   Get.back();
                   Get.snackbar('✅ تم', 'تم تسجيل التبرع بنجاح',
-                      backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
-                      colorText: AppTheme.successColor);
+                      backgroundColor: primaryColor.withValues(alpha: 0.2),
+                      colorText: onSurfaceColor);
                 } catch (e) {
                   Get.snackbar('خطأ', 'فشل تسجيل التبرع: $e');
                 }
@@ -398,10 +428,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-          child: Icon(icon, color: AppTheme.primaryGreen),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+          child: Icon(icon, color: Theme.of(context).colorScheme.primary),
         ),
-        title: Text(title, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontFamily: 'Tajawal')),
+        title: Text(title, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600, fontFamily: 'Tajawal')),
+      ),
+    );
+  }
+
+  Widget _buildHeaderButton({required Widget child, required VoidCallback onTap}) {
+    return MicroInteractions.bouncingButton(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: child,
       ),
     );
   }
@@ -409,86 +457,127 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget _buildHomeTab() {
     return RefreshIndicator(
       onRefresh: () => controller.loadDashboardData(),
-      color: AppTheme.primaryGreen,
+      color: Theme.of(context).colorScheme.primary,
       backgroundColor: Theme.of(context).colorScheme.surface,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 40),
+            const SizedBox(height: 55),
+            
+            // --- Masterpiece Luxurious Header ---
             Row(
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('مرحباً،', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
-                    Obx(() => Text(
-                          authController.currentUser.value?.name ?? 'المدير',
-                          style: TextStyle(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w700),
+                // 1. Manager Identity (Right Side - Expanded for long names)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('مرحباً،', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, letterSpacing: 0.5)),
+                      Obx(() => FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                              authController.currentUser.value?.name ?? 'المدير',
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 19, fontWeight: FontWeight.w900, height: 1.2),
+                              maxLines: 1,
+                            ),
+                      )),
+                      Obx(() => Text(
+                        authController.currentUser.value?.role.displayName ?? '',
+                        style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 11, fontWeight: FontWeight.w700),
+                      )),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 12),
+
+                // 2. Crystal Control Center (Middle)
+                FadeInDown(
+                  duration: const Duration(milliseconds: 800),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildHeaderButton(
+                        onTap: () => Get.toNamed('/profile'),
+                        child: Obx(() {
+                          final user = authController.currentUser.value;
+                          return Container(
+                            width: 26, height: 26,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), width: 1.5),
+                            ),
+                            child: CircleAvatar(
+                              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                              backgroundImage: (user?.profileImage != null && user!.profileImage!.isNotEmpty)
+                                  ? CachedNetworkImageProvider(user.profileImage!) as ImageProvider
+                                  : null,
+                              child: (user?.profileImage == null || user!.profileImage!.isEmpty)
+                                  ? Icon(Icons.person, color: Theme.of(context).colorScheme.primary, size: 14)
+                                  : null,
+                            ),
+                          );
+                        }),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildHeaderButton(
+                        onTap: () {
+                          AppConstants.toggleTheme();
+                          SoundManager.to.playToggle(!Get.isDarkMode);
+                        },
+                        child: Icon(ThemeService().themeIcon, color: Theme.of(context).colorScheme.primary, size: 18),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildHeaderButton(
+                        onTap: () => Get.toNamed('/notifications'),
+                        child: Obx(() => Stack(
+                          children: [
+                            Icon(Icons.notifications_none_rounded, color: Theme.of(context).colorScheme.onSurface, size: 18),
+                            if (notificationService.unreadCount.value > 0)
+                              Positioned(
+                                right: 0, top: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
+                                  constraints: const BoxConstraints(minWidth: 10, minHeight: 10),
+                                  child: Text(
+                                    notificationService.unreadCount.value.toString(),
+                                    style: const TextStyle(color: Colors.white, fontSize: 6, fontWeight: FontWeight.bold),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
                         )),
-                    Obx(() => Text(
-                      authController.currentUser.value?.role.displayName ?? '',
-                      style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12, fontWeight: FontWeight.w600),
-                    )),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
-                const Spacer(),
-                Obx(() {
-                  final user = authController.currentUser.value;
-                  return GestureDetector(
-                    onTap: () => Get.toNamed('/profile'),
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppTheme.primaryGreen, width: 1),
-                      ),
-                      child: CircleAvatar(
-                        radius: 18,
-                        backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                        backgroundImage: (user?.profileImage != null && user!.profileImage!.isNotEmpty)
-                            ? NetworkImage(user.profileImage!)
-                            : null,
-                        child: (user?.profileImage == null || user!.profileImage!.isEmpty)
-                            ? Icon(Icons.person, color: AppTheme.primaryGreen, size: 20)
-                            : null,
-                      ),
-                    ),
-                  );
-                }),
-                IconButton(
-                  onPressed: () {
-                    AppConstants.toggleTheme();
-                    SoundManager.to.playToggle(!Get.isDarkMode);
-                  },
-                  icon: Icon(Get.isDarkMode ? Icons.light_mode : Icons.dark_mode, color: AppTheme.primaryGreen),
+
+                const SizedBox(width: 12),
+
+                // 3. Corner Majesty (Left Side)
+                FadeInLeft(
+                  duration: const Duration(milliseconds: 1000),
+                  child: AppLogo(
+                    size: 72,
+                    color: Get.isDarkMode 
+                        ? AppTheme.goldAccent.withValues(alpha: 0.9) 
+                        : AppTheme.primaryGreen.withValues(alpha: 0.7), // جعل اللون خافتاً وناعماً
+                    showGlow: Get.isDarkMode,
+                  ),
                 ),
-                Obx(() => Stack(
-                  children: [
-                    IconButton(
-                      onPressed: () => Get.toNamed('/notifications'), 
-                      icon: Icon(Icons.notifications_none, color: AppTheme.textPrimary)
-                    ),
-                    if (notificationService.unreadCount.value > 0)
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                          child: Text(
-                            notificationService.unreadCount.value.toString(),
-                            style: const TextStyle(color: Colors.white, fontSize: 8),
-                          ),
-                        ),
-                      ),
-                  ],
-                )),
               ],
             ),
-            const SizedBox(height: 20),
+            
+            const SizedBox(height: 25),
+            
+            // --- Urgent Banner ---
             Obx(() => controller.unseenUrgentCount.value > 0
                 ? FadeIn(
                     child: GestureDetector(
@@ -496,8 +585,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(colors: [Color(0xFFD50000), Color(0xFFFF6D00)]),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.4), blurRadius: 15)],
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 5))],
                         ),
                         padding: const EdgeInsets.all(16),
                         child: Row(
@@ -508,28 +597,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text('${controller.urgentRequests.length} طلب طارئ ينتظر',
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                                const Text('اضغط للمعالجة الفورية', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+                                const Text('اضغط للمعالجة الفورية الآن', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
                               ],
                             ),
                             const Spacer(),
-                            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+                            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
                           ],
                         ),
                       ),
                     ),
                   )
                 : const SizedBox.shrink()),
-            const SizedBox(height: 20),
-            Text('نظرة عامة', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12),
+            
+            const SizedBox(height: 25),
+            Text('نظرة عامة', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 17, fontWeight: FontWeight.w800, fontFamily: 'Tajawal')),
+            const SizedBox(height: 14),
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisCount: 2,
               childAspectRatio: 1.4,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
               children: [
                 _buildKPICard('إجمالي التبرعات', controller.totalDonations, Icons.volunteer_activism, AppTheme.goldGradient, 'دج', onTap: () => Get.toNamed('/admin/donations')),
                 _buildKPICard('الطلبات المعلقة', controller.pendingRequests, Icons.pending_actions,
@@ -572,21 +662,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     : LineChart(
                         LineChartData(
                           gridData: FlGridData(
-                              show: true, drawVerticalLine: false, getDrawingHorizontalLine: (_) => FlLine(color: AppTheme.glassBorder, strokeWidth: 1)),
+                              show: true, drawVerticalLine: false, getDrawingHorizontalLine: (_) => FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1), strokeWidth: 1)),
                           titlesData: FlTitlesData(
                             bottomTitles: AxisTitles(
                               sideTitles: SideTitles(
                                 showTitles: true,
                                 getTitlesWidget: (v, _) => Text(
                                     controller.donationsLastSixMonths[v.toInt() % controller.donationsLastSixMonths.length]['month'],
-                                    style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
+                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
                               ),
                             ),
                             leftTitles: AxisTitles(
                               sideTitles: SideTitles(
                                 showTitles: true,
                                 reservedSize: 30,
-                                getTitlesWidget: (v, _) => Text('${v.toInt()}k', style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
+                                getTitlesWidget: (v, _) => Text('${v.toInt()}k', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
                               ),
                             ),
                             rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -601,20 +691,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   .map((e) => FlSpot(e.key.toDouble(), e.value['amount']))
                                   .toList(),
                               isCurved: true,
-                              color: AppTheme.primaryGreen,
+                              color: Theme.of(context).colorScheme.primary,
                               barWidth: 3,
-                              belowBarData: BarAreaData(show: true, color: AppTheme.primaryGreen.withValues(alpha: 0.15)),
+                              belowBarData: BarAreaData(show: true, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)),
                               dotData: FlDotData(
                                   show: true,
                                   getDotPainter: (spot, percent, bar, index) =>
-                                      FlDotCirclePainter(radius: 4, color: AppTheme.primaryGreen, strokeColor: Colors.white, strokeWidth: 2)),
+                                      FlDotCirclePainter(radius: 4, color: Theme.of(context).colorScheme.primary, strokeColor: Theme.of(context).colorScheme.surface, strokeWidth: 2)),
                             )
                           ],
                           lineTouchData: LineTouchData(
                             touchTooltipData: LineTouchTooltipData(
                               getTooltipItems: (spots) => spots
                                   .map((s) => LineTooltipItem('${s.y.toInt()} دج',
-                                      const TextStyle(color: AppTheme.primaryGreen, fontFamily: 'Tajawal', fontWeight: FontWeight.w600)))
+                                      TextStyle(color: Theme.of(context).colorScheme.primary, fontFamily: 'Tajawal', fontWeight: FontWeight.w600)))
                                   .toList(),
                             ),
                           ),
@@ -651,7 +741,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: SingleChildScrollView(
+                      child: Obx(() => SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -662,13 +752,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                       children: [
                                         Container(width: 12, height: 12, decoration: BoxDecoration(color: item['color'], borderRadius: BorderRadius.circular(3))),
                                         const SizedBox(width: 8),
-                                        Expanded(child: Text(AppConstants.translateServiceType(item['name']), style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontFamily: 'Tajawal'), overflow: TextOverflow.ellipsis)),
+                                        Expanded(child: Text(AppConstants.translateServiceType(item['name']), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11, fontFamily: 'Tajawal'), overflow: TextOverflow.ellipsis)),
                                       ],
                                     ),
                                   ))
                               .toList(),
                         ),
-                      ),
+                      )),
                     )
                   ],
                 ),
@@ -686,13 +776,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 child: Obx(() => BarChart(BarChartData(
                       alignment: BarChartAlignment.spaceAround,
                       barGroups: controller.monthlyRequests
-                          .where((item) => item['day'] % 5 == 0)
                           .map((item) => BarChartGroupData(
                                 x: item['day'],
                                 barRods: [
                                   BarChartRodData(
                                     toY: item['count'].toDouble(),
-                                    gradient: AppTheme.primaryGradient,
+                                    gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)]),
                                     width: 8,
                                     borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
                                   )
@@ -705,7 +794,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         bottomTitles: AxisTitles(
                             sideTitles: SideTitles(
                                 showTitles: true,
-                                getTitlesWidget: (v, meta) => Text('${v.toInt()}', style: const TextStyle(color: AppTheme.textHint, fontSize: 9)))),
+                                getTitlesWidget: (v, meta) {
+                                  if (v.toInt() % 5 != 0 && v.toInt() != 1) return const SizedBox.shrink();
+                                  return Text('${v.toInt()}', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 9));
+                                },
+                            ),
+                        ),
                         leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                         rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -713,7 +807,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       barTouchData: BarTouchData(
                         touchTooltipData: BarTouchTooltipData(
                           getTooltipItem: (group, groupIndex, rod, rodIndex) => BarTooltipItem(
-                              '${rod.toY.toInt()} طلب', const TextStyle(color: AppTheme.primaryGreen, fontFamily: 'Tajawal', fontWeight: FontWeight.w600)),
+                              '${rod.toY.toInt()} طلب', TextStyle(color: Theme.of(context).colorScheme.primary, fontFamily: 'Tajawal', fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ))),
@@ -748,7 +842,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                           Text(
                                             project.name,
                                             style: TextStyle(
-                                                color: AppTheme.textPrimary, 
+                                                color: Theme.of(context).colorScheme.onSurface,
                                                 fontWeight: FontWeight.w700,
                                                 fontSize: 15,
                                                 fontFamily: 'Tajawal'
@@ -760,18 +854,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                           Row(
                                             children: [
                                               Text(
-                                                '${project.collected.toInt()} دج', 
-                                                style: const TextStyle(
-                                                    color: AppTheme.primaryGreen, 
+                                                '${project.collected.toInt()} دج',
+                                                style: TextStyle(
+                                                    color: Theme.of(context).colorScheme.primary,
                                                     fontSize: 12,
                                                     fontWeight: FontWeight.w600
                                                 )
                                               ),
                                               const Spacer(),
                                               Text(
-                                                'من ${project.budget.toInt()} دج', 
-                                                style: const TextStyle(
-                                                    color: AppTheme.textHint, 
+                                                'من ${project.budget.toInt()} دج',
+                                                style: TextStyle(
+                                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                                     fontSize: 11
                                                 )
                                               ),
@@ -782,7 +876,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                             height: 3,
                                             width: double.infinity,
                                             decoration: BoxDecoration(
-                                              color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                                               borderRadius: BorderRadius.circular(2),
                                             ),
                                             child: FractionallySizedBox(
@@ -790,7 +884,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                               widthFactor: progress.clamp(0.0, 1.0),
                                               child: Container(
                                                 decoration: BoxDecoration(
-                                                  color: AppTheme.primaryGreen.withValues(alpha: 0.5),
+                                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
                                                   borderRadius: BorderRadius.circular(2),
                                                 ),
                                               ),
@@ -800,7 +894,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Icon(Icons.arrow_forward_ios, color: AppTheme.primaryGreen.withValues(alpha: 0.3), size: 14),
+                                    Icon(Icons.arrow_forward_ios, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), size: 14),
                                   ],
                                 ),
                               ),
@@ -832,7 +926,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               decoration: BoxDecoration(
                                   color: Theme.of(context).cardColor,
                                   borderRadius: BorderRadius.circular(14),
-                                  border: const Border(right: BorderSide(color: AppTheme.primaryGreen, width: 3))),
+                                  border: Border(right: BorderSide(color: Theme.of(context).colorScheme.primary, width: 3))),
                               padding: const EdgeInsets.all(14),
                               child: Row(
                                 children: [
@@ -840,11 +934,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     final imageUrl = controller.workerAvatarsCache[update.workerId];
                                     return CircleAvatar(
                                       radius: 20,
-                                      backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
-                                      backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
-                                      child: (imageUrl == null || imageUrl.isEmpty) 
+                                      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                                      backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? CachedNetworkImageProvider(imageUrl) as ImageProvider : null,
+                                      child: (imageUrl == null || imageUrl.isEmpty)
                                         ? Text(update.workerName.isNotEmpty ? update.workerName[0] : '?',
-                                            style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w700))
+                                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700))
                                         : null,
                                     );
                                   }),
@@ -853,16 +947,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(update.workerName, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
-                                        Text(update.description, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12), maxLines: 2),
-                                        Text(_timeAgo(update.createdAt), style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
+                                        Text(update.workerName, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600, fontSize: 13)),
+                                        Text(update.description, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12), maxLines: 2),
+                                        Text(_timeAgo(update.createdAt), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7), fontSize: 10)),
                                       ],
                                     ),
                                   ),
                                   if (update.imageUrl != null)
                                     ClipRRect(
                                         borderRadius: BorderRadius.circular(8),
-                                        child: Image.network(update.imageUrl!, width: 50, height: 50, fit: BoxFit.cover)),
+                                        child: CachedNetworkImage(imageUrl: update.imageUrl!, width: 50, height: 50, fit: BoxFit.cover)),
                                 ],
                               ),
                             ),
@@ -890,10 +984,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   ? Container(
                                       padding: const EdgeInsets.all(2),
                                       decoration: BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.goldGradient),
-                                      child: const CircleAvatar(
+                                      child: CircleAvatar(
                                         radius: 20,
-                                        backgroundColor: Colors.black,
-                                        child: Icon(Icons.volunteer_activism, color: AppTheme.goldAccent, size: 20),
+                                        backgroundColor: Theme.of(context).colorScheme.surface,
+                                        child: Icon(Icons.volunteer_activism, color: Theme.of(context).colorScheme.secondary, size: 20),
                                       ),
                                     )
                                   : StreamBuilder<DocumentSnapshot>(
@@ -905,26 +999,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                         }
                                         return Container(
                                           padding: const EdgeInsets.all(2),
-                                          decoration: BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.goldGradient),
+                                          decoration: BoxDecoration(shape: BoxShape.circle, color: Theme.of(context).colorScheme.primary),
                                           child: CircleAvatar(
                                             radius: 20,
-                                            backgroundColor: Colors.black,
-                                            backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
-                                            child: (imageUrl == null || imageUrl.isEmpty) 
-                                              ? const Icon(Icons.volunteer_activism, color: AppTheme.goldAccent, size: 20)
+                                            backgroundColor: Theme.of(context).colorScheme.surface,
+                                            backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? CachedNetworkImageProvider(imageUrl) as ImageProvider : null,
+                                            child: (imageUrl == null || imageUrl.isEmpty)
+                                              ? Icon(Icons.volunteer_activism, color: Theme.of(context).colorScheme.primary, size: 20)
                                               : null,
                                           ),
                                         );
                                       }
                                     ),
-                              title: Text(donation.donorName, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
-                              subtitle: Text(donation.projectName, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                              title: Text(donation.donorName, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
+                              subtitle: Text(donation.projectName, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                               trailing: Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text('${donation.amount.toInt()} دج', style: const TextStyle(color: AppTheme.goldAccent, fontWeight: FontWeight.w700)),
-                                  Text(intl.DateFormat('MM/dd').format(donation.date), style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
+                                  Text('${donation.amount.toInt()} دج', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700)),
+                                  Text(intl.DateFormat('MM/dd').format(donation.date), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
                                 ],
                               ),
                               tileColor: Theme.of(context).cardColor,
@@ -948,7 +1042,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
-            gradient: gradient.withOpacity(0.8), // Slight transparency for glass effect
+            gradient: gradient.withOpacity(0.8),
             borderRadius: BorderRadius.circular(20),
           ),
           padding: const EdgeInsets.all(16),
@@ -963,7 +1057,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
                     child: Icon(icon, color: Colors.white, size: 18),
                   ),
-                  if (suffix.isNotEmpty) Text(suffix, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+                  if (suffix.isNotEmpty) Text(suffix, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                 ],
               ),
               const SizedBox(height: 8),
@@ -973,10 +1067,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 child: ScrollAnimations.numberCounter(
                     value: value.value,
                     isCurrency: suffix == 'دج',
-                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
                 ),
               )),
-              Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
             ],
           ),
         ),
@@ -985,7 +1079,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildUrgentRequestCard(ServiceRequestModel request) {
-    final color = request.urgency == 'emergency' ? AppTheme.emergencyColor : AppTheme.urgentColor;
+    final color = request.urgency == 'emergency' ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary;
     return GestureDetector(
       onTap: () => Get.toNamed('/admin/request-detail', arguments: request),
       child: Container(
@@ -1009,19 +1103,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 children: [
                       Row(
                         children: [
-                          Flexible(child: Text(AppConstants.translateServiceType(request.type), style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary, fontSize: 13), overflow: TextOverflow.ellipsis)),
+                          Flexible(child: Text(AppConstants.translateServiceType(request.type), style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface, fontSize: 13), overflow: TextOverflow.ellipsis)),
                           const SizedBox(width: 8),
                           AppTheme.statusBadge(request.urgency),
                         ],
                       ),
                   const SizedBox(height: 4),
-                  Text(request.requesterName, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                  Text('${request.wilaya} - ${_timeAgo(request.createdAt)}', style: const TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                  Text(request.requesterName, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+                  Text('${request.wilaya} - ${_timeAgo(request.createdAt)}', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7), fontSize: 11)),
                 ],
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.arrow_forward_ios, color: AppTheme.primaryGreen, size: 16),
+              icon: Icon(Icons.arrow_forward_ios, color: Theme.of(context).colorScheme.primary, size: 16),
               onPressed: () => Get.toNamed('/admin/request-detail', arguments: request)
             )
           ],
@@ -1034,10 +1128,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget _buildSectionHeader(String title, String actionText, {VoidCallback? onTap}) {
     return Row(
       children: [
-        Text(title, style: TextStyle(color: AppTheme.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+        Text(title, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15, fontWeight: FontWeight.w600)),
         const Spacer(),
         if (actionText.isNotEmpty)
-          TextButton(onPressed: onTap, child: Text(actionText, style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12))),
+          TextButton(onPressed: onTap, child: Text(actionText, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 12))),
       ],
     );
   }
@@ -1059,20 +1153,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
         Container(
           padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
           decoration: BoxDecoration(
-            gradient: Get.isDarkMode ? AppTheme.darkBgGradient : LinearGradient(colors: [AppTheme.primaryGreen.withValues(alpha: 0.1), AppTheme.lightBg]),
+            gradient: Theme.of(context).brightness == Brightness.dark
+              ? LinearGradient(colors: [Theme.of(context).scaffoldBackgroundColor, Theme.of(context).cardColor], begin: Alignment.topCenter, end: Alignment.bottomCenter)
+              : LinearGradient(
+                  colors: [Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), Theme.of(context).colorScheme.surface],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
             borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
           ),
           child: Row(
             children: [
               CircleAvatar(
                 radius: 35,
-                backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.3),
+                backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                 backgroundImage: (user?.profileImage != null && user!.profileImage!.isNotEmpty)
-                    ? NetworkImage(user.profileImage!)
+                    ? CachedNetworkImageProvider(user.profileImage!) as ImageProvider
                     : null,
                 child: (user?.profileImage == null || user!.profileImage!.isEmpty)
                     ? Text(user != null && user.name.isNotEmpty ? user.name[0] : 'A',
-                        style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 28, fontWeight: FontWeight.w800))
+                        style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 28, fontWeight: FontWeight.w800))
                     : null,
               ),
               const SizedBox(width: 16),
@@ -1080,15 +1180,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(user?.name ?? 'المدير', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
-                    Text(user?.role.displayName ?? '', style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w600)),
-                    Text(user?.email ?? '', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(user?.name ?? 'المدير', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.w700)),
+                    Text(user?.role.displayName ?? '', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600)),
+                    Text(user?.email ?? '', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
                   ],
                 ),
               ),
               IconButton(
                 onPressed: () => Get.toNamed('/profile'),
-                icon: const Icon(Icons.edit_outlined, color: AppTheme.primaryGreen),
+                icon: Icon(Icons.edit_outlined, color: Theme.of(context).colorScheme.primary),
               ),
             ],
           ),
@@ -1101,20 +1201,61 @@ class _AdminDashboardState extends State<AdminDashboard> {
         _buildSettingsTile(Icons.airport_shuttle, 'سيارات الجنازة', 'إدارة الأسطول', () => Get.toNamed('/admin/vehicles')),
         _buildSettingsTile(Icons.bar_chart, 'التقارير', 'تقارير شهرية وسنوية PDF', () => Get.toNamed('/admin/reports')),
         const SizedBox(height: 12),
-        _buildChatHighlightTile(),
+        _buildSettingsTile(Icons.inbox_rounded, 'صندوق الرسائل', 'جميع محادثاتك الخاصة والجماعية', () => setState(() => _currentIndex = _inboxIndex)),
         const SizedBox(height: 12),
-        const Divider(color: AppTheme.glassBorder, indent: 24, endIndent: 24),
-        _buildSettingsTile(Icons.dark_mode, 'الوضع الداكن/النهاري', 'تبديل المظهر', () => AppConstants.toggleTheme(), showToggle: true),
-        const Divider(color: AppTheme.glassBorder, indent: 24, endIndent: 24),
-        _buildSettingsTile(Icons.logout, 'تسجيل الخروج', 'الخروج من الحساب', () => authController.logout(), isDestructive: true),
+        Divider(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3), indent: 24, endIndent: 24),
+        _buildSettingsTile(ThemeService().themeIcon, 'مظهر التطبيق', ThemeService().themeModeName, () => AppConstants.toggleTheme()),
+        Divider(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3), indent: 24, endIndent: 24),
+        _buildSettingsTile(Icons.logout, 'تسجيل الخروج', 'الخروج من الحساب', () => _showLogoutConfirmation(), isDestructive: true),
         const SizedBox(height: 50),
       ],
     );
   }
 
+  void _showLogoutConfirmation() {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('تأكيد تسجيل الخروج',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+        content: Text('هل أنت متأكد من أنك تريد تسجيل الخروج من الحساب؟',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal')),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Get.back(),
+                  child: Text('إلغاء', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal')),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    Get.back();
+                    authController.logout();
+                  },
+                  child: Text('خروج', style: TextStyle(color: Theme.of(context).colorScheme.onError, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSettingsTile(IconData icon, String title, String subtitle, VoidCallback onTap,
       {bool isDestructive = false, bool showToggle = false}) {
-    final color = isDestructive ? AppTheme.errorColor : AppTheme.primaryGreen;
+    final color = isDestructive ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14)),
@@ -1124,40 +1265,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
           decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
           child: Icon(icon, color: color, size: 22),
         ),
-        title: Text(title, style: TextStyle(color: isDestructive ? color : AppTheme.textPrimary, fontWeight: FontWeight.w600)),
-        subtitle: subtitle.isNotEmpty ? Text(subtitle, style: const TextStyle(color: AppTheme.textHint, fontSize: 11)) : null,
+        title: Text(title, style: TextStyle(color: isDestructive ? color : Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
+        subtitle: subtitle.isNotEmpty ? Text(subtitle, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)) : null,
         trailing: showToggle
-            ? Switch(value: Get.isDarkMode, onChanged: (v) => AppConstants.toggleTheme())
-            : Icon(Icons.arrow_forward_ios, color: AppTheme.textHint.withValues(alpha: 0.5), size: 14),
+            ? Switch(value: Theme.of(context).brightness == Brightness.dark, onChanged: (v) => AppConstants.toggleTheme())
+            : Icon(Icons.arrow_forward_ios, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5), size: 14),
         onTap: onTap,
       ),
     );
   }
 
-  Widget _buildChatHighlightTile() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [AppTheme.primaryGreen, Colors.teal]),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.3), blurRadius: 15, spreadRadius: 2)],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: const BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
-          child: const Icon(Icons.forum_rounded, color: Colors.white, size: 26),
-        ),
-        title: const Text('غرفة الدردشة والتواصل', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-        subtitle: const Text('تواصل فورياً مع فريق العمل', style: TextStyle(color: Colors.white70, fontSize: 12)),
-        trailing: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: const BoxDecoration(color: Colors.black26, shape: BoxShape.circle),
-          child: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14),
-        ),
-        onTap: () => Get.toNamed('/chat/group'),
-      ),
-    );
-  }
+  // Removed duplicate chat tile — chat is now accessed via the dedicated Inbox tab in the bottom bar.
 }

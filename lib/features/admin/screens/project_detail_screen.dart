@@ -10,6 +10,8 @@ import '../../../data/models/worker_update_model.dart';
 import '../controllers/project_controller.dart';
 import 'package:intl/intl.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/widgets/cached_image_widget.dart';
 
 class ProjectDetailScreen extends StatelessWidget {
   final ProjectModel project;
@@ -28,7 +30,7 @@ class ProjectDetailScreen extends StatelessWidget {
     final categoryName = cat['name'] as String;
 
     return Scaffold(
-      backgroundColor: AppTheme.darkBg,
+      backgroundColor: AppTheme.backgroundColor,
       body: CustomScrollView(
         slivers: [
           // SliverAppBar مع تدرج الفئة
@@ -39,7 +41,7 @@ class ProjectDetailScreen extends StatelessWidget {
               background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [categoryColor.withValues(alpha: 0.4), AppTheme.darkBg],
+                    colors: [categoryColor.withValues(alpha: 0.4), AppTheme.backgroundColor],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                   ),
@@ -293,9 +295,9 @@ class ProjectDetailScreen extends StatelessWidget {
                             .snapshots(),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                            return const Center(
+                            return Center(
                               child: Padding(
-                                padding: EdgeInsets.all(20.0),
+                                padding: const EdgeInsets.all(20.0),
                                 child: Text('لا يوجد متبرعون لهذا المشروع بعد',
                                     style: TextStyle(color: AppTheme.textHint)),
                               ),
@@ -320,7 +322,7 @@ class ProjectDetailScreen extends StatelessWidget {
                                     }
                                     return CircleAvatar(
                                       backgroundColor: AppTheme.goldAccent.withValues(alpha: 0.2),
-                                      backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
+                                      backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? CachedNetworkImageProvider(imageUrl) as ImageProvider : null,
                                       child: (imageUrl == null || imageUrl.isEmpty)
                                           ? Text(
                                               donation.donorName.isNotEmpty ? donation.donorName[0] : '?',
@@ -359,9 +361,9 @@ class ProjectDetailScreen extends StatelessWidget {
                             .snapshots(),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                            return const Center(
+                            return Center(
                               child: Padding(
-                                padding: EdgeInsets.all(20.0),
+                                padding: const EdgeInsets.all(20.0),
                                 child: Text('لا توجد تحديثات ميدانية بعد',
                                     style: TextStyle(color: AppTheme.textHint)),
                               ),
@@ -380,7 +382,7 @@ class ProjectDetailScreen extends StatelessWidget {
                                 margin: const EdgeInsets.only(bottom: 12),
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.darkCard,
+                                  color: AppTheme.cardColor,
                                   borderRadius: BorderRadius.circular(14),
                                   border: const Border(right: BorderSide(color: AppTheme.primaryGreen, width: 3)),
                                 ),
@@ -399,7 +401,7 @@ class ProjectDetailScreen extends StatelessWidget {
                                             return CircleAvatar(
                                               radius: 16,
                                               backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
-                                              backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
+                                              backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? CachedNetworkImageProvider(imageUrl) as ImageProvider : null,
                                               child: (imageUrl == null || imageUrl.isEmpty)
                                                   ? Text(update.workerName.isNotEmpty ? update.workerName[0] : 'W',
                                                       style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12))
@@ -412,8 +414,8 @@ class ProjectDetailScreen extends StatelessWidget {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Text(update.workerName,
-                                                style: const TextStyle(
-                                                    color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                                                style: TextStyle(
+                                                    color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
                                             Text(timeago.format(update.createdAt, locale: 'ar'),
                                                 style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
                                           ],
@@ -427,7 +429,7 @@ class ProjectDetailScreen extends StatelessWidget {
                                       const SizedBox(height: 8),
                                       ClipRRect(
                                         borderRadius: BorderRadius.circular(10),
-                                        child: Image.network(update.imageUrl!,
+                                        child: CachedImageWidget(imageUrl: update.imageUrl!,
                                             height: 150, width: double.infinity, fit: BoxFit.cover),
                                       ),
                                     ],
@@ -454,7 +456,7 @@ class ProjectDetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.darkCard,
+        color: AppTheme.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.glassBorder),
       ),
@@ -510,7 +512,7 @@ class ProjectDetailScreen extends StatelessWidget {
       Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppTheme.darkBg,
+          color: AppTheme.backgroundColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
@@ -535,12 +537,12 @@ class ProjectDetailScreen extends StatelessWidget {
                       return ListTile(
                         leading: CircleAvatar(
                           backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
-                          child: Text(worker['name'][0], style: const TextStyle(color: AppTheme.primaryGreen)),
+                          child: Text(worker['name'][0], style: TextStyle(color: AppTheme.primaryGreen)),
                         ),
                         title: Text(worker['name'], style: TextStyle(color: AppTheme.textPrimary)),
                         trailing: isAssigned
-                          ? const Icon(Icons.check_circle, color: AppTheme.primaryGreen)
-                          : const Icon(Icons.add_circle_outline, color: AppTheme.textHint),
+                          ? Icon(Icons.check_circle, color: AppTheme.primaryGreen)
+                          : Icon(Icons.add_circle_outline, color: AppTheme.textHint),
                         onTap: () {
                           if (isAssigned) {
                             projectController.unassignWorkerFromProject(project.id, worker.id);

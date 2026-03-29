@@ -5,10 +5,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:animate_do/animate_do.dart';
 import 'dart:ui' as ui;
-import '../../../core/theme/app_theme.dart';
-import '../../../data/services/notification_service.dart';
 import '../../../core/animations/visual_effects.dart';
 import '../../../core/animations/micro_interactions.dart';
+import '../../../data/services/notification_service.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/models/user_model.dart';
 
@@ -75,16 +74,16 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   Widget build(BuildContext context) {
     if (userId == null) {
       return Scaffold(
-        backgroundColor: AppTheme.backgroundColor,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
           child: Text('يرجى تسجيل الدخول أولاً',
-              style: TextStyle(color: AppTheme.textHint, fontFamily: 'Tajawal')),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal')),
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: VisualEffects.ambientBackground(
         isDark: Get.isDarkMode,
         child: Column(
@@ -98,10 +97,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.notifications_active_outlined, color: AppTheme.primaryGreen),
+                      child: Icon(Icons.notifications_active_outlined, color: Theme.of(context).colorScheme.primary),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -113,7 +112,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.w900,
-                              color: AppTheme.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontFamily: 'Tajawal',
                             ),
                           ),
@@ -122,7 +121,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                             return Text(
                               count > 0 ? 'لديك $count إشعار جديد' : 'أنت على اطلاع دائم',
                               style: TextStyle(
-                                  color: count > 0 ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                                  color: count > 0 ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
                                   fontSize: 13,
                                   fontWeight: count > 0 ? FontWeight.bold : FontWeight.normal,
                                   fontFamily: 'Tajawal'),
@@ -142,11 +141,11 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: AppTheme.darkCard.withValues(alpha: 0.7),
+                color: Theme.of(context).cardColor.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppTheme.glassBorder),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                  BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
                 ],
               ),
               child: ClipRRect(
@@ -156,13 +155,12 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   child: TabBar(
                     controller: _tabController,
                     indicator: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
+                      color: Theme.of(context).colorScheme.primary,
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: AppTheme.greenGlow,
                     ),
                     indicatorSize: TabBarIndicatorSize.tab,
-                    labelColor: Colors.white,
-                    unselectedLabelColor: AppTheme.textHint,
+                    labelColor: Theme.of(context).colorScheme.onPrimary,
+                    unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
                     labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Tajawal', fontSize: 13),
                     unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontFamily: 'Tajawal', fontSize: 13),
                     dividerColor: Colors.transparent,
@@ -214,15 +212,15 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                       onPressed: () {
                         notificationService.deleteAllRead();
                         Get.back();
-                        Get.snackbar('تم', 'تم حذف الإشعارات المقروءة', backgroundColor: AppTheme.successColor.withValues(alpha: 0.2));
+                        Get.snackbar('تم', 'تم حذف الإشعارات المقروءة', backgroundColor: Colors.green.withValues(alpha: 0.2));
                       },
-                      child: const Text('حذف الكل', style: TextStyle(color: AppTheme.errorColor, fontFamily: 'Tajawal')),
+                      child: Text('حذف الكل', style: TextStyle(color: Theme.of(context).colorScheme.error, fontFamily: 'Tajawal')),
                     ),
                   ],
                 ),
               );
             },
-            icon: const Icon(Icons.delete_sweep_outlined, color: AppTheme.errorColor),
+            icon: Icon(Icons.delete_sweep_outlined, color: Theme.of(context).colorScheme.error),
             tooltip: 'حذف المقروءة',
           ),
         ),
@@ -239,8 +237,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           notificationService.markAllAsRead();
           Get.snackbar('تم', 'تم تحديد جميع الإشعارات كمقروءة',
             snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
-            colorText: AppTheme.successColor,
+            backgroundColor: Colors.green.withValues(alpha: 0.2),
+            colorText: Colors.green,
             duration: const Duration(seconds: 2));
         },
         child: Container(
@@ -248,17 +246,19 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppTheme.glassBorder),
-            boxShadow: AppTheme.cardShadow,
+            border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+            boxShadow: [
+              BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
+            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.clear_all_rounded, color: AppTheme.textSecondary, size: 20),
+              Icon(Icons.clear_all_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 20),
               const SizedBox(width: 6),
               Text('مقروءة',
                   style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       fontFamily: 'Tajawal')),
@@ -296,18 +296,18 @@ class _NotificationList extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(color: AppTheme.errorColor.withValues(alpha: 0.1), shape: BoxShape.circle),
-                  child: const Icon(Icons.error_outline, color: AppTheme.errorColor, size: 40),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  child: Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 40),
                 ),
                 const SizedBox(height: 16),
                 Text('تعذّر تحميل الإشعارات',
-                    style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal', fontWeight: FontWeight.bold)),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontFamily: 'Tajawal', fontWeight: FontWeight.bold)),
               ],
             ),
           );
         }
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen));
+          return Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary));
         }
 
         List<DocumentSnapshot> docs = snapshot.data?.docs ?? [];
@@ -333,7 +333,7 @@ class _NotificationList extends StatelessWidget {
         });
 
         if (docs.isEmpty) {
-          return _buildEmptyState();
+          return _buildEmptyState(context);
         }
 
         return ListView.builder(
@@ -360,7 +360,7 @@ class _NotificationList extends StatelessWidget {
                   padding: const EdgeInsets.only(left: 20),
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: AppTheme.errorColor.withValues(alpha: 0.8),
+                    color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: const Icon(Icons.delete_outline, color: Colors.white),
@@ -379,7 +379,7 @@ class _NotificationList extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return FadeIn(
       child: Center(
         child: Column(
@@ -388,24 +388,24 @@ class _NotificationList extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: AppTheme.primaryGreen.withValues(alpha: 0.05),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
                 shape: BoxShape.circle,
-                border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.1), width: 2),
+                border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), width: 2),
               ),
-              child: const Icon(Icons.notifications_active_outlined,
-                  size: 50, color: AppTheme.primaryGreen),
+              child: Icon(Icons.notifications_active_outlined,
+                  size: 50, color: Theme.of(context).colorScheme.primary),
             ),
             const SizedBox(height: 24),
             Text('لم تصلك إشعارات بعد',
                 style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     fontFamily: 'Tajawal')),
             const SizedBox(height: 8),
             Text('سوف تظهر التنبيهات المخصصة لك هنا',
                 style: TextStyle(
-                    color: AppTheme.textHint.withValues(alpha: 0.8), fontSize: 13, fontFamily: 'Tajawal')),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8), fontSize: 13, fontFamily: 'Tajawal')),
           ],
         ),
       ),
@@ -431,7 +431,7 @@ class _NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final type = data['type'] as String?;
-    final color = _typeColor(type);
+    final color = _typeColor(context, type);
     final icon = _typeIcon(type);
     final label = _typeLabel(type);
 
@@ -455,7 +455,7 @@ class _NotificationCard extends StatelessWidget {
                   Get.find<NotificationService>().deleteNotification(docRef.id);
                   Get.back();
                 },
-                child: const Text('حذف', style: TextStyle(color: AppTheme.errorColor, fontFamily: 'Tajawal')),
+                child: Text('حذف', style: TextStyle(color: Theme.of(context).colorScheme.error, fontFamily: 'Tajawal')),
               ),
             ],
           ),
@@ -465,11 +465,11 @@ class _NotificationCard extends StatelessWidget {
         duration: const Duration(milliseconds: 300),
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: isRead ? AppTheme.cardColor : AppTheme.surfaceColor,
+          color: isRead ? Theme.of(context).cardColor : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isRead
-                ? AppTheme.glassBorder
+                ? Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)
                 : color.withValues(alpha: 0.4),
             width: isRead ? 1 : 1.5,
           ),
@@ -526,11 +526,11 @@ class _NotificationCard extends StatelessWidget {
                             width: 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryGreen,
+                              color: Theme.of(context).colorScheme.primary,
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                    color: AppTheme.primaryGreen.withValues(alpha: 0.4),
+                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
                                     blurRadius: 4)
                               ],
                             ),
@@ -543,7 +543,7 @@ class _NotificationCard extends StatelessWidget {
                     Text(
                       data['title'] ?? '',
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: isRead ? FontWeight.w500 : FontWeight.w700,
                         fontSize: 14,
                         fontFamily: 'Tajawal',
@@ -555,7 +555,7 @@ class _NotificationCard extends StatelessWidget {
                     Text(
                       data['body'] ?? '',
                       style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontSize: 12,
                           fontFamily: 'Tajawal'),
                       maxLines: 2,
@@ -567,12 +567,12 @@ class _NotificationCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(Icons.access_time_rounded,
-                            size: 13, color: AppTheme.textHint),
+                            size: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
                         const SizedBox(width: 4),
                         Text(
                           timeago.format(date, locale: 'ar'),
                           style: TextStyle(
-                              color: AppTheme.textHint,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               fontSize: 11,
                               fontFamily: 'Tajawal'),
                         ),
@@ -611,7 +611,9 @@ class _NotificationCard extends StatelessWidget {
         type == 'request_approved' ||
         type == 'request_rejected' ||
         type == 'new_project' ||
-        type == 'chat';
+        type == 'chat' ||
+        type == 'new_message' ||
+        type == 'guest_message';
   }
 
   void _navigate(Map<String, dynamic> data) {
@@ -649,6 +651,8 @@ class _NotificationCard extends StatelessWidget {
         Get.toNamed('/donor/dashboard');
         break;
       case 'chat':
+      case 'new_message':
+      case 'guest_message':
         if (data['senderId'] != null) {
           Get.toNamed('/chat/private', arguments: {
             'userId': data['senderId'],
@@ -663,17 +667,19 @@ class _NotificationCard extends StatelessWidget {
     }
   }
 
-  Color _typeColor(String? type) {
+  Color _typeColor(BuildContext context, String? type) {
     switch (type) {
-      case 'new_request': return AppTheme.primaryGreen;
-      case 'request_approved': return AppTheme.successColor;
-      case 'request_rejected': return AppTheme.errorColor;
+      case 'new_request': return Theme.of(context).colorScheme.primary;
+      case 'request_approved': return Colors.green;
+      case 'request_rejected': return Theme.of(context).colorScheme.error;
       case 'request_update': return Colors.blue;
-      case 'new_donation': return AppTheme.goldAccent;
+      case 'new_donation': return Theme.of(context).colorScheme.primary;
       case 'new_project': return Colors.purple;
       case 'chat': return Colors.teal;
-      case 'announcement': return AppTheme.warningColor;
-      default: return AppTheme.primaryGreen;
+      case 'new_message': return Colors.teal;
+      case 'guest_message': return Colors.teal;
+      case 'announcement': return Colors.orange;
+      default: return Theme.of(context).colorScheme.primary;
     }
   }
 
@@ -686,6 +692,8 @@ class _NotificationCard extends StatelessWidget {
       case 'new_donation': return Icons.volunteer_activism;
       case 'new_project': return Icons.folder_special_rounded;
       case 'chat': return Icons.chat_bubble_rounded;
+      case 'new_message': return Icons.chat_bubble_rounded;
+      case 'guest_message': return Icons.chat_bubble_rounded;
       case 'announcement': return Icons.campaign_rounded;
       default: return Icons.notifications_rounded;
     }
@@ -700,6 +708,8 @@ class _NotificationCard extends StatelessWidget {
       case 'new_donation': return 'تبرع جديد';
       case 'new_project': return 'مشروع جديد';
       case 'chat': return 'رسالة';
+      case 'new_message': return 'رسالة';
+      case 'guest_message': return 'رسالة زائر';
       case 'announcement': return 'إعلان';
       default: return 'إشعار';
     }

@@ -11,9 +11,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
-        android:label="nas_al_kheir"
-        android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:label="ناس الخير"
+        android:name="io.flutter.app.FlutterApplication"
+        android:icon="@mipmap/launcher_icon">
 
         <!-- Google Maps API Key -->
         <meta-data android:name="com.google.android.geo.API_KEY" android:value="YOUR_API_KEY"/>
@@ -21,6 +21,11 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="nas_al_kheir_channel" />
+
+        <!-- Notification Icon -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/launcher_icon" />
 
         <activity
             android:name=".MainActivity"

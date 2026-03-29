@@ -7,6 +7,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../data/models/user_model.dart';
 import '../../../core/utils/default_avatars.dart';
 import '../controllers/auth_controller.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -64,7 +65,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryGreen.withAlpha(20),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -76,7 +77,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryGreen.withAlpha(13),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -96,7 +97,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontFamily: 'Tajawal',
                       ),
                     ),
@@ -105,7 +106,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   FadeInUp(
                     child: Container(
                       padding: const EdgeInsets.all(24),
-                      decoration: AppTheme.glassDecoration,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
                       child: Form(
                         key: _formKey,
                         child: Column(
@@ -143,7 +155,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               icon: Icons.lock_outline,
                               obscureText: _obscurePassword,
                               suffixIcon: IconButton(
-                                icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: AppTheme.textSecondary),
+                                icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Theme.of(context).colorScheme.onSurfaceVariant),
                                 onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                               ),
                               validator: (v) => v!.length < 6 ? '6 أحرف على الأقل' : null,
@@ -156,7 +168,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               icon: Icons.lock_outline,
                               obscureText: _obscureConfirmPassword,
                               suffixIcon: IconButton(
-                                icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility, color: AppTheme.textSecondary),
+                                icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility, color: Theme.of(context).colorScheme.onSurfaceVariant),
                                 onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                               ),
                               validator: (v) => v != _passwordController.text ? 'كلمة المرور غير متطابقة' : null,
@@ -164,9 +176,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             const SizedBox(height: 14),
                             DropdownButtonFormField<String>(
                               initialValue: _selectedWilaya,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'الولاية',
-                                prefixIcon: Icon(Icons.location_on_outlined, color: AppTheme.primaryGreen),
+                                prefixIcon: Icon(Icons.location_on_outlined, color: Theme.of(context).colorScheme.primary),
                               ),
                               items: AppConstants.algeriaWilayas.map((w) => DropdownMenuItem(value: w, child: Text(w))).toList(),
                               onChanged: (v) {
@@ -177,7 +189,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               },
                               validator: (v) => v == null ? 'يرجى اختيار الولاية' : null,
                               dropdownColor: Theme.of(context).colorScheme.surface,
-                              style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontFamily: 'Tajawal'),
                             ),
                             const SizedBox(height: 14),
                             if (_selectedWilaya != null)
@@ -185,9 +197,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 duration: const Duration(milliseconds: 300),
                                 child: DropdownButtonFormField<String>(
                                   initialValue: _selectedCommune,
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     labelText: 'البلدية',
-                                    prefixIcon: Icon(Icons.map_outlined, color: AppTheme.primaryGreen),
+                                    prefixIcon: Icon(Icons.map_outlined, color: Theme.of(context).colorScheme.primary),
                                   ),
                                   items: AppConstants.getCommunesForWilaya(_selectedWilaya!)
                                       .map((c) => DropdownMenuItem(value: c, child: Text(c)))
@@ -195,7 +207,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   onChanged: (v) => setState(() => _selectedCommune = v),
                                   validator: (v) => v == null ? 'يرجى اختيار البلدية' : null,
                                   dropdownColor: Theme.of(context).colorScheme.surface,
-                                  style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
+                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontFamily: 'Tajawal'),
                                 ),
                               ),
                             const SizedBox(height: 14),
@@ -210,9 +222,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             const SizedBox(height: 14),
                             DropdownButtonFormField<UserRole>(
                               initialValue: _selectedRole,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'نوع الحساب',
-                                prefixIcon: Icon(Icons.badge_outlined, color: AppTheme.primaryGreen),
+                                prefixIcon: Icon(Icons.badge_outlined, color: Theme.of(context).colorScheme.primary),
                               ),
                               items: const [
                                 DropdownMenuItem(value: UserRole.worker, child: Text('عامل')),
@@ -228,12 +240,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 }
                               },
                               dropdownColor: Theme.of(context).colorScheme.surface,
-                              style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontFamily: 'Tajawal'),
                             ),
                             const SizedBox(height: 16),
                             Align(
                               alignment: Alignment.centerRight,
-                              child: Text('اختر صورة مبدئية لحسابك:', style: TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
+                              child: Text('اختر صورة مبدئية لحسابك:', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14)),
                             ),
                             const SizedBox(height: 8),
                             SizedBox(
@@ -251,15 +263,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: isSelected ? AppTheme.primaryGreen : Colors.transparent,
+                                          color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
                                           width: 3,
                                         ),
-                                        boxShadow: isSelected ? [AppTheme.greenGlow.first] : null,
+                                        boxShadow: isSelected ? [BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 10)] : null,
                                       ),
                                       child: CircleAvatar(
                                         radius: 30,
-                                        backgroundColor: AppTheme.darkCard,
-                                        backgroundImage: NetworkImage(avatarUrl),
+                                        backgroundColor: Theme.of(context).cardColor,
+                                        backgroundImage: CachedNetworkImageProvider(avatarUrl),
                                       ),
                                     ),
                                   );
@@ -296,7 +308,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               onPressed: () => Get.back(),
                               child: Text(
                                 'لديك حساب؟ سجل دخول',
-                                style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'Tajawal'),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal'),
                               ),
                             ),
                           ],
@@ -330,10 +342,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       keyboardType: keyboardType,
       obscureText: obscureText,
       maxLines: maxLines,
-      style: TextStyle(color: AppTheme.textPrimary),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: AppTheme.primaryGreen),
+        prefixIcon: Icon(icon, color: Theme.of(context).colorScheme.primary),
         suffixIcon: suffixIcon,
       ),
       validator: validator,

@@ -22,7 +22,7 @@ class ProjectShareCard extends StatelessWidget {
       width: 400,
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: AppTheme.darkBg,
+        color: AppTheme.backgroundColor,
         borderRadius: BorderRadius.circular(35),
         border: Border.all(color: categoryColor.withValues(alpha: 0.6), width: 2.5),
         boxShadow: [
@@ -71,10 +71,10 @@ class ProjectShareCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'جمعية ناس الخير رقان',
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17, fontFamily: 'Tajawal'),
+                          style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 17, fontFamily: 'Tajawal'),
                         ),
                         Text(
                           'معاً لنصنع الفرق الملموس',
@@ -94,7 +94,7 @@ class ProjectShareCard extends StatelessWidget {
                     ),
                     child: Text(
                       categoryName,
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
+                      style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
                     ),
                   ),
                 ],
@@ -134,12 +134,12 @@ class ProjectShareCard extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Colors.white.withValues(alpha: 0.05),
-                      Colors.white.withValues(alpha: 0.02),
+                      AppTheme.textPrimary.withValues(alpha: 0.05),
+                      AppTheme.textPrimary.withValues(alpha: 0.02),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(color: AppTheme.textPrimary.withValues(alpha: 0.1)),
                 ),
                 child: GoalGridProgress(
                   budget: project.budget,
@@ -178,16 +178,16 @@ class ProjectShareCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
+                        color: AppTheme.textPrimary.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.02)),
+                        border: Border.all(color: AppTheme.textPrimary.withValues(alpha: 0.02)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildStatLine('المبلغ المجمع', '${_formatPrice(project.collected)} دج', AppTheme.primaryGreen),
                           const Divider(color: Colors.white10, height: 20),
-                          _buildStatLine('الهدف الإجمالي', '${_formatPrice(project.budget)} دج', Colors.white),
+                          _buildStatLine('الهدف الإجمالي', '${_formatPrice(project.budget)} دج', AppTheme.textPrimary),
                           const SizedBox(height: 12),
                           // Unit details as requested by user
                           Row(
@@ -224,7 +224,7 @@ class ProjectShareCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text('امسح للمساهمة', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900, fontFamily: 'Tajawal')),
+                      Text('امسح للمساهمة', style: TextStyle(color: AppTheme.textPrimary, fontSize: 11, fontWeight: FontWeight.w900, fontFamily: 'Tajawal')),
                     ],
                   ),
                 ],
@@ -240,7 +240,7 @@ class ProjectShareCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: AppTheme.textHint, fontSize: 10, fontFamily: 'Tajawal')),
+        Text(label, style: TextStyle(color: AppTheme.textHint, fontSize: 10, fontFamily: 'Tajawal')),
         Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w800, fontFamily: 'Tajawal')),
       ],
     );

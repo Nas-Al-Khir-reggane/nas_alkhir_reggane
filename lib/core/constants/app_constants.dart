@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import '../services/theme_service.dart';
 
 class AppConstants {
   static const String appName = "جمعية ناس الخير رقان";
 
   static void toggleTheme() {
-    if (Get.isDarkMode) {
-      Get.changeThemeMode(ThemeMode.light);
-    } else {
-      Get.changeThemeMode(ThemeMode.dark);
-    }
+    ThemeService().cycleTheme();
   }
 
   static const List<String> algeriaWilayas = [
@@ -91,6 +87,17 @@ class AppConstants {
     return translations[t] ?? type;
   }
 
+  static double getScreenPaddingValue(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width > 1200) return 150.0;
+    if (width > 800) return 60.0;
+    return 20.0;
+  }
+
+  static EdgeInsets getScreenPadding(BuildContext context) {
+    return EdgeInsets.symmetric(horizontal: getScreenPaddingValue(context));
+  }
+
   static IconData getServiceIcon(String type) {
     String t = type.toLowerCase().trim().replaceAll('_', ' ');
     
@@ -166,6 +173,18 @@ class AppConstants {
   static const String chatCollection = "chats";
   static const String serviceTypesCollection = "service_types";
   static const String taskTypesCollection = "task_types";
+
+  static String translateStatus(String status) {
+    switch (status.toLowerCase().trim()) {
+      case 'pending': return 'قيد الانتظار';
+      case 'in_progress': return 'قيد التنفيذ';
+      case 'completed': return 'مكتمل';
+      case 'rejected': return 'مرفوض';
+      case 'approved': return 'مقبول';
+      case 'archived': return 'مؤرشف';
+      default: return status;
+    }
+  }
 
   static const List<Map<String, dynamic>> projectCategories = [
     {'id': 'construction', 'name': 'البناء والترميم', 'icon': Icons.construction, 'color': Color(0xFF5D4037)},

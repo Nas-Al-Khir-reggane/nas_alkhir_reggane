@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/service_request_model.dart';
 import '../../../data/models/chat_message_model.dart';
@@ -95,8 +94,8 @@ class WorkerController extends GetxController {
     Get.snackbar(
       newStatus ? '✅ أنت الآن متاح' : '⏸️ أنت الآن مشغول',
       newStatus ? 'ستصلك المهام الجديدة' : 'لن تُسند إليك مهام جديدة',
-      backgroundColor: (newStatus ? AppTheme.successColor : AppTheme.warningColor).withValues(alpha: 0.2),
-      colorText: newStatus ? AppTheme.successColor : AppTheme.warningColor,
+      backgroundColor: (newStatus ? Get.theme.colorScheme.primary : Get.theme.colorScheme.error).withValues(alpha: 0.2),
+      colorText: newStatus ? Get.theme.colorScheme.primary : Get.theme.colorScheme.error,
     );
   }
 
@@ -133,7 +132,7 @@ class WorkerController extends GetxController {
       await _notifyAdmin(requestId, type, description);
 
       Get.snackbar('✅ تم الإرسال', 'تم إرسال التحديث بنجاح',
-          backgroundColor: AppTheme.successColor.withValues(alpha: 0.2), colorText: AppTheme.successColor);
+          backgroundColor: Get.theme.colorScheme.primary.withValues(alpha: 0.2), colorText: Get.theme.colorScheme.primary);
     } catch (e) {
       Get.snackbar('خطأ', 'فشل إرسال التحديث: ${e.toString()}');
     } finally {
@@ -166,10 +165,10 @@ class WorkerController extends GetxController {
       isAvailable.value = true;
       
       Get.snackbar('🎉 أحسنت!', 'تم إتمام المهمة بنجاح',
-          backgroundColor: AppTheme.successColor.withValues(alpha: 0.2), colorText: AppTheme.successColor);
+          backgroundColor: Get.theme.colorScheme.primary.withValues(alpha: 0.2), colorText: Get.theme.colorScheme.primary);
     } catch (e) {
       Get.snackbar('خطأ', 'فشل إنهاء المهمة: $e',
-          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2), colorText: AppTheme.errorColor);
+          backgroundColor: Get.theme.colorScheme.error.withValues(alpha: 0.2), colorText: Get.theme.colorScheme.error);
     }
   }
 

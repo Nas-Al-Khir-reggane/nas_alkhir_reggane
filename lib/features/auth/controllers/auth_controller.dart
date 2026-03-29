@@ -3,13 +3,58 @@ import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/auth_service.dart';
-import '../../../core/routes/app_routes.dart';
-
-class AuthController extends GetxController {
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/routes/app_routes.dart';class AuthController extends GetxController with WidgetsBindingObserver {
   final AuthService _authService = AuthService();
 
   Rx<UserModel?> currentUser = Rx<UserModel?>(null);
   RxBool isLoading = false.obs;
+  Timer? _heartbeatTimer;
+
+  @override
+  void onInit() {
+    super.onInit();
+    WidgetsBinding.instance.addObserver(this);
+    _startHeartbeat();
+  }
+
+  @override
+  void onClose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _heartbeatTimer?.cancel();
+    super.onClose();
+  }
+
+  void _startHeartbeat() {
+    _updateGlobalActivity();
+    // إرسال تحديث كل 3 دقائق لضمان بقاء المستخدم الحقيقي "متصل الآن"
+    _heartbeatTimer = Timer.periodic(const Duration(minutes: 3), (_) {
+      _updateGlobalActivity();
+    });
+  }
+
+  void _updateGlobalActivity() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    // التأكد من أن المستخدم لديه حساب مسجل قبل التحديث المستمر
+    if (uid != null && currentUser.value != null && currentUser.value!.id.isNotEmpty) {
+      try {
+        FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'lastActivity': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('Failed to update global heartbeat: $e');
+      }
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // عندما يعود المستخدم للتطبيق، نرسل إشارة "متصل" فوراً
+      _updateGlobalActivity();
+    }
+  }
 
   Future<void> login(String email, String password) async {
     try {
@@ -91,30 +136,69 @@ class AuthController extends GetxController {
     Get.offAllNamed(AppRoutes.login);
   }
 
+  Future<User?> signInAnonymously() async {
+    try {
+      isLoading.value = true;
+      final user = await _authService.signInAnonymously();
+      // لا نحتاج لتحديث currentUser لأن الزائر ليس له UserModel مسجل
+      return user;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   Future<void> checkAuthState() async {
     try {
       User? firebaseUser = FirebaseAuth.instance.currentUser;
 
       if (firebaseUser != null) {
-        UserModel? user;
-        try {
-          user = await _authService.getCurrentUserData().timeout(const Duration(seconds: 8));
-        } catch (e) {
-          debugPrint("Offline or timeout: falling back to cached user");
-          user = await _authService.getCachedUserModel();
-        }
-
-        if (user != null) {
-          currentUser.value = user;
-          _navigateBasedOnRole(user);
+        // Offline-First: Load from cache immediately
+        UserModel? cachedUser = await _authService.getCachedUserModel();
+        
+        if (cachedUser != null) {
+          currentUser.value = cachedUser;
+          _navigateBasedOnRole(cachedUser);
+          
+          // Silent refresh in the background
+          _silentRefresh(cachedUser);
         } else {
-          await logout();
+          // Fallback to network if no cache is available
+          UserModel? user;
+          try {
+            user = await _authService.getCurrentUserData().timeout(const Duration(seconds: 8));
+          } catch (e) {
+            debugPrint("Offline or timeout fetching user data: $e");
+          }
+
+          if (user != null) {
+            currentUser.value = user;
+            _navigateBasedOnRole(user);
+          } else {
+            await logout();
+          }
         }
       } else {
         Get.offAllNamed(AppRoutes.login);
       }
     } catch (e) {
       Get.offAllNamed(AppRoutes.login);
+    }
+  }
+
+  Future<void> _silentRefresh(UserModel cachedUser) async {
+    try {
+      final freshUser = await _authService.getCurrentUserData();
+      if (freshUser != null) {
+        currentUser.value = freshUser; // Update state globally
+        
+        // Verify if critical privileges changed
+        if (cachedUser.role != freshUser.role || cachedUser.isApproved != freshUser.isApproved) {
+          Get.snackbar("تحديث الحساب", "تم تحديث صلاحيات حسابك");
+          _navigateBasedOnRole(freshUser);
+        }
+      }
+    } catch (e) {
+      debugPrint("Silent refresh failed: $e");
     }
   }
 

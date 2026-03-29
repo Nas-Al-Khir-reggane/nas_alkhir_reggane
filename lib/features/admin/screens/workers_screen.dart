@@ -10,6 +10,7 @@ import '../../../data/models/user_model.dart';
 import '../controllers/worker_management_controller.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../chat/screens/chat_screen.dart'; // استيراد شاشة الدردشة
+import 'package:cached_network_image/cached_network_image.dart';
 
 class WorkersScreen extends StatelessWidget {
   const WorkersScreen({super.key});
@@ -322,7 +323,7 @@ class WorkersScreen extends StatelessWidget {
                     radius: 30,
                     backgroundColor: roleColor.withValues(alpha: 0.2),
                     backgroundImage: (worker.profileImage != null && worker.profileImage!.isNotEmpty)
-                        ? NetworkImage(worker.profileImage!)
+                        ? CachedNetworkImageProvider(worker.profileImage!) as ImageProvider
                         : null,
                     child: (worker.profileImage == null || worker.profileImage!.isEmpty)
                         ? Text(worker.name.isNotEmpty ? worker.name.substring(0, 1) : '?',
@@ -385,11 +386,11 @@ class WorkersScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.location_on_outlined, color: AppTheme.textHint, size: 14),
+                        Icon(Icons.location_on_outlined, color: AppTheme.textHint, size: 14),
                         const SizedBox(width: 4),
                         Expanded(child: Text(worker.wilaya, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis)),
                         const SizedBox(width: 12),
-                        const Icon(Icons.access_time, color: AppTheme.textHint, size: 14),
+                        Icon(Icons.access_time, color: AppTheme.textHint, size: 14),
                         const SizedBox(width: 4),
                         Text(worker.lastActivity != null ? timeago.format(worker.lastActivity!, locale: 'ar') : 'غير نشط',
                             style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
@@ -427,7 +428,7 @@ class WorkersScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert, color: AppTheme.textHint, size: 20),
+                          icon: Icon(Icons.more_vert, color: AppTheme.textHint, size: 20),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           color: Theme.of(context).colorScheme.surface,

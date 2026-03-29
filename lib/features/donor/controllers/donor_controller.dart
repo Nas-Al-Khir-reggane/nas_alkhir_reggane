@@ -14,6 +14,7 @@ import '../../../data/models/user_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../widgets/donation_certificate_widget.dart';
 import '../screens/donate_screen.dart';
+import '../../../data/services/notification_service.dart';
 
 class DonorController extends GetxController {
   RxList<DonationModel> myDonations = <DonationModel>[].obs;
@@ -201,8 +202,15 @@ class DonorController extends GetxController {
         'notes': notes,
         'date': FieldValue.serverTimestamp(),
       };
-
-      await FirebaseFirestore.instance.collection('donations').add(donationData);
+      final docRef = await FirebaseFirestore.instance.collection('donations').add(donationData);
+      
+      // إرسال إشعار للإدارة بوجود تبرع جديد
+      await NotificationService.notifyAllAdmins(
+        type: 'new_donation',
+        title: 'تبرع جديد 🎁',
+        body: 'قام $dName بالتبرع بمبلغ $amount د.ج لمشروع $projectName.',
+        data: {'donationId': docRef.id, 'projectId': projectId},
+      );
       
       if (projectId != 'general') {
         await FirebaseFirestore.instance.collection('projects').doc(projectId).update({

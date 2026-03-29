@@ -27,20 +27,20 @@ class RequestDetailScreen extends StatelessWidget {
     // التأكد من وجود بيانات قبل البدء
     if (Get.arguments == null && request == null) {
       return Scaffold(
-        backgroundColor: AppTheme.darkBg,
-        appBar: AppBar(backgroundColor: AppTheme.darkSurface),
-        body: const Center(child: Text('خطأ في تحميل بيانات الطلب', style: TextStyle(color: Colors.white))),
+        backgroundColor: AppTheme.backgroundColor,
+        appBar: AppBar(backgroundColor: AppTheme.surfaceColor),
+        body: Center(child: Text('خطأ في تحميل بيانات الطلب', style: TextStyle(color: AppTheme.textPrimary))),
       );
     }
 
     final req = displayRequest;
 
     return Scaffold(
-      backgroundColor: AppTheme.darkBg,
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: Text('تفاصيل الطلب #${req.id.isNotEmpty ? req.id.substring(0, 5) : '...'}', 
           style: const TextStyle(fontFamily: 'Tajawal')),
-        backgroundColor: AppTheme.darkSurface,
+        backgroundColor: AppTheme.surfaceColor,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
           onPressed: () => Get.back(),
@@ -168,7 +168,7 @@ class RequestDetailScreen extends StatelessWidget {
         children: [
           _buildInfoRow(AppConstants.getServiceIcon(req.typeName.isNotEmpty ? req.typeName : req.type), 'نوع الخدمة', 
             AppConstants.translateServiceType(req.typeName.isNotEmpty ? req.typeName : req.type)),
-          const Divider(color: Colors.white10),
+          Divider(color: AppTheme.textHint.withValues(alpha: 0.1)),
           
           StreamBuilder<DocumentSnapshot>(
             stream: (!req.isGuest && req.requesterId.isNotEmpty)
@@ -230,9 +230,9 @@ class RequestDetailScreen extends StatelessWidget {
                       onPressed: () => launchUrl(Uri.parse('tel:$phone')),
                     ) : null
                   ),
-                  const Divider(color: Colors.white10),
+                  const Divider(color: AppTheme.glassBorder),
                   _buildInfoRow(Icons.phone_outlined, 'رقم الهاتف', phone),
-                  const Divider(color: Colors.white10),
+                  const Divider(color: AppTheme.glassBorder),
                   _buildInfoRow(Icons.location_on_outlined, 'العنوان', fullAddress),
                 ],
               );
@@ -398,7 +398,7 @@ class RequestDetailScreen extends StatelessWidget {
       Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppTheme.darkSurface,
+          color: AppTheme.surfaceColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
@@ -452,7 +452,7 @@ class RequestDetailScreen extends StatelessWidget {
       Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppTheme.darkSurface,
+          color: AppTheme.surfaceColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(

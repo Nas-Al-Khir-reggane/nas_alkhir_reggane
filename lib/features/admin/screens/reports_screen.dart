@@ -168,7 +168,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppTheme.darkSurface,
+          color: AppTheme.surfaceColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: color.withValues(alpha: 0.3)),
           boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 15)],
@@ -245,7 +245,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             maxY: maxYValue,
             barTouchData: BarTouchData(
               touchTooltipData: BarTouchTooltipData(
-                getTooltipColor: (_) => AppTheme.darkBg.withValues(alpha: 0.9),
+                getTooltipColor: (_) => AppTheme.backgroundColor.withValues(alpha: 0.9),
                 getTooltipItem: (group, groupIndex, rod, rodIndex) {
                   return BarTooltipItem(
                     '${rod.toY.toInt()} د.ج',
@@ -255,7 +255,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ),
             titlesData: FlTitlesData(
-              leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40, getTitlesWidget: (v, m) => Text(NumberFormat.compact().format(v), style: TextStyle(color: AppTheme.textHint, fontSize: 10)))),
+              leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 45, getTitlesWidget: (v, m) => Text(NumberFormat.compact().format(v), style: TextStyle(color: AppTheme.textHint, fontSize: 12, fontWeight: FontWeight.w600)))),
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
@@ -264,7 +264,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       String monthAr = _translateMonth(data[data.length - 1 - value.toInt()]['month']);
                       return Padding(
                         padding: const EdgeInsets.only(top: 8.0),
-                        child: Text(monthAr, style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.bold, fontSize: 10)),
+                        child: Text(monthAr, style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w700, fontSize: 13)),
                       );
                     }
                     return const SizedBox.shrink();
@@ -286,7 +286,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     gradient: const LinearGradient(colors: [AppTheme.primaryGreen, Colors.teal], begin: Alignment.bottomCenter, end: Alignment.topCenter),
                     width: 20,
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                    backDrawRodData: BackgroundBarChartRodData(show: true, toY: maxYValue, color: AppTheme.darkBg),
+                    backDrawRodData: BackgroundBarChartRodData(show: true, toY: maxYValue, color: AppTheme.backgroundColor),
                   )
                 ],
               );
@@ -322,7 +322,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       value: (e['count'] as num).toDouble(),
                       title: '${e['percentage']}%',
                       radius: 50,
-                      titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                      titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13),
                     );
                   }).toList(),
                 ),
@@ -342,7 +342,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         children: [
                           Container(width: 12, height: 12, decoration: BoxDecoration(color: e['color'] as Color, shape: BoxShape.circle)),
                           const SizedBox(width: 8),
-                          Expanded(child: Text(_translateServiceType(e['name']), style: TextStyle(color: AppTheme.textSecondary, fontSize: 11), overflow: TextOverflow.ellipsis)),
+                          Expanded(child: Text(_translateServiceType(e['name']), style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
                         ],
                       ),
                     );
@@ -366,7 +366,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           children: [
             Icon(Icons.bar_chart_rounded, size: 50, color: AppTheme.textHint.withValues(alpha: 0.3)),
             const SizedBox(height: 10),
-            Text('جاري جمع البيانات الكافية...', style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
+            Text('جاري جمع البيانات الكافية...', style: TextStyle(color: AppTheme.textHint, fontSize: 14, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -398,7 +398,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 value: _filter,
-                                dropdownColor: AppTheme.darkBg,
+                                dropdownColor: AppTheme.backgroundColor,
                                 style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
                                 icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.primaryGreen, size: 18),
                                 items: const [
@@ -456,7 +456,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('التقارير والإحصاءات', style: TextStyle(color: AppTheme.textPrimary, fontSize: 22, fontWeight: FontWeight.w900)),
-                  Text('تحليل البيانات واستخراج المستندات', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                  Text('تحليل البيانات واستخراج المستندات', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
                 ],
               ),
             ],

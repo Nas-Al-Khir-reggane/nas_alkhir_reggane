@@ -68,7 +68,7 @@ class _DonateScreenState extends State<DonateScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.darkBg,
+      backgroundColor: AppTheme.backgroundColor,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -132,7 +132,7 @@ class _DonateScreenState extends State<DonateScreen> {
                     duration: const Duration(milliseconds: 200),
                     decoration: BoxDecoration(
                       gradient: isSelected ? AppTheme.goldGradient : null,
-                      color: !isSelected ? AppTheme.darkCard : null,
+                      color: !isSelected ? AppTheme.cardColor : null,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: isSelected ? Colors.transparent : AppTheme.glassBorder),
                     ),
@@ -172,7 +172,7 @@ class _DonateScreenState extends State<DonateScreen> {
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.darkCard,
+                        color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.cardColor,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                             color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder,
@@ -288,7 +288,7 @@ class _DonateScreenState extends State<DonateScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.darkCard,
+          color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.cardColor,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
               color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder,
@@ -316,7 +316,7 @@ class _DonateScreenState extends State<DonateScreen> {
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 4,
-                        backgroundColor: AppTheme.darkSurface,
+                        backgroundColor: AppTheme.surfaceColor,
                         valueColor: const AlwaysStoppedAnimation(AppTheme.primaryGreen),
                       ),
                     ),
@@ -351,7 +351,7 @@ class ThankYouDialog extends StatelessWidget {
     final projectController = Get.find<ProjectController>();
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: AppTheme.darkSurface,
+      backgroundColor: AppTheme.surfaceColor,
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(

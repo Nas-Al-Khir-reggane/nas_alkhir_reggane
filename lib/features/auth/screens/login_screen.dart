@@ -72,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryGreen.withValues(alpha: 0.08),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryGreen.withValues(alpha: 0.05),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -106,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontFamily: 'Tajawal',
                       ),
                     ),
@@ -118,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       'مرحباً بك',
                       style: TextStyle(
                         fontSize: 16,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontFamily: 'Tajawal',
                       ),
                     ),
@@ -128,7 +128,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     delay: const Duration(milliseconds: 400),
                     child: Container(
                       padding: const EdgeInsets.all(24),
-                      decoration: AppTheme.glassDecoration,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
                       child: Form(
                         key: _formKey,
                         child: AutofillGroup(
@@ -140,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w700,
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontFamily: 'Tajawal',
                                 ),
                               ),
@@ -149,9 +160,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 controller: _emailController,
                                 keyboardType: TextInputType.emailAddress,
                                 autofillHints: const [AutofillHints.email],
-                                style: TextStyle(color: AppTheme.textPrimary),
-                                decoration: const InputDecoration(
-                                  prefixIcon: Icon(Icons.email_outlined, color: AppTheme.primaryGreen),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                                decoration: InputDecoration(
+                                  prefixIcon: Icon(Icons.email_outlined, color: Theme.of(context).colorScheme.primary),
                                   labelText: 'البريد الإلكتروني',
                                 ),
                                 validator: (value) {
@@ -165,14 +176,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                 controller: _passwordController,
                                 obscureText: _obscurePassword,
                                 autofillHints: const [AutofillHints.password],
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
-                                  prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.primaryGreen),
+                                  prefixIcon: Icon(Icons.lock_outline, color: Theme.of(context).colorScheme.primary),
                                   labelText: 'كلمة المرور',
                                   suffixIcon: IconButton(
                                     icon: Icon(
                                       _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                                      color: AppTheme.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),
                                     onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                                   ),
@@ -188,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 children: [
                                   Checkbox(
                                     value: _rememberMe,
-                                    activeColor: AppTheme.primaryGreen,
+                                    activeColor: Theme.of(context).colorScheme.primary,
                                     onChanged: (value) {
                                       setState(() {
                                         _rememberMe = value ?? false;
@@ -198,7 +209,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   Text(
                                     'تذكرني',
                                     style: TextStyle(
-                                      color: AppTheme.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                       fontFamily: 'Tajawal',
                                     ),
                                   ),
@@ -207,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     alignment: Alignment.centerLeft,
                                     child: TextButton(
                                       onPressed: _showForgotPasswordDialog,
-                                      child: const Text('نسيت كلمة المرور؟', style: TextStyle(color: AppTheme.primaryGreen)),
+                                      child: Text('نسيت كلمة المرور؟', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
                                     ),
                                   ),
                                 ],
@@ -238,14 +249,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                 children: [
                                   Text(
                                     'ليس لديك حساب؟',
-                                    style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'Tajawal'),
+                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal'),
                                   ),
                                   TextButton(
                                     onPressed: () => Get.toNamed('/register'),
-                                    child: const Text(
+                                    child: Text(
                                       'إنشاء حساب',
                                       style: TextStyle(
-                                        color: AppTheme.primaryGreen,
+                                        color: Theme.of(context).colorScheme.primary,
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'Tajawal',
                                       ),
@@ -267,8 +278,24 @@ class _LoginScreenState extends State<LoginScreen> {
                       icon: const Icon(Icons.person_outline),
                       label: const Text('طلب خدمة بدون تسجيل'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.primaryGreen.withValues(alpha: 0.8),
-                        side: BorderSide(color: AppTheme.primaryGreen.withValues(alpha: 0.5)),
+                        foregroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                        side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        textStyle: const TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 700),
+                    child: OutlinedButton.icon(
+                      onPressed: () => Get.toNamed('/guest/tracking'),
+                      icon: const Icon(Icons.track_changes_outlined),
+                      label: const Text('تتبع طلب زائر'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                        side: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         textStyle: const TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold),
@@ -289,11 +316,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final resetEmailController = TextEditingController();
     Get.dialog(
       AlertDialog(
-        backgroundColor: AppTheme.darkSurface,
-        title: Text('إعادة تعيين كلمة المرور', style: TextStyle(color: AppTheme.textPrimary)),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text('إعادة تعيين كلمة المرور', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
         content: TextField(
           controller: resetEmailController,
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           keyboardType: TextInputType.emailAddress,
           decoration: AppTheme.inputDecoration('البريد الإلكتروني', Icons.email_outlined),
         ),
@@ -307,7 +334,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 authController.resetPassword(email);
                 Get.back();
               } else {
-                Get.snackbar('تنبيه', 'يرجى إدخال بريد إلكتروني صالح', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+                Get.snackbar('تنبيه', 'يرجى إدخال بريد إلكتروني صالح', backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.2));
               }
             },
           ),

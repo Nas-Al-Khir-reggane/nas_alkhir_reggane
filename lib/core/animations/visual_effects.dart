@@ -84,13 +84,18 @@ class VisualEffects {
 
   // 5. Ambient Background (الخلفية المتنفسة اللطيفة 0.05)
   static Widget ambientBackground({required Widget child, bool isDark = false}) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: _AnimatedAmbientGradient(isDark: isDark),
+    return Builder(
+      builder: (context) => Container(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: _AnimatedAmbientGradient(isDark: isDark),
+            ),
+            child,
+          ],
         ),
-        child,
-      ],
+      ),
     );
   }
 }

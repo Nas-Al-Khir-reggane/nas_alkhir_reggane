@@ -4,7 +4,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'dart:async';
 import 'dart:io';
@@ -15,6 +14,7 @@ import '../../firebase_options.dart';
 
 class NotificationService extends GetxController {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+  final DateTime _sessionStartTime = DateTime.now().subtract(const Duration(minutes: 2));
   
   final RxInt unreadCount = 0.obs;
   StreamSubscription? _unreadSubscription;
@@ -26,16 +26,6 @@ class NotificationService extends GetxController {
     debugPrint('🔔 NotificationService: Controller Active');
     _initListeners();
     
-    // اختبار النظام بعد 5 ثوانٍ من التشغيل - تم تعطيله بناء على طلب المستخدم
-    /* if (kDebugMode) {
-      Future.delayed(const Duration(seconds: 5), () {
-        _showLocalNotification(
-          title: 'نظام الإشعارات يعمل ✅',
-          body: 'تم فحص الاتصال وتفعيل التنبيهات بنجاح',
-        );
-      });
-    } */
-
     FirebaseAuth.instance.authStateChanges().listen((user) {
       _cleanupSubscriptions();
       if (user != null) {
@@ -92,12 +82,29 @@ class NotificationService extends GetxController {
           for (var change in snapshot.docChanges) {
             if (change.type == DocumentChangeType.added) {
               final data = change.doc.data() as Map<String, dynamic>;
+              final Timestamp? createdAt = data['createdAt'] as Timestamp?;
               
+              // اجتياز الإشعارات القديمة لتجنب تكرار التنبيه عند فتح التطبيق
+              if (createdAt != null && createdAt.toDate().isBefore(_sessionStartTime)) {
+                continue;
+              }
+
               debugPrint('🔔 New Internal Notification Detected: ${data['title']}');
+              String payload = data['type'] ?? '';
+              
+              // التحقق من وجود بيانات الدردشة سواء في المستوى الأعلى أو داخل خريطة data
+              final String? chatId = data['chatId'] ?? data['data']?['chatId'];
+              final String? senderName = data['senderName'] ?? data['data']?['senderName'];
+              final String? senderId = data['senderId'] ?? data['data']?['senderId'];
+
+              if (chatId != null) {
+                payload = 'chatId:$chatId,userName:${senderName ?? ""},targetUserId:${senderId ?? ""}';
+              }
+
               _showLocalNotification(
                 title: data['title'] ?? 'إشعار جديد',
                 body: data['body'] ?? '',
-                payload: data['type'] ?? '',
+                payload: payload,
               );
               
               try {
@@ -126,8 +133,8 @@ class NotificationService extends GetxController {
           channelDescription: 'إشعارات جمعية ناس الخير',
           importance: Importance.max,
           priority: Priority.max,
-          icon: '@mipmap/ic_launcher',
-          largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+          icon: '@mipmap/launcher_icon',
+          largeIcon: const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
           color: const Color(0xFF00C853),
           playSound: true,
           enableLights: true,
@@ -171,7 +178,7 @@ class NotificationService extends GetxController {
       }
 
       tz.initializeTimeZones(); 
-      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidInit = AndroidInitializationSettings('@mipmap/launcher_icon');
       const initSettings = InitializationSettings(android: androidInit);
       
       await _notificationsPlugin.initialize(
@@ -234,7 +241,7 @@ class NotificationService extends GetxController {
             'جمعية ناس الخير',
             importance: Importance.max,
             priority: Priority.max,
-            icon: '@mipmap/ic_launcher',
+            icon: '@mipmap/launcher_icon',
             playSound: true,
           ),
         ),
@@ -243,26 +250,56 @@ class NotificationService extends GetxController {
   }
 
   static void _handleBackgroundMessage(RemoteMessage message) {
-    Get.toNamed(message.data['type'] == 'new_request' ? '/admin/requests' : '/notifications');
+    final data = message.data;
+    if (data['chatId'] != null) {
+      Get.toNamed('/chat/private', arguments: {
+        'chatId': data['chatId'],
+        'userName': data['senderName'] ?? 'محادثة',
+        'userId': data['senderId']
+      });
+    } else if (data['type'] == 'new_request' || data['requestId'] != null) {
+      Get.toNamed('/admin/requests');
+    } else {
+      Get.toNamed('/notifications');
+    }
   }
 
   static void _onNotificationTap(NotificationResponse response) {
     final payload = response.payload ?? '';
-    if (payload.startsWith('{')) {
-      try {
-        // Here we could parse JSON if we had a library, 
-        // but for simplicity we can check for key markers
-        if (payload.contains('new_request') || payload.contains('requestId')) {
-           Get.toNamed('/admin/requests'); // We can improve this if we have a way to pass arguments
-        } else {
-          Get.toNamed('/notifications');
+    if (payload.isEmpty) {
+      Get.toNamed('/notifications');
+      return;
+    }
+
+    try {
+      if (payload.contains('chatId')) {
+        // Simple manual parsing or use jsonDecode if available
+        // Expected format: chatId:xxx,userName:yyy,targetUserId:zzz
+        final parts = payload.split(',');
+        String? chatId, userName, targetUserId;
+        for (var part in parts) {
+           if (part.startsWith('chatId:')) chatId = part.split(':')[1];
+           if (part.startsWith('userName:')) userName = part.split(':')[1];
+           if (part.startsWith('targetUserId:')) targetUserId = part.split(':')[1];
         }
-      } catch (e) {
+        
+        if (chatId != null) {
+          Get.toNamed('/chat/private', arguments: {
+            'chatId': chatId,
+            'userName': userName ?? 'محادثة',
+            'userId': targetUserId
+          });
+          return;
+        }
+      }
+
+      if (payload == 'new_request' || payload.contains('requestId')) {
+        Get.toNamed('/admin/requests');
+      } else {
         Get.toNamed('/notifications');
       }
-    } else if (payload == 'new_request') {
-      Get.toNamed('/admin/requests');
-    } else {
+    } catch (e) {
+      debugPrint('❌ Notification Tap Error: $e');
       Get.toNamed('/notifications');
     }
   }
@@ -325,7 +362,10 @@ class NotificationService extends GetxController {
       'title': title,
       'body': body,
       'data': data ?? {},
-      // نسخ حقول البيانات الهامة إلى المستوى الأعلى لسهولة التنقل
+      // نسخ حقول البيانات الهامة إلى المستوى الأعلى لسهولة التنقل والوصول من المشغلات الخلفية
+      if (data != null && data['chatId'] != null) 'chatId': data['chatId'],
+      if (data != null && data['senderId'] != null) 'senderId': data['senderId'],
+      if (data != null && data['senderName'] != null) 'senderName': data['senderName'],
       if (data != null && data['requestId'] != null) 'requestId': data['requestId'],
       if (data != null && data['collection'] != null) 'collection': data['collection'],
       'isRead': false,
@@ -338,14 +378,29 @@ class NotificationService extends GetxController {
     required String title,
     required String body,
     Map<String, dynamic>? data,
+    String? excludeUserId,
   }) async {
     try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      // منع الزوار من البحث في قائمة العمال/المديرين (تجنباً لـ PERMISSION_DENIED)
+      if (currentUser == null || currentUser.isAnonymous) {
+        debugPrint('ℹ️ NotificationService: Skipping admin query for Guest/Unauthenticated user.');
+        return;
+      }
+
+      debugPrint('🔔 NotificationService: Notifying all admins - $title');
+      
+      // نستخدم تنويعات متعددة لأسماء الأدوار لضمان التوافق مع البيانات القديمة والـ Enums الجديدة 
       final admins = await FirebaseFirestore.instance
           .collection('users')
-          .where('role', whereIn: ['admin', 'superAdmin'])
+          .where('role', whereIn: ['admin', 'superAdmin', 'superadmin'])
           .where('isApproved', isEqualTo: true)
           .get();
+
+      debugPrint('👥 NotificationService: Found ${admins.docs.length} admins to notify');
+      
       for (var admin in admins.docs) {
+        if (excludeUserId != null && admin.id == excludeUserId) continue;
         await sendNotification(userId: admin.id, type: type, title: title, body: body, data: data);
       }
     } catch (e) {

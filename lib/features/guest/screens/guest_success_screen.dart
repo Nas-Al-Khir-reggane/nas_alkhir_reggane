@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:share_plus/share_plus.dart';
@@ -32,25 +33,28 @@ class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
   }
 
   void _trackRequest() async {
-    if (phoneController.text.isEmpty) {
+    final phone = phoneController.text.trim().replaceAll(' ', '');
+    if (phone.isEmpty) {
       Get.snackbar('تنبيه', 'يرجى إدخال رقم الهاتف للتتبع',
-          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+          backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.2));
       return;
     }
 
     setState(() => isTracking = true);
 
+    final errorColor = Theme.of(context).colorScheme.error;
+
     try {
       final querySnapshot = await FirebaseFirestore.instance
           .collection('guest_requests')
           .where('refNumber', isEqualTo: widget.refNumber)
-          .where('phone', isEqualTo: phoneController.text)
+          .where('phone', isEqualTo: phone)
           .limit(1)
           .get();
 
       if (querySnapshot.docs.isEmpty) {
         Get.snackbar('عذراً', 'لم نتمكن من العثور على طلب بهذا الرقم المرجعي ورقم الهاتف.',
-            backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+            backgroundColor: errorColor.withValues(alpha: 0.2));
         return;
       }
 
@@ -64,7 +68,7 @@ class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
       Get.toNamed('/beneficiary/request-status', arguments: requestModel);
     } catch (e) {
       Get.snackbar('خطأ', 'حدث خطأ أثناء البحث عن الطلب. يرجى المحاولة لاحقاً',
-          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2));
+          backgroundColor: errorColor.withValues(alpha: 0.2));
     } finally {
       if (mounted) setState(() => isTracking = false);
     }
@@ -81,13 +85,13 @@ class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.darkBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.share, color: AppTheme.primaryGreen),
+            icon: Icon(Icons.share, color: Theme.of(context).colorScheme.primary),
             onPressed: _shareRequestDetails,
           ),
           const SizedBox(width: 8),
@@ -101,28 +105,28 @@ class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
             children: [
               // أيقونة نجاح متحركة
               FadeInDown(
-                child: Container(
+                 child: Container(
                   width: 100,
                   height: 100,
                   decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
+                    gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.8)]),
                     shape: BoxShape.circle,
                     boxShadow: AppTheme.greenGlow,
                   ),
-                  child: const Icon(Icons.check, color: Colors.black, size: 50),
+                  child: Icon(Icons.check, color: Theme.of(context).colorScheme.onPrimary, size: 50),
                 ),
               ),
               const SizedBox(height: 24),
-              FadeInUp(
+               FadeInUp(
                 child: Text('تم إرسال طلبك!',
-                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurface),
                     textAlign: TextAlign.center),
               ),
               const SizedBox(height: 8),
-              FadeInUp(
+               FadeInUp(
                 delay: const Duration(milliseconds: 300),
                 child: Text('سيتواصل معك فريقنا في أقرب وقت',
-                    style: TextStyle(color: AppTheme.textSecondary), textAlign: TextAlign.center),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant), textAlign: TextAlign.center),
               ),
               const SizedBox(height: 24),
               
@@ -137,15 +141,28 @@ class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
                     children: [
                       Text('رقم الطلب المرجعي', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                       const SizedBox(height: 8),
-                      Text(widget.refNumber,
-                          style: const TextStyle(
-                              color: AppTheme.primaryGreen,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 2)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                           SelectableText(widget.refNumber,
+                              style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 2)),
+                          IconButton(
+                            icon: Icon(Icons.copy_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: widget.refNumber));
+                              Get.snackbar('نجاح', 'تم نسخ الرقم المرجعي بنجاح',
+                                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2));
+                            },
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
-                      Text('احتفظ بهذا الرقم لمتابعة طلبك',
-                          style: TextStyle(color: AppTheme.textHint, fontSize: 12), textAlign: TextAlign.center),
+                       Text('احتفظ بهذا الرقم لمتابعة طلبك',
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12), textAlign: TextAlign.center),
                     ],
                   ),
                 ),
@@ -159,31 +176,31 @@ class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: AppTheme.darkCard,
+                    color: AppTheme.cardColor,
                     borderRadius: BorderRadius.circular(18),
                   ),
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      Text('تتبع طلبك لاحقاً',
-                          style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+                       Text('تتبع طلبك لاحقاً',
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 12),
-                      TextField(
+                       TextField(
                         controller: phoneController,
                         keyboardType: TextInputType.phone,
-                        style: TextStyle(color: AppTheme.textPrimary),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: AppTheme.inputDecoration('أدخل رقم الهاتف', Icons.phone),
                       ),
                       const SizedBox(height: 12),
-                      isTracking
-                          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
+                       isTracking
+                          ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
                           : OutlinedButton.icon(
                               onPressed: _trackRequest,
                               icon: const Icon(Icons.search),
                               label: const Text('تتبع طلبي'),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: AppTheme.primaryGreen,
-                                side: const BorderSide(color: AppTheme.primaryGreen),
+                                foregroundColor: Theme.of(context).colorScheme.primary,
+                                side: BorderSide(color: Theme.of(context).colorScheme.primary),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
                             ),

@@ -30,6 +30,7 @@ import '../../features/beneficiary/screens/new_request_screen.dart';
 import '../../features/beneficiary/screens/request_status_screen.dart';
 import '../../features/guest/screens/guest_request_screen.dart';
 import '../../features/guest/screens/guest_success_screen.dart';
+import '../../features/guest/screens/guest_tracking_screen.dart';
 import '../../features/shared/screens/notifications_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../features/shared/screens/profile_screen.dart';
@@ -73,6 +74,7 @@ class AppRoutes {
   
   static const String guestRequest = '/guest/request';
   static const String guestSuccess = '/guest/success';
+  static const String guestTracking = '/guest/tracking';
   
   static const String chat = '/chat';
   static const String chatGroup = '/chat/group';
@@ -184,11 +186,11 @@ class AppRoutes {
         if (req is! ServiceRequestModel) return const Scaffold(body: Center(child: Text('خطأ في البيانات')));
         return RequestStatusScreen(request: req);
       },
-      middlewares: [AuthMiddleware()]
     ),
     
     // Guest Routes
     GetPage(name: guestRequest, page: () => const GuestRequestScreen()),
+    GetPage(name: guestTracking, page: () => const GuestTrackingScreen()),
     GetPage(
       name: guestSuccess, 
       page: () {
@@ -202,18 +204,30 @@ class AppRoutes {
     
     // Shared Routes
     GetPage(name: chat, page: () => const ChatScreen(), middlewares: [AuthMiddleware()]),
-    GetPage(name: chatGroup, page: () => const ChatScreen(isGroupChat: true), middlewares: [AuthMiddleware()]),
+    GetPage(
+      name: chatGroup, 
+      page: () {
+        final args = Get.arguments as Map<String, dynamic>?;
+        return ChatScreen(
+          isGroupChat: true,
+          chatId: args?['chatId'],
+          groupName: args?['groupName'],
+        );
+      },
+      middlewares: [AuthMiddleware()]
+    ),
     GetPage(
       name: chatPrivate, 
       page: () {
         final args = Get.arguments as Map<String, dynamic>?;
         return ChatScreen(
           isGroupChat: false, 
-          targetUserId: args?['userId'] ?? '', 
-          targetUserName: args?['userName'] ?? 'المحادثة'
+          targetUserId: args?['targetUserId'] ?? args?['userId'], 
+          targetUserName: args?['targetUserName'] ?? args?['userName'] ?? 'المحادثة',
+          chatId: args?['chatId'],
         );
       },
-      middlewares: [AuthMiddleware()]
+      // No AuthMiddleware — guests need chat access without login
     ),
     GetPage(name: notifications, page: () => const NotificationsScreen(), middlewares: [AuthMiddleware()]),
     GetPage(name: profile, page: () => const ProfileScreen(), middlewares: [AuthMiddleware()]),

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:get/get.dart';
 import '../../../core/theme/app_theme.dart';
 import '../controllers/admin_controller.dart';
 import '../../../core/animations/visual_effects.dart';
@@ -52,17 +52,17 @@ class DonationsDetailsScreen extends StatelessWidget {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      title: const Text('تفاصيل التبرعات', style: TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold)),
+      title: Text('تفاصيل التبرعات', style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal', fontWeight: FontWeight.bold)),
       backgroundColor: Colors.transparent,
       elevation: 0,
       centerTitle: true,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+        icon: Icon(Icons.arrow_back_ios_new, size: 20, color: AppTheme.textPrimary),
         onPressed: () => Get.back(),
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.filter_list),
+          icon: Icon(Icons.filter_list, color: AppTheme.textPrimary),
           onPressed: () {
             Get.snackbar('قريباً', 'ميزة التصفية قيد التطوير');
           },
@@ -166,7 +166,7 @@ class DonationsDetailsScreen extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(
                             controller.donationsLastSixMonths[value.toInt()]['month'],
-                            style: const TextStyle(color: AppTheme.textHint, fontSize: 10, fontFamily: 'Tajawal'),
+                            style: TextStyle(color: AppTheme.textHint, fontSize: 10, fontFamily: 'Tajawal'),
                           ),
                         );
                       }
@@ -221,9 +221,9 @@ class DonationsDetailsScreen extends StatelessWidget {
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const SliverToBoxAdapter(
+          return SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.all(32.0),
+              padding: const EdgeInsets.all(32.0),
               child: Center(
                 child: Text('لا توجد تبرعات مسجلة حتى الآن', style: TextStyle(color: AppTheme.textHint, fontFamily: 'Tajawal')),
               ),
@@ -245,9 +245,7 @@ class DonationsDetailsScreen extends StatelessWidget {
                 final donorName = data['donorName'] ?? 'متبرع';
                 final isAnonymous = data['isAnonymous'] ?? false;
                 final projectName = data['projectName'] ?? 'عام';
-                final date = data['date'] != null ? (data['date'] as Timestamp).toDate() : DateTime.now();
                 
-                final formatedDate = intl.DateFormat('yyyy/MM/dd hh:mm a').format(date);
                 final displayName = isAnonymous ? 'فاعل خير (مجهول)' : donorName;
 
                 return FadeInUp(
@@ -273,10 +271,10 @@ class DonationsDetailsScreen extends StatelessWidget {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text('إلى: $projectName', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontFamily: 'Tajawal')),
-                          const SizedBox(height: 2),
-                          Text(formatedDate, style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
+                          SizedBox(height: 2),
+                          Text(data['paymentMethod'] == 'bank' ? 'بنكي' : 'نقدي', style: TextStyle(color: AppTheme.textHint, fontSize: 10)),
                         ],
                       ),
                       trailing: Container(

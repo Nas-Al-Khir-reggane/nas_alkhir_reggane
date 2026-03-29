@@ -4,13 +4,17 @@ class ChatMessageModel {
   final String? id;
   final String senderId;
   final String senderName;
-  final String? senderImage; // إضافة صورة المرسل
+  final String? senderImage;
   final String message;
   final String? imageUrl;
   final DateTime createdAt;
   final bool isRead;
   final String chatId;
   final Map<String, dynamic>? replyTo;
+  final bool isDeleted;
+  final bool isForwarded;
+  final bool isSystem;
+  final Map<String, dynamic>? reactions;
 
   ChatMessageModel({
     this.id,
@@ -23,6 +27,10 @@ class ChatMessageModel {
     this.isRead = false,
     required this.chatId,
     this.replyTo,
+    this.isDeleted = false,
+    this.isForwarded = false,
+    this.isSystem = false,
+    this.reactions,
   });
 
   Map<String, dynamic> toMap() {
@@ -33,16 +41,20 @@ class ChatMessageModel {
       'senderImage': senderImage,
       'message': message,
       'imageUrl': imageUrl,
-      'createdAt': FieldValue.serverTimestamp(), // توحيد المسمى
+      'createdAt': FieldValue.serverTimestamp(),
       'isRead': isRead,
       'chatId': chatId,
       if (replyTo != null) 'reply_to': replyTo,
+      'isDeleted': isDeleted,
+      'isForwarded': isForwarded,
+      'isSystem': isSystem,
+      if (reactions != null) 'reactions': reactions,
     };
   }
 
   factory ChatMessageModel.fromMap(Map<String, dynamic> map) {
     DateTime parsedDate;
-    var createdAtData = map['createdAt'] ?? map['created_at']; // دعم الصيغتين مؤقتاً
+    var createdAtData = map['createdAt'] ?? map['created_at'];
     
     if (createdAtData is Timestamp) {
       parsedDate = createdAtData.toDate();
@@ -55,7 +67,7 @@ class ChatMessageModel {
     return ChatMessageModel(
       id: map['id']?.toString(),
       senderId: (map['senderId'] ?? map['sender_id'])?.toString() ?? '',
-      senderName: (map['senderName'] ?? map['sender_name'])?.toString() ?? 'مستخدم',
+      senderName: (map['senderName'] ?? map['sender_name'])?.toString() ?? 'مجهول',
       senderImage: map['senderImage'] ?? map['sender_image'],
       message: map['message']?.toString() ?? '',
       imageUrl: (map['imageUrl'] ?? map['image_url'])?.toString(),
@@ -63,6 +75,10 @@ class ChatMessageModel {
       isRead: map['isRead'] ?? map['is_read'] ?? false,
       chatId: (map['chatId'] ?? map['chat_id'])?.toString() ?? '',
       replyTo: map['reply_to'] != null ? Map<String, dynamic>.from(map['reply_to']) : null,
+      isDeleted: map['isDeleted'] ?? false,
+      isForwarded: map['isForwarded'] ?? false,
+      isSystem: map['isSystem'] ?? false,
+      reactions: map['reactions'] != null ? Map<String, dynamic>.from(map['reactions']) : null,
     );
   }
 }

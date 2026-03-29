@@ -8,6 +8,7 @@ import '../../../data/models/service_request_model.dart';
 import '../controllers/admin_controller.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:animate_do/animate_do.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ServiceRequestsScreen extends StatefulWidget {
   const ServiceRequestsScreen({super.key});
@@ -104,7 +105,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           SafeArea(
@@ -245,7 +246,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                         IconButton(
                           constraints: const BoxConstraints(),
                           padding: EdgeInsets.zero,
-                          icon: const Icon(Icons.close, color: AppTheme.textHint, size: 18),
+                          icon: Icon(Icons.close, color: AppTheme.textHint, size: 18),
                           onPressed: () => adminController.markSwipeHintAsShown(),
                         ),
                       ],
@@ -453,7 +454,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: value.value == 'all' ? Theme.of(context).cardColor : AppTheme.primaryGreen.withValues(alpha: 0.2),
+              color: value.value == 'all' ? AppTheme.cardColor : AppTheme.primaryGreen.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: value.value == 'all' ? Colors.grey.withValues(alpha: 0.1) : AppTheme.primaryGreen),
             ),
@@ -539,7 +540,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                 actions: [
                   TextButton(
                     onPressed: () => Get.back(result: false),
-                    child: const Text('إلغاء', style: TextStyle(color: AppTheme.textHint)),
+                    child: Text('إلغاء', style: TextStyle(color: AppTheme.textHint)),
                   ),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
@@ -603,7 +604,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                         children: [
                           Text(AppConstants.translateServiceType(request.typeName.isNotEmpty ? request.typeName : request.type),
                               style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 15)),
-                          Text('#${request.id.substring(0, 8)}', style: const TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                          Text('#${request.id.substring(0, 8)}', style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
                         ],
                       ),
                     ),
@@ -629,10 +630,10 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                           final location = commune.isNotEmpty ? '$wilaya - $commune' : wilaya;
                           return Row(
                             children: [
-                              const Icon(Icons.person_outline, color: AppTheme.textHint, size: 16),
+                              Icon(Icons.person_outline, color: AppTheme.textHint, size: 16),
                               const SizedBox(width: 6),
                               Expanded(child: Text(name, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13), overflow: TextOverflow.ellipsis)),
-                              const Icon(Icons.location_on_outlined, color: AppTheme.textHint, size: 16),
+                              Icon(Icons.location_on_outlined, color: AppTheme.textHint, size: 16),
                               const SizedBox(width: 4),
                               Flexible(child: Text(location, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12), overflow: TextOverflow.ellipsis)),
                             ],
@@ -641,10 +642,10 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                       )
                     : Row(
                         children: [
-                          const Icon(Icons.person_outline, color: AppTheme.textHint, size: 16),
+                          Icon(Icons.person_outline, color: AppTheme.textHint, size: 16),
                           const SizedBox(width: 6),
                           Expanded(child: Text(request.requesterName.isNotEmpty ? request.requesterName : 'زائر', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13), overflow: TextOverflow.ellipsis)),
-                          const Icon(Icons.location_on_outlined, color: AppTheme.textHint, size: 16),
+                          Icon(Icons.location_on_outlined, color: AppTheme.textHint, size: 16),
                           const SizedBox(width: 4),
                           Flexible(child: Builder(builder: (ctx) {
                             final loc = [request.wilaya, request.commune].where((s) => s.isNotEmpty).join(' - ');
@@ -655,10 +656,10 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Icons.access_time, color: AppTheme.textHint, size: 16),
+                    Icon(Icons.access_time, color: AppTheme.textHint, size: 16),
                     const SizedBox(width: 6),
                     Text(timeago.format(request.createdAt, locale: 'ar'),
-                        style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
+                        style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
                     const Spacer(),
                     if (request.assignedToName != null && request.assignedToName!.isNotEmpty)
                       Row(
@@ -673,7 +674,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                               return CircleAvatar(
                                 radius: 10,
                                 backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
-                                backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
+                                backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? CachedNetworkImageProvider(imageUrl) as ImageProvider : null,
                                 child: (imageUrl == null || imageUrl.isEmpty)
                                   ? Text(request.assignedToName![0], style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 10))
                                   : null,
@@ -802,7 +803,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                     hintStyle: TextStyle(color: AppTheme.textHint),
                     prefixIcon: Icon(Icons.search, color: AppTheme.primaryGreen),
                     filled: true,
-                    fillColor: Theme.of(context).cardColor,
+                    fillColor: AppTheme.cardColor,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),
                 ),
@@ -828,13 +829,13 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                         return ListTile(
                           leading: CircleAvatar(
                             backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
-                            backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
+                            backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? CachedNetworkImageProvider(imageUrl) as ImageProvider : null,
                             child: (imageUrl == null || imageUrl.isEmpty)
                               ? Text(worker['name'][0], style: const TextStyle(color: AppTheme.primaryGreen))
                               : null,
                           ),
                           title: Text(worker['name'], style: TextStyle(color: AppTheme.textPrimary)),
-                          subtitle: Text(worker['phone'] ?? '', style: const TextStyle(color: AppTheme.textHint)),
+                          subtitle: Text(worker['phone'] ?? '', style: TextStyle(color: AppTheme.textHint)),
                           onTap: () {
                             adminController.assignToWorker(request.id, workerId, workerName: worker['name'], isGuest: showGuestRequests.value);
                             Get.back();
@@ -881,7 +882,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                     return ListTile(
                       leading: const Icon(Icons.airport_shuttle, color: AppTheme.primaryGreen),
                       title: Text(data['plateNumber'], style: TextStyle(color: AppTheme.textPrimary)),
-                      subtitle: Text(data['type'], style: const TextStyle(color: AppTheme.textHint)),
+                      subtitle: Text(data['type'], style: TextStyle(color: AppTheme.textHint)),
                       onTap: () {
                         adminController.assignToVehicle(request.id, v.id, isGuest: showGuestRequests.value);
                         Get.back();
@@ -927,7 +928,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                     }
                   },
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  tileColor: isSelected ? statusColor.withValues(alpha: 0.15) : Theme.of(context).cardColor,
+                  tileColor: isSelected ? statusColor.withValues(alpha: 0.15) : AppTheme.cardColor,
                   leading: Icon(
                     status == 'pending' ? Icons.timer : (status == 'in_progress' ? Icons.sync : (status == 'completed' ? Icons.check_circle : Icons.cancel)),
                     color: statusColor,

@@ -23,7 +23,7 @@ class PendingApprovalScreen extends StatelessWidget {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryGreen.withValues(alpha: 0.08),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -35,7 +35,7 @@ class PendingApprovalScreen extends StatelessWidget {
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryGreen.withValues(alpha: 0.05),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -47,10 +47,10 @@ class PendingApprovalScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   FadeInDown(
-                    child: const Icon(
+                    child: Icon(
                       Icons.hourglass_top_rounded,
                       size: 80,
-                      color: AppTheme.warningColor,
+                      color: Colors.orange,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -61,7 +61,7 @@ class PendingApprovalScreen extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontFamily: 'Tajawal',
                       ),
                     ),
@@ -73,7 +73,7 @@ class PendingApprovalScreen extends StatelessWidget {
                       'سيتم إشعارك فور موافقة الإدارة على حسابك',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontFamily: 'Tajawal',
                       ),
                     ),
@@ -83,16 +83,20 @@ class PendingApprovalScreen extends StatelessWidget {
                     delay: const Duration(milliseconds: 400),
                     child: Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: AppTheme.glassDecoration,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                      ),
                       child: Row(
                         children: [
-                          const Icon(Icons.info_outline, color: AppTheme.primaryGreen),
+                          Icon(Icons.info_outline, color: Theme.of(context).colorScheme.primary),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               'يمكنك طلب خدمة بدون حساب في الوقت الحالي',
                               style: TextStyle(
-                                color: AppTheme.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 fontSize: 13,
                                 fontFamily: 'Tajawal',
                               ),
@@ -119,10 +123,10 @@ class PendingApprovalScreen extends StatelessWidget {
                     delay: const Duration(milliseconds: 600),
                     child: TextButton(
                       onPressed: () => Get.find<AuthController>().logout(),
-                      child: const Text(
+                      child: Text(
                         'تسجيل الخروج',
                         style: TextStyle(
-                          color: AppTheme.errorColor,
+                          color: Theme.of(context).colorScheme.error,
                           fontWeight: FontWeight.bold,
                           fontFamily: 'Tajawal',
                         ),
@@ -143,7 +147,7 @@ class PendingApprovalScreen extends StatelessWidget {
               return Stack(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.notifications_outlined, color: AppTheme.textPrimary),
+                    icon: Icon(Icons.notifications_outlined, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => Get.toNamed('/notifications'),
                   ),
                   if (service.unreadCount.value > 0)
@@ -152,7 +156,7 @@ class PendingApprovalScreen extends StatelessWidget {
                       top: 8,
                       child: Container(
                         padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(color: AppTheme.errorColor, shape: BoxShape.circle),
+                        decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
                         constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
                         child: Text(
                           service.unreadCount.value.toString(),

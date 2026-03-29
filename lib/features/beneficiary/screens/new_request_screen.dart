@@ -61,8 +61,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     for (var entry in dynamicControllers.entries) {
       if (entry.value.text.isEmpty) {
         Get.snackbar('تنبيه', 'يرجى ملء حقل: ${entry.key}', 
-          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2),
-          colorText: AppTheme.warningColor);
+          backgroundColor: Colors.orange.withValues(alpha: 0.2),
+          colorText: Colors.orange);
         return;
       }
       details[entry.key] = entry.value.text;
@@ -70,7 +70,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
     if (selectedService!.id == 'other' && descriptionController.text.isEmpty) {
       Get.snackbar('تنبيه', 'يرجى وصف الطلب بالتفصيل', 
-          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+          backgroundColor: Colors.orange.withValues(alpha: 0.2));
       return;
     }
 
@@ -102,9 +102,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppTheme.darkSurface.withValues(alpha: 0.8),
+                  color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
-                  border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2), width: 1.5),
+                  border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2), width: 1.5),
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -134,42 +134,42 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('تفاصيل الطلب', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                                Text('تفاصيل الطلب', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
                                 Text(selectedService!.name, 
-                                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w900)),
+                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.w900)),
                               ],
                             ),
                           ),
                           IconButton(
                             onPressed: () => Get.back(),
-                            icon: const Icon(Icons.close, color: AppTheme.errorColor),
+                            icon: Icon(Icons.close, color: Theme.of(context).colorScheme.error),
                           )
                         ],
                       ),
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Divider(color: AppTheme.glassBorder),
+                        child: Divider(),
                       ),
 
                       if (isAdmin) ...[
-                        Text('بيانات المستفيد (يدوي)', style: TextStyle(color: AppTheme.primaryGreen, fontSize: 14, fontWeight: FontWeight.bold)),
+                        Text('بيانات المستفيد (يدوي)', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
                         TextField(
                           controller: beneficiaryNameController,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: AppTheme.inputDecoration('اسم المستفيد الكامل...', Icons.person_add_alt_1_rounded),
                         ),
                         const SizedBox(height: 12),
                         TextField(
                           controller: beneficiaryPhoneController,
                           keyboardType: TextInputType.phone,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: AppTheme.inputDecoration('رقم هاتف المستفيد...', Icons.phone_android_rounded),
                         ),
                         const SizedBox(height: 12),
                         TextField(
                           controller: beneficiaryAddressController,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: AppTheme.inputDecoration('عنوان المستفيد...', Icons.location_city_rounded),
                         ),
                         const Padding(
@@ -183,40 +183,40 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(field, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.bold)),
+                            Text(field, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 8),
                             _buildDynamicField(field, setModalState),
                           ],
                         ),
                       )),
     
-                      Text('وصف إضافي أو ملاحظات', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.bold)),
+                      Text('وصف إضافي أو ملاحظات', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
                       TextField(
                         controller: descriptionController,
                         maxLines: 2,
-                        style: TextStyle(color: AppTheme.textPrimary),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: AppTheme.inputDecoration('اكتب هنا أي تفاصيل أخرى...', Icons.description_outlined).copyWith(
-                          fillColor: Colors.white.withValues(alpha: 0.03),
+                          fillColor: Theme.of(context).cardColor.withValues(alpha: 0.5),
                         ),
                       ),
     
                       const SizedBox(height: 24),
-                      Text('🚩 درجة الاستعجال', style: TextStyle(color: AppTheme.textPrimary, fontSize: 15, fontWeight: FontWeight.bold)),
+                      Text('🚩 درجة الاستعجال', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 12),
                       Row(
                         children: [
-                          _buildUrgencyChip(setModalState, 'normal', 'عادي', AppTheme.successColor),
+                          _buildUrgencyChip(setModalState, 'normal', 'عادي', Colors.green),
                           const SizedBox(width: 8),
-                          _buildUrgencyChip(setModalState, 'urgent', 'مستعجل', AppTheme.urgentColor),
+                          _buildUrgencyChip(setModalState, 'urgent', 'مستعجل', Colors.orange),
                           const SizedBox(width: 8),
-                          _buildUrgencyChip(setModalState, 'emergency', 'طوارئ', AppTheme.emergencyColor),
+                          _buildUrgencyChip(setModalState, 'emergency', 'طوارئ', Theme.of(context).colorScheme.error),
                         ],
                       ),
                       
                       const SizedBox(height: 32),
                       Obx(() => controller.isLoading.value
-                        ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
+                        ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
                         : AppTheme.gradientButton(
                             text: 'إرسال الطلب للمراجعة',
                             icon: Icons.send_rounded,
@@ -246,10 +246,10 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? color.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.03),
+            color: isSelected ? color.withValues(alpha: 0.15) : Theme.of(context).cardColor.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(15),
             border: Border.all(
-              color: isSelected ? color : AppTheme.glassBorder,
+              color: isSelected ? color : Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -259,7 +259,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              color: isSelected ? color : AppTheme.textSecondary,
+              color: isSelected ? color : Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ),
@@ -287,8 +287,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               lastDate: DateTime.now().add(const Duration(days: 365)),
               builder: (context, child) => Theme(
                 data: Get.isDarkMode 
-                    ? ThemeData.dark().copyWith(colorScheme: const ColorScheme.dark(primary: AppTheme.primaryGreen)) 
-                    : ThemeData.light().copyWith(colorScheme: const ColorScheme.light(primary: AppTheme.primaryGreen)),
+                    ? ThemeData.dark().copyWith(colorScheme: ColorScheme.dark(primary: Theme.of(context).colorScheme.primary)) 
+                    : ThemeData.light().copyWith(colorScheme: ColorScheme.light(primary: Theme.of(context).colorScheme.primary)),
                 child: child!,
               ),
             );
@@ -302,8 +302,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               initialTime: TimeOfDay.now(),
               builder: (context, child) => Theme(
                 data: Get.isDarkMode 
-                    ? ThemeData.dark().copyWith(colorScheme: const ColorScheme.dark(primary: AppTheme.primaryGreen)) 
-                    : ThemeData.light().copyWith(colorScheme: const ColorScheme.light(primary: AppTheme.primaryGreen)),
+                    ? ThemeData.dark().copyWith(colorScheme: ColorScheme.dark(primary: Theme.of(context).colorScheme.primary)) 
+                    : ThemeData.light().copyWith(colorScheme: ColorScheme.light(primary: Theme.of(context).colorScheme.primary)),
                 child: child!,
               ),
             );
@@ -327,7 +327,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         child: IgnorePointer(
           child: TextField(
             controller: dynamicControllers[field],
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             decoration: AppTheme.inputDecoration(
               isDateTime ? 'اختر التاريخ والوقت...' : (isDateOnly ? 'اختر التاريخ...' : 'اختر الوقت...'), 
               _getFieldIcon(field)
@@ -343,7 +343,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         initialValue: dynamicControllers[field]!.text.isEmpty ? null : dynamicControllers[field]!.text,
         decoration: AppTheme.inputDecoration('اختر فصيلة الدم...', _getFieldIcon(field)),
         dropdownColor: Theme.of(context).colorScheme.surface,
-        style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal'),
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontFamily: 'Tajawal'),
         items: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
             .map((e) => DropdownMenuItem(value: e, child: Text(e, textDirection: TextDirection.ltr)))
             .toList(),
@@ -355,7 +355,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     
     return TextField(
       controller: dynamicControllers[field],
-      style: TextStyle(color: AppTheme.textPrimary),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
       decoration: AppTheme.inputDecoration('أدخل $field...', _getFieldIcon(field)),
     );
   }
@@ -363,30 +363,30 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
             expandedHeight: 120,
             floating: false,
             pinned: true,
-            backgroundColor: AppTheme.darkSurface,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
               title: Text('طلب خدمة جديدة', 
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.bold)),
               centerTitle: true,
               background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [AppTheme.primaryGreen.withValues(alpha: 0.2), Colors.transparent],
+                    colors: [Theme.of(context).colorScheme.primary.withValues(alpha: 0.2), Colors.transparent],
                     begin: Alignment.topCenter, end: Alignment.bottomCenter
                   )
                 ),
               ),
             ),
             leading: IconButton(
-              icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppTheme.textPrimary, size: 20),
+              icon: Icon(Icons.arrow_back_ios_new_rounded, color: Theme.of(context).colorScheme.onSurface, size: 20),
               onPressed: () => Get.back(),
             ),
           ),
@@ -401,9 +401,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('بوابة أبواب الخير', 
-                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: AppTheme.textPrimary)),
+                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSurface)),
                         Text('اختر نوع المساعدة التي تحتاجها وسنتواصل معك', 
-                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
                       ],
                     ),
                   ),
@@ -420,7 +420,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   Widget _buildServicesGrid() {
     return Obx(() {
-      if (controller.isLoadingServices.value) return const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen));
+      if (controller.isLoadingServices.value) return Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary));
       if (controller.availableServices.isEmpty) return AppTheme.emptyState('لا توجد خدمات متاحة حالياً');
 
       return GridView.builder(
@@ -443,13 +443,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               duration: const Duration(milliseconds: 300),
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.1) : AppTheme.darkSurface.withValues(alpha: 0.5),
+                color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1) : Theme.of(context).cardColor.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder,
+                  color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
                   width: isSelected ? 2 : 1,
                 ),
-                boxShadow: isSelected ? [BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.1), blurRadius: 10)] : null,
+                boxShadow: isSelected ? [BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), blurRadius: 10)] : null,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -457,12 +457,12 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.darkCard.withValues(alpha: 0.5),
+                      color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15) : Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       AppConstants.getIconFromName(service.icon), 
-                      color: isSelected ? AppTheme.primaryGreen : AppTheme.textHint,
+                      color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                       size: 24,
                     ),
                   ),
@@ -475,7 +475,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
-                      color: isSelected ? AppTheme.textPrimary : AppTheme.textHint,
+                      color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],

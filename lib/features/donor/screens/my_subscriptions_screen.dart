@@ -14,11 +14,11 @@ class MySubscriptionsScreen extends StatelessWidget {
     final DonorController donorController = Get.find<DonorController>();
 
     return Scaffold(
-      backgroundColor: AppTheme.darkBg,
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('كفالاتي (التبرعات المستمرة)', 
           style: TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold)),
-        backgroundColor: AppTheme.darkSurface,
+        backgroundColor: AppTheme.surfaceColor,
         elevation: 0,
         centerTitle: true,
       ),
@@ -33,7 +33,7 @@ class MySubscriptionsScreen extends StatelessWidget {
               children: [
                 Icon(Icons.child_care_outlined, size: 80, color: AppTheme.textHint.withValues(alpha: 0.5)),
                 const SizedBox(height: 20),
-                const Text('ليس لديك اشتراكات نشطة حالياً',
+                Text('ليس لديك اشتراكات نشطة حالياً',
                     style: TextStyle(color: AppTheme.textHint, fontSize: 16)),
               ],
             ),
@@ -155,13 +155,13 @@ class MySubscriptionsScreen extends StatelessWidget {
      final controller = TextEditingController(text: currentAmount.toStringAsFixed(0));
      Get.dialog(
        AlertDialog(
-         backgroundColor: AppTheme.darkSurface,
+         backgroundColor: AppTheme.surfaceColor,
          title: Text('تعديل مبلغ الكفالة لـ ${project.name}', 
-           style: const TextStyle(color: Colors.white, fontSize: 16, fontFamily: 'Tajawal')),
+           style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontFamily: 'Tajawal')),
          content: TextField(
            controller: controller,
            keyboardType: TextInputType.number,
-           style: const TextStyle(color: Colors.white),
+           style: TextStyle(color: AppTheme.textPrimary),
            decoration: AppTheme.inputDecoration('المبلغ الجديد (دج)', Icons.monetization_on),
          ),
          actions: [

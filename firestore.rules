@@ -23,19 +23,19 @@ service cloud.firestore {
     // --- قواعد الإشعارات (تعديل: السماح للجميع بالإرسال لتصل للمدير) ---
     match /notifications/{notifId} {
       allow read: if isLoggedIn() && resource.data.userId == request.auth.uid;
-      allow write: if true; 
+      allow write: if true;
     }
 
     // --- قواعد أنواع الخدمات (إضافة: للجميع لرؤية الأيقونات وزيادة الشعبية) ---
     match /service_types/{typeId} {
       allow read: if true;
-      allow update: if true; 
+      allow update: if true;
       allow write: if isLoggedIn() && getRole() == 'super_admin';
     }
 
     // --- قواعد طلبات الزوار (إضافة: للسماح بإرسال الطلبات) ---
     match /guest_requests/{requestId} {
-      allow read: if isLoggedIn() && getRole() == 'super_admin';
+      allow read: if true;
       allow create: if true;
       allow update, delete: if isLoggedIn() && getRole() == 'super_admin';
     }
@@ -44,6 +44,30 @@ service cloud.firestore {
     match /projects/{projectId} {
       allow read: if true;
       allow write: if isLoggedIn() && getRole() == 'super_admin';
+    }
+
+    // --- قواعد الدردشة ---
+    match /chats/{chatId} {
+      // السماح بالقراءة للمشاركين أو المسجلين أو إذا كانت محادثة زائر
+      allow read: if isLoggedIn() || chatId.startsWith('guest_');
+      
+      // السماح بالإنشاء والتحيث (للمسجلين أو للزوار في محادثاتهم)
+      allow create, update: if isLoggedIn() || chatId.startsWith('guest_');
+      
+      // السماح بالحذف للسوبر أدمن فقط
+      allow delete: if isLoggedIn() && getRole() == 'super_admin';
+      
+      // قواعد الرسائل الفرعية
+      match /messages/{messageId} {
+        // السماح بالقراءة لأي مستخدم مسجل أو زائر في محادثة زائر
+        allow read: if isLoggedIn() || get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'guest';
+        
+        // السماح بالكتابة للمسجلين أو الزوار في محادثة زائر
+        allow create: if isLoggedIn() || get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'guest';
+        
+        // السماح بالتحديث والحذف للمسجلين فقط
+        allow update, delete: if isLoggedIn();
+      }
     }
 
     // --- السماح بالوصول لباقي المجموعات للأعضاء المسجلين ---

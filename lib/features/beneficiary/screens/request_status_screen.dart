@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/service_request_model.dart';
-
+import '../../../core/routes/app_routes.dart';
+import 'package:get/get.dart';
 import '../../../core/constants/app_constants.dart';
 
 class RequestStatusScreen extends StatelessWidget {
@@ -15,7 +15,7 @@ class RequestStatusScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.darkBg,
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('تفاصيل الطلب'),
         backgroundColor: Colors.transparent,
@@ -30,7 +30,7 @@ class RequestStatusScreen extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppTheme.darkCard,
+                color: AppTheme.cardColor,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: AppTheme.glassBorder),
               ),
@@ -65,7 +65,7 @@ class RequestStatusScreen extends StatelessWidget {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(16)),
+              decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(16)),
               child: Text(request.description, style: TextStyle(color: AppTheme.textPrimary, height: 1.5)),
             ),
             if (request.details.isNotEmpty) ...[
@@ -75,13 +75,30 @@ class RequestStatusScreen extends StatelessWidget {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(16)),
+                decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(16)),
                 child: Column(
                   children: request.details.entries.map((e) => _buildDetailRow(e.key, e.value.toString())).toList(),
                 ),
               ),
             ],
             const SizedBox(height: 40),
+            if (request.isGuest && request.phone.isNotEmpty)
+              OutlinedButton.icon(
+                onPressed: () {
+                  Get.toNamed(AppRoutes.chatPrivate, arguments: {
+                    'chatId': 'guest_${request.phone.replaceAll(" ", "")}',
+                    'userName': 'الدعم الفني',
+                  });
+                },
+                icon: const Icon(Icons.support_agent, color: AppTheme.primaryGreen),
+                label: const Text('💬 متابعة المحادثة مع الدعم', style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  side: const BorderSide(color: AppTheme.primaryGreen, width: 1.5),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+              ),
             if (request.status == 'completed' && !request.isGuest)
               AppTheme.gradientButton(
                 text: 'تقييم الخدمة',
@@ -109,7 +126,7 @@ class RequestStatusScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: AppTheme.textHint)),
+          Text(label, style: TextStyle(color: AppTheme.textHint)),
           const SizedBox(width: 16),
           Expanded(
             child: Text(

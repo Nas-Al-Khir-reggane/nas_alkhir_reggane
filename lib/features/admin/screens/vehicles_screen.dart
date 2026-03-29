@@ -39,10 +39,10 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         return Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: AppTheme.darkSurface,
+            color: AppTheme.surfaceColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
             border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.3), width: 1.5),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20)],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20)],
           ),
           child: Form(
             key: formKey,
@@ -62,14 +62,14 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: AppTheme.darkBg,
+                    color: AppTheme.cardColor,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppTheme.glassBorder),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       isExpanded: true,
-                      dropdownColor: AppTheme.darkSurface,
+                      dropdownColor: AppTheme.surfaceColor,
                       icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.primaryGreen),
                       value: selectedType,
                       items: _vehicleTypesList.map((type) {
@@ -105,7 +105,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                         onPressed: () => Get.back(),
-                        child: const Text("إلغاء", style: TextStyle(color: Colors.white, fontFamily: 'Tajawal')),
+                        child: Text("إلغاء", style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'Tajawal')),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -149,7 +149,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
   void _showDeleteDialog(VehicleModel vehicle) {
     Get.dialog(
       AlertDialog(
-        backgroundColor: AppTheme.darkSurface,
+        backgroundColor: AppTheme.surfaceColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: AppTheme.glassBorder)),
         title: const Row(
           children: [
@@ -161,7 +161,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         content: Text("هل أنت متأكد من حذف السيارة ذات اللوحة ${vehicle.plateNumber}؟ السجلات المرتبطة بها قد تتأثر.",
             style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'Tajawal')),
         actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text("إلغاء", style: TextStyle(color: AppTheme.textHint))),
+          TextButton(onPressed: () => Get.back(), child: Text("إلغاء", style: TextStyle(color: AppTheme.textHint))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             onPressed: () {
@@ -284,7 +284,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: AppTheme.darkSurface,
+        color: AppTheme.cardColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: statusColor.withValues(alpha: 0.3), width: 1.5),
         boxShadow: [
@@ -353,7 +353,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                       ],
                     ),
                     PopupMenuButton<String>(
-                      color: AppTheme.darkSurface,
+                      color: AppTheme.surfaceColor,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: AppTheme.glassBorder)),
                       icon: Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary),
                       onSelected: (val) {
@@ -388,7 +388,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: isAvail ? AppTheme.darkBg : AppTheme.successColor.withValues(alpha: 0.1),
+                      color: isAvail ? AppTheme.cardColor : AppTheme.successColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: isAvail ? AppTheme.glassBorder : AppTheme.successColor.withValues(alpha: 0.5)),
                     ),
@@ -424,7 +424,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
         decoration: BoxDecoration(
-          color: AppTheme.darkBg,
+          color: AppTheme.backgroundColor,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AppTheme.glassBorder),
         ),
@@ -432,7 +432,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
           children: [
             Icon(icon, color: AppTheme.textHint, size: 16),
             const SizedBox(height: 4),
-            Text(label, style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
+            Text(label, style: TextStyle(color: AppTheme.textHint, fontSize: 10)),
             Text(value, style: TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontWeight: FontWeight.bold), 
                  maxLines: 1, overflow: TextOverflow.ellipsis),
           ],

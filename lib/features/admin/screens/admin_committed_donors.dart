@@ -14,11 +14,11 @@ class AdminCommittedDonors extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.darkBg,
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: Text('الكافلون: ${project.name}', 
           style: const TextStyle(fontFamily: 'Tajawal', fontSize: 16)),
-        backgroundColor: AppTheme.darkSurface,
+        backgroundColor: AppTheme.surfaceColor,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -42,7 +42,7 @@ class AdminCommittedDonors extends StatelessWidget {
           }
 
           if (donorSubscriptions.isEmpty) {
-            return const Center(child: Text('لا يوجد كافلون حالياً', style: TextStyle(color: AppTheme.textHint)));
+            return Center(child: Text('لا يوجد كافلون حالياً', style: TextStyle(color: AppTheme.textHint)));
           }
 
           return ListView.builder(
@@ -58,16 +58,15 @@ class AdminCommittedDonors extends StatelessWidget {
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                    child: Text(subscription.donorName[0], style: const TextStyle(color: AppTheme.primaryGreen)),
+                    child: Text(subscription.donorName[0], style: TextStyle(color: AppTheme.primaryGreen)),
                   ),
-                  title: Text(subscription.donorName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  subtitle: Text('آخر دفعة: ${DateFormat('yyyy/MM/dd').format(subscription.date)}', 
-                    style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
+                  title: Text(subscription.donorName, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+                  subtitle: Text(DateFormat('yyyy/MM/dd').format(subscription.date), style: TextStyle(color: AppTheme.textHint, fontSize: 10)),
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('${subscription.amount.toInt()} دج', style: const TextStyle(color: AppTheme.goldAccent, fontWeight: FontWeight.bold)),
+                      Text('${subscription.amount.toInt()} دج', style: TextStyle(color: AppTheme.goldAccent, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       // ✨ F4: Status Logic (Active/Stopped)
                       Container(
