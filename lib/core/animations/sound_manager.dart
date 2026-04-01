@@ -1,5 +1,4 @@
 import 'package:flutter/services.dart';
-import 'package:flutter_vibrate/flutter_vibrate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:get/get.dart';
 
@@ -35,7 +34,7 @@ class SoundManager extends GetxController {
   void playClick() {
     if (isMuted) return;
     _playProgrammaticSound(frequency: 800, durationMs: 80);
-    _vibrate(FeedbackType.light);
+    HapticFeedback.lightImpact();
   }
 
   // 2. Success Sound (عملية ناجحة)
@@ -45,28 +44,28 @@ class SoundManager extends GetxController {
       {'freq': 523.25, 'dur': 100}, // C5
       {'freq': 659.25, 'dur': 150}, // E5
     ]);
-    _vibrate(FeedbackType.success);
+    HapticFeedback.mediumImpact();
   }
 
   // 3. Error Sound (خطأ)
   void playError() {
     if (isMuted) return;
     _playProgrammaticSound(frequency: 200, durationMs: 250, type: 'sawtooth');
-    _vibrate(FeedbackType.error);
+    HapticFeedback.heavyImpact();
   }
 
   // 4. Notification Sound (إشعار)
   void playNotification() {
     if (isMuted) return;
     _playProgrammaticSound(frequency: 440, durationMs: 200); // A4
-    _vibrate(FeedbackType.medium);
+    HapticFeedback.mediumImpact();
   }
 
   // 5. Navigation Sound (تنقل)
   void playNavigation() {
     if (isMuted) return;
     _playProgrammaticSound(frequency: 600, durationMs: 150, type: 'sine');
-    _vibrate(FeedbackType.selection);
+    HapticFeedback.selectionClick();
   }
 
   // 6. Toggle Sound (تشغيل/إيقاف)
@@ -77,7 +76,7 @@ class SoundManager extends GetxController {
     } else {
       _playProgrammaticSound(frequency: 261.63, durationMs: 100); // C4
     }
-    _vibrate(FeedbackType.light);
+    HapticFeedback.lightImpact();
   }
 
   // --- البرمجة الصوتية ---
@@ -99,7 +98,6 @@ class SoundManager extends GetxController {
     SystemSound.play(SystemSoundType.click);
   }
 
-  void _vibrate(FeedbackType type) {
-    Vibrate.feedback(type);
-  }
+
 }
+

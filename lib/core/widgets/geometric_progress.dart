@@ -40,7 +40,7 @@ class HexagonalProgressIndicator extends StatelessWidget {
                 size: Size(size, size),
                 painter: _HexagonPainter(
                   progress: 1.0,
-                  color: progressColor.withValues(alpha: 0.1),
+                  color: progressColor.withValues(alpha: 0.75),
                   strokeWidth: 4,
                 ),
               ),
@@ -150,7 +150,8 @@ class GoalGridProgress extends StatefulWidget {
   final String categoryId;
   final Color activeColor;
   final bool isScrollable;
-  final bool forceComplete; // New: For instant full view in screenshots
+  final bool forceComplete;
+  final int? maxDisplayUnits; // New: Limit units displayed (for share card)
 
   const GoalGridProgress({
     super.key,
@@ -160,6 +161,7 @@ class GoalGridProgress extends StatefulWidget {
     required this.activeColor,
     this.isScrollable = true,
     this.forceComplete = false,
+    this.maxDisplayUnits,
   });
 
   @override
@@ -189,6 +191,9 @@ class _GoalGridProgressState extends State<GoalGridProgress> with SingleTickerPr
   Widget build(BuildContext context) {
     final int totalUnits = (widget.budget / unitValue).ceil();
     final int filledUnits = (widget.collected / unitValue).floor();
+    final int displayUnits = widget.maxDisplayUnits != null 
+        ? math.min(totalUnits, widget.maxDisplayUnits!) 
+        : totalUnits;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,10 +223,10 @@ class _GoalGridProgressState extends State<GoalGridProgress> with SingleTickerPr
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [widget.activeColor.withValues(alpha: 0.3), widget.activeColor.withValues(alpha: 0.1)],
+                  colors: [widget.activeColor.withValues(alpha: 0.15), widget.activeColor.withValues(alpha: 0.9)],
                 ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: widget.activeColor.withValues(alpha: 0.5)),
+                border: Border.all(color: widget.activeColor.withValues(alpha: 0.75)),
               ),
               child: Text(
                 '$filledUnits / $totalUnits وحدة',
@@ -236,7 +241,7 @@ class _GoalGridProgressState extends State<GoalGridProgress> with SingleTickerPr
             maxHeight: widget.isScrollable ? (totalUnits > 100 ? 300 : double.infinity) : double.infinity,
           ),
           padding: const EdgeInsets.all(4),
-          child: _buildGridContent(totalUnits, filledUnits),
+          child: _buildGridContent(displayUnits, filledUnits),
         ),
       ],
     );
@@ -252,7 +257,7 @@ class _GoalGridProgressState extends State<GoalGridProgress> with SingleTickerPr
               size: Size(constraints.maxWidth, _calculateHeight(totalUnits)),
               painter: _CinematicGridPainter(
                 totalUnits: totalUnits,
-                filledUnits: filledUnits,
+                filledUnits: math.min(filledUnits, totalUnits),
                 categoryId: widget.categoryId,
                 activeColor: widget.activeColor,
                 animation: widget.forceComplete ? 1.0 : _controller.value,
@@ -326,7 +331,7 @@ class _CinematicGridPainter extends CustomPainter {
     if (isFilled) {
       // 1. توهج نيون محيطي أقوى لزيادة الوضوح (Vibrant Glow)
       final Paint glowPaint = Paint()
-        ..color = activeColor.withValues(alpha: 0.35)
+        ..color = activeColor.withValues(alpha: 0.15)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.8);
       canvas.drawCircle(center, r * 1.4, glowPaint);
 
@@ -347,7 +352,7 @@ class _CinematicGridPainter extends CustomPainter {
 
       // 3. لمعة زجاجية حادة (Glass Highlight)
       final Paint highlightPaint = Paint()
-        ..color = Colors.white.withValues(alpha: 0.5)
+        ..color = Colors.white.withValues(alpha: 0.15)
         ..style = PaintingStyle.fill;
       
       final Path highlightPath = _getHighlightPath(center, r);
@@ -355,7 +360,7 @@ class _CinematicGridPainter extends CustomPainter {
       
       // 4. إطار خارجي أبيض ناعم للتباين
       final Paint borderPaint = Paint()
-        ..color = Colors.white.withValues(alpha: 0.3)
+        ..color = Colors.white.withValues(alpha: 0.15)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.8;
       canvas.drawPath(path, borderPaint);
@@ -363,7 +368,7 @@ class _CinematicGridPainter extends CustomPainter {
     } else {
       // وحدات غير مكتملة (Empty Vibrant Containers)
       final Paint emptyPaint = Paint()
-        ..color = AppTheme.textHint.withValues(alpha: 0.4) // Increased opacity for clarity
+        ..color = AppTheme.textHint.withValues(alpha: 0.15) // Increased opacity for clarity
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.2;
       
@@ -371,7 +376,7 @@ class _CinematicGridPainter extends CustomPainter {
       canvas.drawPath(path, emptyPaint);
       
       final Paint innerShadow = Paint()
-        ..color = AppTheme.textHint.withValues(alpha: 0.08)
+        ..color = AppTheme.textHint.withValues(alpha: 0.15)
         ..style = PaintingStyle.fill;
       canvas.drawPath(path, innerShadow);
     }
@@ -439,3 +444,4 @@ class _CinematicGridPainter extends CustomPainter {
   bool shouldRepaint(covariant _CinematicGridPainter oldDelegate) => 
     oldDelegate.animation != animation || oldDelegate.filledUnits != filledUnits;
 }
+

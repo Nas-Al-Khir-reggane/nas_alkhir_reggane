@@ -39,7 +39,7 @@ class RequestStatusScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                      color: AppTheme.primaryGreen.withValues(alpha: 0.75),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(AppConstants.getServiceIcon(request.typeName.isNotEmpty ? request.typeName : request.type), color: AppTheme.primaryGreen, size: 40),
@@ -156,3 +156,4 @@ class RequestStatusScreen extends StatelessWidget {
     }
   }
 }
+

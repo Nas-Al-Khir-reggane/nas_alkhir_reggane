@@ -185,7 +185,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
                                 Get.snackbar(
                                   'تنبيه',
                                   'يرجى اختيار الموعد النهائي',
-                                  backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2),
+                                  backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15),
                                   colorText: AppTheme.warningColor,
                                   snackPosition: SnackPosition.BOTTOM,
                                 );
@@ -253,7 +253,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.75),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: AppTheme.primaryGreen, size: 18),
@@ -380,3 +380,4 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
 );
   }
 }
+

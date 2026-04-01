@@ -17,8 +17,8 @@ class ProjectRepository {
     });
   }
 
-  Future<void> addProject(Map<String, dynamic> data) async {
-    await _firestore.collection(AppConstants.projectsCollection).add(data);
+  Future<DocumentReference> addProject(Map<String, dynamic> data) async {
+    return await _firestore.collection(AppConstants.projectsCollection).add(data);
   }
 
   Future<void> updateProject(String id, Map<String, dynamic> data) async {
@@ -46,3 +46,4 @@ class ProjectRepository {
     });
   }
 }
+

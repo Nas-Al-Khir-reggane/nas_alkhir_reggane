@@ -22,7 +22,10 @@ service cloud.firestore {
 
     // --- قواعد الإشعارات (تعديل: السماح للجميع بالإرسال لتصل للمدير) ---
     match /notifications/{notifId} {
-      allow read: if isLoggedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isLoggedIn() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.targetRole == 'admin' && (getRole() == 'admin' || getRole() == 'superAdmin' || getRole() == 'super_admin'))
+      );
       allow write: if true;
     }
 
@@ -50,21 +53,21 @@ service cloud.firestore {
     match /chats/{chatId} {
       // السماح بالقراءة للمشاركين أو المسجلين أو إذا كانت محادثة زائر
       allow read: if isLoggedIn() || chatId.startsWith('guest_');
-      
+
       // السماح بالإنشاء والتحيث (للمسجلين أو للزوار في محادثاتهم)
       allow create, update: if isLoggedIn() || chatId.startsWith('guest_');
-      
+
       // السماح بالحذف للسوبر أدمن فقط
       allow delete: if isLoggedIn() && getRole() == 'super_admin';
-      
+
       // قواعد الرسائل الفرعية
       match /messages/{messageId} {
         // السماح بالقراءة لأي مستخدم مسجل أو زائر في محادثة زائر
         allow read: if isLoggedIn() || get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'guest';
-        
+
         // السماح بالكتابة للمسجلين أو الزوار في محادثة زائر
         allow create: if isLoggedIn() || get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'guest';
-        
+
         // السماح بالتحديث والحذف للمسجلين فقط
         allow update, delete: if isLoggedIn();
       }

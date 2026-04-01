@@ -43,35 +43,35 @@ class DefaultFirebaseOptions {
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyDZGcs0B5Od2jceKoB7IhJP4HW5geW0ric',
     appId: '1:197382034070:web:7f45daf168efe78d5768b7',
-    messagingSenderId: '197382034070',
-    projectId: 'nas-al-kheir-app',
-    authDomain: 'nas-al-kheir-app.firebaseapp.com',
-    storageBucket: 'nas-al-kheir-app.firebasestorage.app',
+    messagingSenderId: '363230035601',
+    projectId: 'ness-alkheirapp',
+    authDomain: 'ness-alkheirapp.firebaseapp.com',
+    storageBucket: 'ness-alkheirapp.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyA3TA21W0g0l-VQZYw-vh4ZyAVjIvA0g8w',
-    appId: '1:197382034070:android:8a72a415ac4e82405768b7',
-    messagingSenderId: '197382034070',
-    projectId: 'nas-al-kheir-app',
-    storageBucket: 'nas-al-kheir-app.firebasestorage.app',
+    apiKey: 'AIzaSyAewraw4FIKKGNWMloB8_Nhhay0stlejV0',
+    appId: '1:363230035601:android:ddc73f9642880a66a34930',
+    messagingSenderId: '363230035601',
+    projectId: 'ness-alkheirapp',
+    storageBucket: 'ness-alkheirapp.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCTpilmU6N16VomvrccinUe6V-wFKTe84k',
     appId: '1:197382034070:ios:0f53add86a41b0fa5768b7',
-    messagingSenderId: '197382034070',
-    projectId: 'nas-al-kheir-app',
-    storageBucket: 'nas-al-kheir-app.firebasestorage.app',
+    messagingSenderId: '363230035601',
+    projectId: 'ness-alkheirapp',
+    storageBucket: 'ness-alkheirapp.firebasestorage.app',
     iosBundleId: 'com.nasalkheir.nasAlKheir',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyCTpilmU6N16VomvrccinUe6V-wFKTe84k',
     appId: '1:197382034070:ios:0f53add86a41b0fa5768b7',
-    messagingSenderId: '197382034070',
-    projectId: 'nas-al-kheir-app',
-    storageBucket: 'nas-al-kheir-app.firebasestorage.app',
+    messagingSenderId: '363230035601',
+    projectId: 'ness-alkheirapp',
+    storageBucket: 'ness-alkheirapp.firebasestorage.app',
     iosBundleId: 'com.nasalkheir.nasAlKheir',
   );
 
@@ -79,8 +79,9 @@ class DefaultFirebaseOptions {
     apiKey: 'AIzaSyDZGcs0B5Od2jceKoB7IhJP4HW5geW0ric',
     appId: '1:197382034070:web:50241b5a7a822ea65768b7',
     messagingSenderId: '197382034070',
-    projectId: 'nas-al-kheir-app',
-    authDomain: 'nas-al-kheir-app.firebaseapp.com',
-    storageBucket: 'nas-al-kheir-app.firebasestorage.app',
+    projectId: 'ness-alkheirapp',
+    authDomain: 'ness-alkheirapp.firebaseapp.com',
+    storageBucket: 'ness-alkheirapp.firebasestorage.app',
   );
 }
+

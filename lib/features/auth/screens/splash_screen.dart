@@ -22,7 +22,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _startNavigation() async {
-    await Future.delayed(const Duration(milliseconds: 1500));
+    // تم زيادة مدة الانتظار من 1.5 ثانية إلى 4 ثوانٍ لضمان قراءة النصوص
+    await Future.delayed(const Duration(milliseconds: 4000));
     _authController.checkAuthState();
   }
 
@@ -69,7 +70,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
                       colors: [
-                        AppTheme.primaryGreen.withValues(alpha: isDark ? 0.05 : 0.03),
+                        AppTheme.primaryGreen.withValues(alpha: 0.15),
                         Colors.transparent,
                       ],
                     ),
@@ -93,8 +94,8 @@ class _SplashScreenState extends State<SplashScreen> {
                         boxShadow: [
                           BoxShadow(
                             color: isDark 
-                              ? AppTheme.primaryGreen.withValues(alpha: 0.1) 
-                              : Colors.black.withValues(alpha: 0.05),
+                              ? AppTheme.primaryGreen.withValues(alpha: 0.15) 
+                              : Colors.black.withValues(alpha: 0.75),
                             blurRadius: 60,
                             spreadRadius: 10,
                           ),
@@ -138,12 +139,12 @@ class _SplashScreenState extends State<SplashScreen> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(50),
                           border: Border.all(
-                            color: AppTheme.goldAccent.withValues(alpha: 0.5),
+                            color: AppTheme.goldAccent.withValues(alpha: 0.75),
                             width: 0.8,
                           ),
                           gradient: LinearGradient(
                             colors: isDark 
-                              ? [AppTheme.goldAccent.withValues(alpha: 0.1), Colors.transparent]
+                              ? [AppTheme.goldAccent.withValues(alpha: 0.15), Colors.transparent]
                               : [const Color(0xFFFDFCF0), Colors.white],
                           ),
                         ),
@@ -179,7 +180,7 @@ class _SplashScreenState extends State<SplashScreen> {
                             fontFamily: 'Tajawal',
                             fontSize: 16,
                             fontWeight: FontWeight.w700, // خط أوضح
-                            color: isDark ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF1B3D2F),
+                            color: isDark ? Colors.white : const Color(0xFF1B3D2F),
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -206,7 +207,7 @@ class _SplashScreenState extends State<SplashScreen> {
                         child: LinearProgressIndicator(
                           backgroundColor: isDark ? Colors.white10 : Colors.black12,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            isDark ? AppTheme.goldAccent.withValues(alpha: 0.8) : AppTheme.primaryGreen,
+                            isDark ? AppTheme.goldAccent.withValues(alpha: 0.15) : AppTheme.primaryGreen,
                           ),
                         ),
                       ),
@@ -218,7 +219,7 @@ class _SplashScreenState extends State<SplashScreen> {
                         fontFamily: 'Tajawal',
                         fontSize: 13, // تكبير الخط قليلاً
                         fontWeight: FontWeight.w600, // زيادة السمك للوضوح
-                        color: isDark ? Colors.white.withValues(alpha: 0.7) : Colors.black54, // لون واضح جداً
+                        color: isDark ? Colors.white.withValues(alpha: 0.75) : Colors.black54, // لون واضح جداً
                         letterSpacing: 2,
                       ),
                     ),
@@ -232,3 +233,4 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
+

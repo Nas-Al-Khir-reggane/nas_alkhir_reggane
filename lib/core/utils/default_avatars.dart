@@ -37,3 +37,4 @@ class DefaultAvatars {
     return avatars[Random().nextInt(avatars.length)];
   }
 }
+

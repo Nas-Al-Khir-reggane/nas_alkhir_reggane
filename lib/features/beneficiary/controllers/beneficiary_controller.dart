@@ -91,7 +91,7 @@ class BeneficiaryController extends GetxController {
       Get.snackbar(
         'تنبيه',
         'لديك طلب نشط بالفعل، يرجى الانتظار حتى معالجته',
-        backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2),
+        backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15),
         colorText: AppTheme.textPrimary,
       );
       return;
@@ -116,6 +116,19 @@ class BeneficiaryController extends GetxController {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
+      if (data['type'] == 'blood_donation' || data['type'] == 'blood_emergency') {
+        final details = data['details'] ?? {};
+        requestData['bloodType'] = details['الفصيلة'] ?? details['bloodType'] ?? '';
+        requestData['hospital'] = details['المستشفى'] ?? details['hospital'] ?? '';
+      }
+
+      if (data['type'] == 'funeral_ghusl') {
+        final details = data['details'] ?? {};
+        requestData['deceasedGender'] = details['جنس المتوفى'] ?? details['gender'] ?? '';
+        requestData['washingLocation'] = details['مكان الغسل'] ?? details['location'] ?? '';
+        requestData['supplies'] = details['المستلزمات'] ?? details['supplies'] ?? '';
+      }
+
       if (!_connectivity.isOnline.value) {
         final queueData = Map<String, dynamic>.from(requestData);
         queueData['createdAt'] = '__serverTimestamp__';
@@ -132,7 +145,7 @@ class BeneficiaryController extends GetxController {
           '💾 تم الحفظ',
           'سيتم إرسال طلبك تلقائياً عند استعادة الاتصال بالإنترنت',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2),
+          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15),
           colorText: AppTheme.warningColor,
           duration: const Duration(seconds: 5),
           icon: const Icon(Icons.offline_bolt_rounded, color: Color(0xFFFFB300)),
@@ -156,7 +169,7 @@ class BeneficiaryController extends GetxController {
           '✅ تم الإرسال',
           'سيتم معالجة طلبك في أقرب وقت',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
+          backgroundColor: AppTheme.successColor.withValues(alpha: 0.15),
           colorText: AppTheme.successColor,
           duration: const Duration(seconds: 4),
           margin: const EdgeInsets.all(12),
@@ -167,7 +180,7 @@ class BeneficiaryController extends GetxController {
       Get.snackbar(
         'خطأ',
         'فشل في إرسال الطلب: $e',
-        backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2),
+        backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15),
       );
     } finally {
       isLoading.value = false;
@@ -186,6 +199,21 @@ class BeneficiaryController extends GetxController {
       });
       Get.back();
       Get.snackbar('شكراً', 'تم تقييم الخدمة بنجاح');
+      
+      // ✨ إشعار الإدارة بتقييم الخدمة
+      try {
+        await NotificationService.notifyAllAdmins(
+          type: 'service_rating',
+          title: '⭐ تقييم جديد ($rating/5)',
+          body: comment.isNotEmpty ? 'تعليق: $comment' : 'تم استلام تقييم جديد لطلب منجز',
+          data: {
+            'requestId': requestId,
+            'collection': 'service_requests',
+          },
+        );
+      } catch (e) {
+        debugPrint('Error notifying admins about rating: $e');
+      }
     } catch (e) {
       Get.snackbar('خطأ', 'فشل في إرسال التقييم');
     }
@@ -216,3 +244,4 @@ class BeneficiaryController extends GetxController {
     super.onClose();
   }
 }
+

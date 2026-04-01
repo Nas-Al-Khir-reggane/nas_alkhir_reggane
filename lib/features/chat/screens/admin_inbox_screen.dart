@@ -69,7 +69,7 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
               ),
               child: TextField(
                 controller: _searchController,
@@ -118,7 +118,7 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                     gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary]),
                     borderRadius: BorderRadius.circular(18),
                     boxShadow: [
-                      BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))
+                      BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4))
                     ],
                   ),
                   child: Row(
@@ -371,7 +371,7 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
 
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                             backgroundImage: (avatar != null && avatar.isNotEmpty) ? CachedNetworkImageProvider(avatar) as ImageProvider : null,
                             child: (avatar == null || avatar.isEmpty) ? Text(userName[0], style: TextStyle(color: Theme.of(context).colorScheme.primary)) : null,
                           ),
@@ -430,15 +430,15 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: hasUnread ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.07) : Theme.of(context).cardColor,
+            color: hasUnread ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.75) : Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: hasUnread ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) : Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+            border: Border.all(color: hasUnread ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15) : Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), shape: BoxShape.circle),
                 padding: const EdgeInsets.all(10),
                 child: Icon(Icons.support_agent, color: Theme.of(context).colorScheme.primary, size: 24),
               ),
@@ -491,9 +491,9 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                           children: tags.map((t) => Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.75),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3)),
+                              border: Border.all(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.75)),
                             ),
                             child: Text(t, style: GoogleFonts.tajawal(fontSize: 9, color: Theme.of(context).colorScheme.secondary)),
                           )).toList(),
@@ -572,13 +572,13 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: unread > 0
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.07)
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.75)
               : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
               color: unread > 0
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
-                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
         ),
         child: Row(
           children: [
@@ -678,9 +678,9 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                         children: tags.map((t) => Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                            color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.75),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3)),
+                            border: Border.all(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.75)),
                           ),
                           child: Text(t, style: GoogleFonts.tajawal(fontSize: 9, color: Theme.of(context).colorScheme.secondary)),
                         )).toList(),
@@ -734,7 +734,7 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
       'تم',
       _showArchived ? 'تمت استعادة المحادثة' : 'تم أرشفة المحادثة',
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: primaryColor.withValues(alpha: 0.1),
+      backgroundColor: primaryColor.withValues(alpha: 0.15),
     );
   }
 
@@ -830,7 +830,7 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
               return ListTile(
                 leading: CircleAvatar(
                   radius: 24,
-                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                   child: Text(userName[0], style: TextStyle(color: Theme.of(context).colorScheme.primary)),
                 ),
                 title: Text(userName, style: GoogleFonts.tajawal(fontSize: 14, fontWeight: FontWeight.bold)),
@@ -875,7 +875,7 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                   await FirebaseFirestore.instance.collection('chats').doc(chatId).update({
                     'deletedBy': FieldValue.arrayRemove([currentUserId])
                   });
-                  Get.snackbar('تمت الاستعادة ♻️', 'عادت المحادثة لصندوق الرسائل', backgroundColor: Colors.green.withValues(alpha: 0.1));
+                  Get.snackbar('تمت الاستعادة ♻️', 'عادت المحادثة لصندوق الرسائل', backgroundColor: Colors.green.withValues(alpha: 0.15));
                 },
               ),
             ListTile(
@@ -886,12 +886,12 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                 Get.back();
                 if (_showDeleted) {
                   await FirebaseFirestore.instance.collection('chats').doc(chatId).delete();
-                  Get.snackbar('تم الحذف 🗑️', 'تم حذف المحادثة نهائياً', backgroundColor: errorColor.withValues(alpha: 0.1));
+                  Get.snackbar('تم الحذف 🗑️', 'تم حذف المحادثة نهائياً', backgroundColor: errorColor.withValues(alpha: 0.15));
                 } else {
                   await FirebaseFirestore.instance.collection('chats').doc(chatId).update({
                     'deletedBy': FieldValue.arrayUnion([currentUserId])
                   });
-                  Get.snackbar('تم النقل 📂', 'المحادثة موجودة الآن في سلة المحذوفات', backgroundColor: Colors.orange.withValues(alpha: 0.1));
+                  Get.snackbar('تم النقل 📂', 'المحادثة موجودة الآن في سلة المحذوفات', backgroundColor: Colors.orange.withValues(alpha: 0.15));
                 }
               },
             ),
@@ -907,7 +907,7 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.inbox_outlined,
-              size: 70, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3)),
+              size: 70, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75)),
           const SizedBox(height: 16),
           Text('لا توجد محادثات تؤدي لنتائج البحث',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
@@ -1089,7 +1089,7 @@ class _ChatAvatarResolver extends StatelessWidget {
   Widget _buildAvatar(BuildContext context, String imageUrl) {
     return CircleAvatar(
       radius: 24,
-      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
       backgroundImage: CachedNetworkImageProvider(imageUrl),
     );
   }
@@ -1098,7 +1098,7 @@ class _ChatAvatarResolver extends StatelessWidget {
     final letter = name.isNotEmpty ? name[0].toUpperCase() : '؟';
     return CircleAvatar(
       radius: 24,
-      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
       child: Text(
         letter,
         style: TextStyle(
@@ -1110,3 +1110,4 @@ class _ChatAvatarResolver extends StatelessWidget {
     );
   }
 }
+

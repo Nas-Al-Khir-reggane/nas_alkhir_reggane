@@ -21,6 +21,7 @@ class ServiceRequestModel {
   final bool isSeenByAdmin;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final List<Map<String, dynamic>> donorResponses; // [{name, phone, respondedAt, userId}]
 
   ServiceRequestModel({
     required this.id,
@@ -43,6 +44,7 @@ class ServiceRequestModel {
     this.isSeenByAdmin = false,
     required this.createdAt,
     required this.updatedAt,
+    this.donorResponses = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -67,6 +69,7 @@ class ServiceRequestModel {
       'isSeenByAdmin': isSeenByAdmin,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
+      'donorResponses': donorResponses,
     };
   }
 
@@ -103,6 +106,9 @@ class ServiceRequestModel {
           : (map['updated_at'] is Timestamp) 
               ? (map['updated_at'] as Timestamp).toDate() 
               : DateTime.now(),
+      donorResponses: (map['donorResponses'] ?? map['donor_responses']) != null 
+          ? List<Map<String, dynamic>>.from(map['donorResponses'] ?? map['donor_responses']) 
+          : const [],
     );
   }
 
@@ -127,6 +133,7 @@ class ServiceRequestModel {
     bool? isSeenByAdmin,
     DateTime? createdAt,
     DateTime? updatedAt,
+    List<Map<String, dynamic>>? donorResponses,
   }) {
     return ServiceRequestModel(
       id: id ?? this.id,
@@ -149,6 +156,8 @@ class ServiceRequestModel {
       isSeenByAdmin: isSeenByAdmin ?? this.isSeenByAdmin,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      donorResponses: donorResponses ?? this.donorResponses,
     );
   }
 }
+

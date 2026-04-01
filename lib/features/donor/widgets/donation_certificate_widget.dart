@@ -23,7 +23,7 @@ class DonationCertificateWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.backgroundColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.5), width: 2),
+        border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.75), width: 2),
         boxShadow: AppTheme.cardShadow,
       ),
       child: Stack(
@@ -33,7 +33,7 @@ class DonationCertificateWidget extends StatelessWidget {
             left: -30,
             child: Icon(Icons.mosque, 
               size: 200, 
-              color: AppTheme.primaryGreen.withValues(alpha: 0.05)
+              color: AppTheme.primaryGreen.withValues(alpha: 0.75)
             ),
           ),
           
@@ -143,7 +143,7 @@ class DonationCertificateWidget extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2)),
+                      border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.75)),
                     ),
                     child: const Icon(Icons.verified_user_outlined, color: AppTheme.primaryGreen, size: 35),
                   ),
@@ -164,3 +164,4 @@ class DonationCertificateWidget extends StatelessWidget {
     );
   }
 }
+

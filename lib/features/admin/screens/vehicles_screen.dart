@@ -41,8 +41,8 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
           decoration: BoxDecoration(
             color: AppTheme.surfaceColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-            border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.3), width: 1.5),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20)],
+            border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.75), width: 1.5),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.75), blurRadius: 20)],
           ),
           child: Form(
             key: formKey,
@@ -128,7 +128,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                             Get.back();
                             Get.snackbar("نجاح", "تمت إضافة السيارة بنجاح", 
                                 snackPosition: SnackPosition.BOTTOM, 
-                                backgroundColor: AppTheme.successColor.withValues(alpha: 0.8), 
+                                backgroundColor: AppTheme.successColor.withValues(alpha: 0.15), 
                                 colorText: Colors.white);
                           }
                         },
@@ -249,7 +249,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+              color: AppTheme.primaryGreen.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.airport_shuttle_rounded, color: AppTheme.primaryGreen),
@@ -265,7 +265,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.directions_car_filled_outlined, size: 80, color: AppTheme.textHint.withValues(alpha: 0.3)),
+            Icon(Icons.directions_car_filled_outlined, size: 80, color: AppTheme.textHint.withValues(alpha: 0.75)),
             const SizedBox(height: 16),
             Text("أسطول السيارات فارغ", style: TextStyle(color: AppTheme.textHint, fontSize: 16, fontWeight: FontWeight.bold)),
             Text("قم بإضافة سيارتك الأولى لتبدأ إدارة الأسطول", style: TextStyle(color: AppTheme.textHint.withValues(alpha: 0.7), fontSize: 12)),
@@ -286,10 +286,10 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
       decoration: BoxDecoration(
         color: AppTheme.cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: statusColor.withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(color: statusColor.withValues(alpha: 0.75), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: statusColor.withValues(alpha: isAvail ? 0.05 : 0.15),
+            color: statusColor.withValues(alpha: 0.75),
             blurRadius: 15,
             spreadRadius: 2,
           )
@@ -301,7 +301,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
           Positioned(
             left: -10,
             bottom: -15,
-            child: Icon(icon, size: 100, color: Colors.white.withValues(alpha: 0.03)),
+            child: Icon(icon, size: 100, color: Colors.white.withValues(alpha: 0.75)),
           ),
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -317,12 +317,12 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [statusColor.withValues(alpha: 0.2), statusColor.withValues(alpha: 0.05)],
+                              colors: [statusColor.withValues(alpha: 0.15), statusColor.withValues(alpha: 0.9)],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: statusColor.withValues(alpha: 0.5)),
+                            border: Border.all(color: statusColor.withValues(alpha: 0.75)),
                           ),
                           child: Icon(icon, color: statusColor, size: 24),
                         ),
@@ -341,7 +341,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                                   width: 8,
                                   height: 8,
                                   decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle, boxShadow: [
-                                    BoxShadow(color: statusColor.withValues(alpha: 0.5), blurRadius: 4, spreadRadius: 1)
+                                    BoxShadow(color: statusColor.withValues(alpha: 0.75), blurRadius: 4, spreadRadius: 1)
                                   ]),
                                 ),
                                 const SizedBox(width: 6),
@@ -388,9 +388,9 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: isAvail ? AppTheme.cardColor : AppTheme.successColor.withValues(alpha: 0.1),
+                      color: isAvail ? AppTheme.cardColor : AppTheme.successColor.withValues(alpha: 0.75),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isAvail ? AppTheme.glassBorder : AppTheme.successColor.withValues(alpha: 0.5)),
+                      border: Border.all(color: isAvail ? AppTheme.glassBorder : AppTheme.successColor.withValues(alpha: 0.75)),
                     ),
                     alignment: Alignment.center,
                     child: Row(
@@ -441,3 +441,4 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
     );
   }
 }
+

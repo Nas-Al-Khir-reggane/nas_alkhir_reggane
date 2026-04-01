@@ -16,6 +16,7 @@ class WorkerController extends GetxController {
 
   RxList<ServiceRequestModel> myTasks = <ServiceRequestModel>[].obs;
   RxList<ServiceRequestModel> completedTasks = <ServiceRequestModel>[].obs;
+  RxList<String> myProjectIds = <String>[].obs; // Projects assigned to this worker
   Rx<UserModel?> currentWorker = Rx<UserModel?>(null);
   RxBool isLoading = false.obs;
   RxBool isAvailable = true.obs;
@@ -24,6 +25,7 @@ class WorkerController extends GetxController {
   StreamSubscription? _myTasksSub;
   StreamSubscription? _completedTasksSub;
   StreamSubscription? _adminMessageSub;
+  StreamSubscription? _projectsSub;
 
   @override
   void onInit() {
@@ -31,13 +33,13 @@ class WorkerController extends GetxController {
     currentWorker.value = Get.find<AuthController>().currentUser.value;
     isAvailable.value = currentWorker.value?.isAvailable ?? true;
     loadMyTasks();
+    loadMyProjects();
     loadLastAdminMessage();
   }
 
   void loadMyTasks() {
     if (currentWorker.value == null) return;
 
-    // الطلبات الحالية
     _myTasksSub = _firestore
         .collection(AppConstants.serviceRequestsCollection)
         .where('assignedTo', isEqualTo: currentWorker.value?.id)
@@ -52,7 +54,6 @@ class WorkerController extends GetxController {
       }).toList();
     });
 
-    // الطلبات المنجزة
     _completedTasksSub = _firestore
         .collection(AppConstants.serviceRequestsCollection)
         .where('assignedTo', isEqualTo: currentWorker.value?.id)
@@ -64,6 +65,18 @@ class WorkerController extends GetxController {
         data['id'] = d.id;
         return ServiceRequestModel.fromMap(data);
       }).toList();
+    });
+  }
+
+  void loadMyProjects() {
+    if (currentWorker.value == null) return;
+    
+    _projectsSub = _firestore
+        .collection(AppConstants.projectsCollection)
+        .where('assignedWorkers', arrayContains: currentWorker.value?.id)
+        .snapshots()
+        .listen((snap) {
+      myProjectIds.value = snap.docs.map((d) => d.id).toList();
     });
   }
 
@@ -94,7 +107,7 @@ class WorkerController extends GetxController {
     Get.snackbar(
       newStatus ? '✅ أنت الآن متاح' : '⏸️ أنت الآن مشغول',
       newStatus ? 'ستصلك المهام الجديدة' : 'لن تُسند إليك مهام جديدة',
-      backgroundColor: (newStatus ? Get.theme.colorScheme.primary : Get.theme.colorScheme.error).withValues(alpha: 0.2),
+      backgroundColor: (newStatus ? Get.theme.colorScheme.primary : Get.theme.colorScheme.error).withValues(alpha: 0.15),
       colorText: newStatus ? Get.theme.colorScheme.primary : Get.theme.colorScheme.error,
     );
   }
@@ -104,6 +117,7 @@ class WorkerController extends GetxController {
     required String type,
     required String description,
     File? imageFile,
+    String? projectId, // Optional: if this update is linked to a project
   }) async {
     isLoading.value = true;
     try {
@@ -114,14 +128,30 @@ class WorkerController extends GetxController {
         imageUrl = await ref.getDownloadURL();
       }
 
-      await _firestore.collection(AppConstants.serviceRequestsCollection).doc(requestId).collection('updates').add({
+      final updateData = {
         'workerId': currentWorker.value?.id,
         'workerName': currentWorker.value?.name,
         'type': type,
         'description': description,
         'imageUrl': imageUrl,
+        'requestId': requestId,
+        'projectId': projectId,
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      };
+
+      // 1. Save to Request sub-collection
+      await _firestore.collection(AppConstants.serviceRequestsCollection).doc(requestId).collection('updates').add(updateData);
+
+      // 2. Save to Global updates for Projects (to be visible in Project details)
+      if (projectId != null || (projectId == null && myProjectIds.isNotEmpty)) {
+        // If not specified, we can try to find if this request is linked to a project 
+        // or just add it to the first project this worker is assigned to (for general updates)
+        final targetProjectId = projectId ?? (myProjectIds.isNotEmpty ? myProjectIds.first : null);
+        if (targetProjectId != null) {
+          updateData['projectId'] = targetProjectId;
+          await _firestore.collection('worker_updates').add(updateData);
+        }
+      }
 
       // تحديث آخر نشاط للعامل
       await _firestore.collection(AppConstants.usersCollection).doc(currentWorker.value?.id).update({
@@ -132,7 +162,9 @@ class WorkerController extends GetxController {
       await _notifyAdmin(requestId, type, description);
 
       Get.snackbar('✅ تم الإرسال', 'تم إرسال التحديث بنجاح',
-          backgroundColor: Get.theme.colorScheme.primary.withValues(alpha: 0.2), colorText: Get.theme.colorScheme.primary);
+          backgroundColor: Get.theme.colorScheme.primary.withValues(alpha: 0.15), colorText: Get.theme.colorScheme.primary);
+      
+      Get.back(); // Return from update screen
     } catch (e) {
       Get.snackbar('خطأ', 'فشل إرسال التحديث: ${e.toString()}');
     } finally {
@@ -165,25 +197,24 @@ class WorkerController extends GetxController {
       isAvailable.value = true;
       
       Get.snackbar('🎉 أحسنت!', 'تم إتمام المهمة بنجاح',
-          backgroundColor: Get.theme.colorScheme.primary.withValues(alpha: 0.2), colorText: Get.theme.colorScheme.primary);
+          backgroundColor: Get.theme.colorScheme.primary.withValues(alpha: 0.15), colorText: Get.theme.colorScheme.primary);
     } catch (e) {
       Get.snackbar('خطأ', 'فشل إنهاء المهمة: $e',
-          backgroundColor: Get.theme.colorScheme.error.withValues(alpha: 0.2), colorText: Get.theme.colorScheme.error);
+          backgroundColor: Get.theme.colorScheme.error.withValues(alpha: 0.15), colorText: Get.theme.colorScheme.error);
     }
   }
 
   // إحصائات
   int get currentTasksCount => myTasks.length;
   int get completedTasksCount => completedTasks.length;
-  double get completionRate => completedTasksCount + currentTasksCount > 0 
-      ? (completedTasksCount / (completedTasksCount + currentTasksCount)) * 100 
-      : 0;
 
   @override
   void onClose() {
     _myTasksSub?.cancel();
     _completedTasksSub?.cancel();
     _adminMessageSub?.cancel();
+    _projectsSub?.cancel();
     super.onClose();
   }
 }
+

@@ -9,7 +9,7 @@ class WorkerManagementController extends GetxController {
   // أدوار العمال
   static const List<Map<String, dynamic>> workerRoles = [
     {'id': 'funeral_driver', 'name': 'سائق نقل جنازة', 'icon': Icons.airport_shuttle, 'color': Color(0xFF4A148C)},
-    {'id': 'field_worker', 'name': 'عامل ميداني', 'icon': Icons.engineering, 'color': Color(0xFF1565C0)},
+    {'id': 'field_worker', 'name': 'متطوع ميداني', 'icon': Icons.engineering, 'color': Color(0xFF1565C0)},
     {'id': 'coordinator', 'name': 'منسق', 'icon': Icons.manage_accounts, 'color': Color(0xFF00695C)},
     {'id': 'volunteer', 'name': 'متطوع', 'icon': Icons.volunteer_activism, 'color': Color(0xFF2E7D32)},
     {'id': 'supervisor', 'name': 'مشرف', 'icon': Icons.supervisor_account, 'color': Color(0xFFE65100)},
@@ -86,12 +86,12 @@ class WorkerManagementController extends GetxController {
       });
       
       Get.back();
-      Get.snackbar('✅ تم', 'تم إضافة العامل بنجاح',
-        backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
+      Get.snackbar('✅ تم', 'تم إضافة المتطوع بنجاح',
+        backgroundColor: AppTheme.successColor.withValues(alpha: 0.15),
         colorText: AppTheme.successColor);
     } catch (e) {
-      Get.snackbar('خطأ', 'فشل إضافة العامل: $e',
-          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2));
+      Get.snackbar('خطأ', 'فشل إضافة المتطوع: $e',
+          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15));
     } finally {
       isLoading.value = false;
     }
@@ -103,7 +103,7 @@ class WorkerManagementController extends GetxController {
         ...data,
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      Get.snackbar('✅ تم', 'تم تحديث بيانات العامل');
+      Get.snackbar('✅ تم', 'تم تحديث بيانات المتطوع');
     } catch (e) {
       Get.snackbar('خطأ', 'حدث خطأ أثناء التحديث');
     }
@@ -158,3 +158,4 @@ class WorkerManagementController extends GetxController {
     super.onClose();
   }
 }
+

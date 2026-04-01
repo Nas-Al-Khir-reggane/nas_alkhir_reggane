@@ -57,7 +57,7 @@ class DonorController extends GetxController {
   void showCertificate() {
     if (totalDonated.value <= 0) {
       Get.snackbar('تنبيه', 'يجب أن تساهم في تبرع واحد على الأقل للحصول على شهادة.',
-          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.8),
+          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15),
           colorText: Colors.black);
       return;
     }
@@ -164,7 +164,7 @@ class DonorController extends GetxController {
 
   Color _getProjectColor(String id) {
     final int hash = id.hashCode;
-    return Color((hash & 0xFFFFFF) | 0xFF000000).withValues(alpha: 0.8);
+    return Color((hash & 0xFFFFFF) | 0xFF000000).withValues(alpha: 0.15);
   }
 
   void loadActiveProjects() {
@@ -236,3 +236,4 @@ class DonorController extends GetxController {
     super.onClose();
   }
 }
+

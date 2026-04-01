@@ -170,8 +170,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
         decoration: BoxDecoration(
           color: AppTheme.surfaceColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 15)],
+          border: Border.all(color: color.withValues(alpha: 0.75)),
+          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.75), blurRadius: 15)],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,7 +179,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(10)),
               child: Icon(icon, color: color, size: 24),
             ),
             const Spacer(),
@@ -245,7 +245,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             maxY: maxYValue,
             barTouchData: BarTouchData(
               touchTooltipData: BarTouchTooltipData(
-                getTooltipColor: (_) => AppTheme.backgroundColor.withValues(alpha: 0.9),
+                getTooltipColor: (_) => AppTheme.backgroundColor.withValues(alpha: 0.15),
                 getTooltipItem: (group, groupIndex, rod, rodIndex) {
                   return BarTooltipItem(
                     '${rod.toY.toInt()} د.ج',
@@ -364,7 +364,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.bar_chart_rounded, size: 50, color: AppTheme.textHint.withValues(alpha: 0.3)),
+            Icon(Icons.bar_chart_rounded, size: 50, color: AppTheme.textHint.withValues(alpha: 0.75)),
             const SizedBox(height: 10),
             Text('جاري جمع البيانات الكافية...', style: TextStyle(color: AppTheme.textHint, fontSize: 14, fontWeight: FontWeight.w500)),
           ],
@@ -463,7 +463,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(12)),
             child: const Icon(Icons.analytics_outlined, color: AppTheme.primaryGreen),
           ),
         ],
@@ -471,3 +471,4 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 }
+

@@ -48,7 +48,7 @@ class _GuestTrackingScreenState extends State<GuestTrackingScreen> {
 
     if (ref.isEmpty || phone.isEmpty) {
       Get.snackbar('تنبيه', 'يرجى إدخال الرقم المرجعي ورقم الهاتف للتتبع',
-          backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.2));
+          backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.15));
       return;
     }
 
@@ -66,7 +66,7 @@ class _GuestTrackingScreenState extends State<GuestTrackingScreen> {
 
       if (querySnapshot.docs.isEmpty) {
         Get.snackbar('عذراً', 'لم نتمكن من العثور على طلب بهذا الرقم المرجعي ورقم الهاتف.',
-            backgroundColor: errorColor.withValues(alpha: 0.2));
+            backgroundColor: errorColor.withValues(alpha: 0.15));
         return;
       }
 
@@ -80,7 +80,7 @@ class _GuestTrackingScreenState extends State<GuestTrackingScreen> {
       Get.toNamed('/beneficiary/request-status', arguments: requestModel);
     } catch (e) {
       Get.snackbar('خطأ', 'حدث خطأ أثناء البحث عن الطلب. يرجى المحاولة لاحقاً',
-          backgroundColor: errorColor.withValues(alpha: 0.2));
+          backgroundColor: errorColor.withValues(alpha: 0.15));
     } finally {
       if (mounted) setState(() => isTracking = false);
     }
@@ -106,7 +106,7 @@ class _GuestTrackingScreenState extends State<GuestTrackingScreen> {
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -115,7 +115,7 @@ class _GuestTrackingScreenState extends State<GuestTrackingScreen> {
                     width: 70,
                     height: 70,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(Icons.search, color: Theme.of(context).colorScheme.primary, size: 35),
@@ -184,3 +184,4 @@ class _GuestTrackingScreenState extends State<GuestTrackingScreen> {
     );
   }
 }
+

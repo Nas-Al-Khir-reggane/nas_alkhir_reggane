@@ -11,6 +11,7 @@ import '../../features/admin/screens/manage_service_types_screen.dart';
 import '../../features/admin/screens/manage_task_types_screen.dart';
 import '../../features/admin/screens/service_requests_screen.dart';
 import '../../features/admin/screens/request_detail_screen.dart';
+import '../../features/admin/screens/admin_request_loader.dart';
 import '../../features/admin/screens/projects_screen.dart';
 import '../../features/admin/screens/project_detail_screen.dart';
 import '../../features/admin/screens/workers_screen.dart';
@@ -34,6 +35,8 @@ import '../../features/guest/screens/guest_tracking_screen.dart';
 import '../../features/shared/screens/notifications_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../features/shared/screens/profile_screen.dart';
+import '../../features/shared/screens/blood_emergency_detail_screen.dart';
+import '../../features/shared/screens/blood_donor_profile_screen.dart';
 import '../../data/models/service_request_model.dart';
 import '../../data/models/project_model.dart';
 import '../../data/models/user_model.dart';
@@ -81,6 +84,8 @@ class AppRoutes {
   static const String chatPrivate = '/chat/private';
   static const String notifications = '/notifications';
   static const String profile = '/profile';
+  static const String bloodEmergency = '/blood-emergency';
+  static const String bloodDonorProfile = '/blood-donor-profile';
 
   static List<GetPage> getPages() {
     return _rawPages.map((page) {
@@ -123,9 +128,15 @@ class AppRoutes {
     GetPage(
       name: adminRequestDetail, 
       page: () {
-        final req = Get.arguments;
-        if (req is! ServiceRequestModel) return const Scaffold(body: Center(child: Text('خطأ في البيانات')));
-        return RequestDetailScreen(request: req);
+        final arg = Get.arguments;
+        if (arg is ServiceRequestModel) return RequestDetailScreen(request: arg);
+        if (arg is Map<String, dynamic> && arg.containsKey('requestId')) {
+          return AdminRequestLoader(
+            requestId: arg['requestId'],
+            isGuest: arg['isGuest'] == true,
+          );
+        }
+        return const Scaffold(body: Center(child: Text('خطأ في البيانات')));
       },
       middlewares: [AuthMiddleware()]
     ),
@@ -231,5 +242,8 @@ class AppRoutes {
     ),
     GetPage(name: notifications, page: () => const NotificationsScreen(), middlewares: [AuthMiddleware()]),
     GetPage(name: profile, page: () => const ProfileScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(name: bloodEmergency, page: () => const BloodEmergencyDetailScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(name: bloodDonorProfile, page: () => const BloodDonorProfileScreen(), middlewares: [AuthMiddleware()]),
   ];
 }
+

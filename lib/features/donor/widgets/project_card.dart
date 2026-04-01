@@ -54,11 +54,11 @@ class ProjectCard extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: Colors.teal.withValues(alpha: 0.9),
+                color: Colors.teal.withValues(alpha: 0.75),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.teal.withValues(alpha: 0.3),
+                    color: Colors.teal.withValues(alpha: 0.75),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -86,3 +86,4 @@ class ProjectCard extends StatelessWidget {
     );
   }
 }
+

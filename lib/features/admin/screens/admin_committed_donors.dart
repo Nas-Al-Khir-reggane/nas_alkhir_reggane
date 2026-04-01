@@ -57,7 +57,7 @@ class AdminCommittedDonors extends StatelessWidget {
                 decoration: AppTheme.glassDecoration,
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                    backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
                     child: Text(subscription.donorName[0], style: TextStyle(color: AppTheme.primaryGreen)),
                   ),
                   title: Text(subscription.donorName, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
@@ -72,7 +72,7 @@ class AdminCommittedDonors extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: isPaidThisMonth ? AppTheme.successColor.withValues(alpha: 0.2) : AppTheme.errorColor.withValues(alpha: 0.2),
+                          color: isPaidThisMonth ? AppTheme.successColor.withValues(alpha: 0.15) : AppTheme.errorColor.withValues(alpha: 0.75),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(isPaidThisMonth ? 'نشط' : 'متوقف', 
@@ -94,3 +94,4 @@ class AdminCommittedDonors extends StatelessWidget {
     return date.year == now.year && date.month == now.month;
   }
 }
+

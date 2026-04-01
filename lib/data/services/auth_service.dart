@@ -49,8 +49,7 @@ class AuthService {
       );
       if (result.user != null) {
         UserModel newUser = userData.copyWith(id: result.user!.uid);
-        await _firestore.collection(AppConstants.usersCollection).doc(newUser.id).set(newUser.toMap());
-        await _cacheUserModel(newUser);
+        await saveUserToFirestore(newUser);
         return newUser;
       }
     } catch (e) {
@@ -58,6 +57,12 @@ class AuthService {
       rethrow;
     }
     return null;
+  }
+
+  // حفظ بيانات المستخدم في Firestore (يدعم إكمال الملف المفقود)
+  Future<void> saveUserToFirestore(UserModel user) async {
+    await _firestore.collection(AppConstants.usersCollection).doc(user.id).set(user.toMap());
+    await saveCachedUserModel(user);
   }
 
   // تسجيل الخروج
@@ -73,21 +78,37 @@ class AuthService {
     User? user = _auth.currentUser;
     if (user != null) {
       try {
-        DocumentSnapshot doc = await _firestore.collection(AppConstants.usersCollection).doc(user.uid).get();
+        // إضافة مهلة زمنية 10 ثوانٍ لمنع التعليق اللانهائي
+        DocumentSnapshot doc = await _firestore
+            .collection(AppConstants.usersCollection)
+            .doc(user.uid)
+            .get()
+            .timeout(const Duration(seconds: 10));
+
         if (doc.exists) {
           final userModel = UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-          await _cacheUserModel(userModel);
+          await saveCachedUserModel(userModel);
           return userModel;
+        } else {
+          debugPrint("AuthService: User profile document NOT found in Firestore.");
+          return null; // الحساب موجود في Auth ولكن ملفه مفقود في Firestore
         }
       } catch (e) {
-        return await getCachedUserModel();
+        debugPrint("AuthService: Error fetching user data: $e");
+        // في حال فشل الإنترنت، نحاول جلب آخر نسخة مخزنة محلياً
+        final cached = await getCachedUserModel();
+        if (cached != null) {
+          debugPrint("AuthService: Returning cached user data due to network error.");
+          return cached;
+        }
+        rethrow; // نمرر الخطأ للأعلى ليتم التعامل معه في الواجهة كخطأ شبكة
       }
     }
     return null;
   }
 
   // الكاش المحلي للمستخدم لتجاوز انتظار الإنترنت باستخدام التخزين الآمن
-  Future<void> _cacheUserModel(UserModel user) async {
+  Future<void> saveCachedUserModel(UserModel user) async {
     final map = user.toMap();
     map['createdAt'] = user.createdAt.toIso8601String();
     if (user.lastActivity != null) {
@@ -139,3 +160,4 @@ class AuthService {
     });
   }
 }
+

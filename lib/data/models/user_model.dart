@@ -10,7 +10,7 @@ extension UserRoleExtension on UserRole {
       case UserRole.admin:
         return 'مدير';
       case UserRole.worker:
-        return 'عامل/متطوع';
+        return 'متطوع';
       case UserRole.donor:
         return 'متبرع';
       case UserRole.beneficiary:
@@ -36,9 +36,20 @@ class UserModel {
   final bool isApproved;
   final DateTime createdAt;
   final String? profileImage;
+  final String? bloodType; // حقل زمرة الدم الجديد
+  final bool receiveBloodAlerts; // خيار استقبال تنبيهات التبرع بالدم
+  final DateTime? lastDonatedAt; // تاريخ آخر تبرع بالدم
+  final bool isDonorAvailable; // هل المستخدم جاهز للتبرع حالياً؟
+  final int bloodDonationsCount; // عدد تبرعات الدم الناجحة ✨
+  final String? activeBloodRequestId; // ✨ معرف طلب الدم النشط للمتبرع
+  final bool? activeBloodRequestIsGuest; // ✨ هل الطلب يخص زائر؟
+  final String gender; // ✨ حقل الجنس
   
   // Worker specific fields
   final String? workerRole;
+  final List<String> volunteerServices; // قائمة الخدمات التطوعية المختارة ✨
+  final String? ghuslExpertise; // مستوى الخبرة في التغسيل (خبير/مساعد) ✨
+  final String? otherServices; // خدمات أخرى يدوية ✨
   final bool isAvailable;
   final bool isActive;
   final int completedTasks;
@@ -62,7 +73,15 @@ class UserModel {
     this.isApproved = false,
     required this.createdAt,
     this.profileImage,
+    this.bloodType,
+    this.receiveBloodAlerts = true,
+    this.lastDonatedAt,
+    this.isDonorAvailable = true,
+    this.bloodDonationsCount = 0,
     this.workerRole,
+    this.volunteerServices = const [],
+    this.ghuslExpertise,
+    this.otherServices,
     this.isAvailable = true,
     this.isActive = true,
     this.completedTasks = 0,
@@ -72,6 +91,9 @@ class UserModel {
     this.lastActivity,
     this.currentTasksCount = 0,
     this.notes,
+    this.activeBloodRequestId,
+    this.activeBloodRequestIsGuest,
+    this.gender = 'غير محدد',
   });
 
   Map<String, dynamic> toMap() {
@@ -88,7 +110,15 @@ class UserModel {
       'isApproved': isApproved,
       'createdAt': Timestamp.fromDate(createdAt),
       'profileImage': profileImage,
+      'bloodType': bloodType,
+      'receiveBloodAlerts': receiveBloodAlerts,
+      'lastDonatedAt': lastDonatedAt != null ? Timestamp.fromDate(lastDonatedAt!) : null,
+      'isDonorAvailable': isDonorAvailable,
+      'bloodDonationsCount': bloodDonationsCount,
       'workerRole': workerRole,
+      'volunteerServices': volunteerServices,
+      'ghuslExpertise': ghuslExpertise,
+      'otherServices': otherServices,
       'isAvailable': isAvailable,
       'isActive': isActive,
       'completedTasks': completedTasks,
@@ -98,6 +128,9 @@ class UserModel {
       'lastActivity': lastActivity != null ? Timestamp.fromDate(lastActivity!) : null,
       'currentTasksCount': currentTasksCount,
       'notes': notes,
+      'activeBloodRequestId': activeBloodRequestId,
+      'activeBloodRequestIsGuest': activeBloodRequestIsGuest,
+      'gender': gender,
     };
   }
 
@@ -127,7 +160,15 @@ class UserModel {
       isApproved: map['isApproved'] ?? false,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       profileImage: map['profileImage'],
+      bloodType: map['bloodType'],
+      receiveBloodAlerts: map['receiveBloodAlerts'] ?? true,
+      lastDonatedAt: (map['lastDonatedAt'] as Timestamp?)?.toDate(),
+      isDonorAvailable: map['isDonorAvailable'] ?? true,
+      bloodDonationsCount: map['bloodDonationsCount'] ?? 0,
       workerRole: map['workerRole'],
+      volunteerServices: List<String>.from(map['volunteerServices'] ?? []),
+      ghuslExpertise: map['ghuslExpertise'],
+      otherServices: map['otherServices'],
       isAvailable: map['isAvailable'] ?? true,
       isActive: map['isActive'] ?? true,
       completedTasks: map['completedTasks'] ?? 0,
@@ -137,6 +178,9 @@ class UserModel {
       lastActivity: (map['lastActivity'] as Timestamp?)?.toDate(),
       currentTasksCount: map['currentTasksCount'] ?? 0,
       notes: map['notes'],
+      activeBloodRequestId: map['activeBloodRequestId'],
+      activeBloodRequestIsGuest: map['activeBloodRequestIsGuest'],
+      gender: map['gender'] ?? 'غير محدد',
     );
   }
 
@@ -153,7 +197,15 @@ class UserModel {
     bool? isApproved,
     DateTime? createdAt,
     String? profileImage,
+    String? bloodType,
+    bool? receiveBloodAlerts,
+    DateTime? lastDonatedAt,
+    bool? isDonorAvailable,
+    int? bloodDonationsCount,
     String? workerRole,
+    List<String>? volunteerServices,
+    String? ghuslExpertise,
+    String? otherServices,
     bool? isAvailable,
     bool? isActive,
     int? completedTasks,
@@ -163,6 +215,9 @@ class UserModel {
     DateTime? lastActivity,
     int? currentTasksCount,
     String? notes,
+    String? activeBloodRequestId,
+    bool? activeBloodRequestIsGuest,
+    String? gender,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -177,7 +232,15 @@ class UserModel {
       isApproved: isApproved ?? this.isApproved,
       createdAt: createdAt ?? this.createdAt,
       profileImage: profileImage ?? this.profileImage,
+      bloodType: bloodType ?? this.bloodType,
+      receiveBloodAlerts: receiveBloodAlerts ?? this.receiveBloodAlerts,
+      lastDonatedAt: lastDonatedAt ?? this.lastDonatedAt,
+      isDonorAvailable: isDonorAvailable ?? this.isDonorAvailable,
+      bloodDonationsCount: bloodDonationsCount ?? this.bloodDonationsCount,
       workerRole: workerRole ?? this.workerRole,
+      volunteerServices: volunteerServices ?? this.volunteerServices,
+      ghuslExpertise: ghuslExpertise ?? this.ghuslExpertise,
+      otherServices: otherServices ?? this.otherServices,
       isAvailable: isAvailable ?? this.isAvailable,
       isActive: isActive ?? this.isActive,
       completedTasks: completedTasks ?? this.completedTasks,
@@ -187,6 +250,10 @@ class UserModel {
       lastActivity: lastActivity ?? this.lastActivity,
       currentTasksCount: currentTasksCount ?? this.currentTasksCount,
       notes: notes ?? this.notes,
+      activeBloodRequestId: activeBloodRequestId ?? this.activeBloodRequestId,
+      activeBloodRequestIsGuest: activeBloodRequestIsGuest ?? this.activeBloodRequestIsGuest,
+      gender: gender ?? this.gender,
     );
   }
 }
+

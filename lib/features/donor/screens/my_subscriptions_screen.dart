@@ -31,7 +31,7 @@ class MySubscriptionsScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.child_care_outlined, size: 80, color: AppTheme.textHint.withValues(alpha: 0.5)),
+                Icon(Icons.child_care_outlined, size: 80, color: AppTheme.textHint.withValues(alpha: 0.75)),
                 const SizedBox(height: 20),
                 Text('ليس لديك اشتراكات نشطة حالياً',
                     style: TextStyle(color: AppTheme.textHint, fontSize: 16)),
@@ -62,7 +62,7 @@ class MySubscriptionsScreen extends StatelessWidget {
                       leading: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                          color: AppTheme.primaryGreen.withValues(alpha: 0.75),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.volunteer_activism, color: AppTheme.primaryGreen),
@@ -84,7 +84,7 @@ class MySubscriptionsScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       width: double.infinity,
-                      color: AppTheme.primaryGreen.withValues(alpha: 0.05),
+                      color: AppTheme.primaryGreen.withValues(alpha: 0.75),
                       child: Row(
                         children: [
                           Icon(Icons.stars, color: _getMilestoneColor(monthsCompleted), size: 18),
@@ -203,3 +203,4 @@ class MySubscriptionsScreen extends StatelessWidget {
     );
   }
 }
+

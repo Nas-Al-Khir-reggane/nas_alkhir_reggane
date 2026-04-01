@@ -44,7 +44,7 @@ class CachedImageWidget extends StatelessWidget {
     return Container(
       width: width,
       height: height,
-      color: Colors.grey.withValues(alpha: 0.1),
+      color: Colors.grey.withValues(alpha: 0.75),
       child: const Center(
         child: SizedBox(
           width: 20,
@@ -59,10 +59,11 @@ class CachedImageWidget extends StatelessWidget {
     return Container(
       width: width,
       height: height,
-      color: Colors.grey.withValues(alpha: 0.2),
+      color: Colors.grey.withValues(alpha: 0.75),
       child: const Center(
         child: Icon(Icons.broken_image, color: Colors.grey),
       ),
     );
   }
 }
+

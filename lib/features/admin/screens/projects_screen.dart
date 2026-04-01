@@ -30,7 +30,7 @@ class ProjectsScreen extends StatelessWidget {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryGreen.withValues(alpha: 0.03),
+                color: AppTheme.primaryGreen.withValues(alpha: 0.75),
               ),
             ),
           ),
@@ -199,9 +199,9 @@ class ProjectsScreen extends StatelessWidget {
           ],
         ),
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: categoryColor.withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(color: categoryColor.withValues(alpha: 0.75), width: 1.5),
         boxShadow: [
-          BoxShadow(color: categoryColor.withValues(alpha: 0.2), blurRadius: 25, offset: const Offset(0, 10)),
+          BoxShadow(color: categoryColor.withValues(alpha: 0.75), blurRadius: 25, offset: const Offset(0, 10)),
         ],
       ),
       child: Column(
@@ -210,7 +210,7 @@ class ProjectsScreen extends StatelessWidget {
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [categoryColor.withValues(alpha: 0.3), categoryColor.withValues(alpha: 0.05)],
+                colors: [categoryColor.withValues(alpha: 0.15), categoryColor.withValues(alpha: 0.9)],
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
               ),
@@ -221,9 +221,9 @@ class ProjectsScreen extends StatelessWidget {
                 Container(
                   width: 52, height: 52,
                   decoration: BoxDecoration(
-                    color: categoryColor.withValues(alpha: 0.2),
+                    color: categoryColor.withValues(alpha: 0.75),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: categoryColor.withValues(alpha: 0.4)),
+                    border: Border.all(color: categoryColor.withValues(alpha: 0.75)),
                   ),
                   child: Icon(cat['icon'] as IconData, color: categoryColor, size: 28),
                 ),
@@ -498,9 +498,9 @@ class ProjectsScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: color.withValues(alpha: 0.75),
               shape: BoxShape.circle,
-              border: Border.all(color: color.withValues(alpha: 0.3)),
+              border: Border.all(color: color.withValues(alpha: 0.75)),
             ),
             child: Icon(icon, color: color, size: 28),
           ),
@@ -547,3 +547,4 @@ class _ArcProgressPainter extends CustomPainter {
   @override
   bool shouldRepaint(_ArcProgressPainter old) => old.progress != progress;
 }
+

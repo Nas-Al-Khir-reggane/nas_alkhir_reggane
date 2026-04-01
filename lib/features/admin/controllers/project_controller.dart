@@ -16,6 +16,7 @@ import '../../../core/constants/app_constants.dart';
 import 'package:intl/intl.dart';
 import '../../../data/services/offline_queue_service.dart';
 import '../../../data/services/connectivity_service.dart';
+import '../../../data/services/notification_service.dart';
 
 class ProjectController extends GetxController {
   RxList<ProjectModel> allProjects = <ProjectModel>[].obs;
@@ -98,7 +99,7 @@ class ProjectController extends GetxController {
       
       Get.back(); // إغلاق الصفحة أولاً
       Get.snackbar('💾 تم الحفظ', 'سيتم نشر المشروع عند استعادة الاتصال',
-          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2),
+          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15),
           colorText: AppTheme.warningColor, 
           snackPosition: SnackPosition.BOTTOM,
           margin: const EdgeInsets.all(12),
@@ -108,11 +109,22 @@ class ProjectController extends GetxController {
 
     try {
       isLoading.value = true;
-      await _repository.addProject(data);
+      final docRef = await _repository.addProject(data);
+      
+      // إرسال إشعار عام للجميع بالمشروع الجديد
+      await NotificationService.notifyAll(
+        type: 'new_project',
+        title: '🌿 مشروع خيري جديد: $name',
+        body: 'ساهم معنا في [$name]. $description',
+        data: {
+          'projectId': docRef.id,
+          'category': category,
+        },
+      );
       
       Get.back(); // إغلاق الصفحة أولاً
       Get.snackbar('✅ تم', 'تم إضافة المشروع بنجاح',
-          backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
+          backgroundColor: AppTheme.successColor.withValues(alpha: 0.15),
           colorText: AppTheme.successColor,
           snackPosition: SnackPosition.BOTTOM,
           margin: const EdgeInsets.all(12),
@@ -120,7 +132,7 @@ class ProjectController extends GetxController {
           duration: const Duration(seconds: 4));
     } catch (e) {
       Get.snackbar('خطأ', 'فشل إضافة المشروع: $e',
-          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2),
+          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15),
           colorText: AppTheme.errorColor);
     } finally {
       isLoading.value = false;
@@ -134,14 +146,14 @@ class ProjectController extends GetxController {
       queueData['updatedAt'] = '__serverTimestamp__';
       await _queue.enqueue(collection: AppConstants.projectsCollection, operation: 'update', data: queueData, docId: id);
       Get.snackbar('💾 تم الحفظ', 'سيتم تطبيق التعديل عند استعادة الاتصال',
-          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2),
+          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15),
           colorText: AppTheme.warningColor, snackPosition: SnackPosition.BOTTOM);
       return;
     }
     try {
       await _repository.updateProject(id, updateData);
       Get.snackbar('✅ تم التحديث', 'تم حفظ التعديلات بنجاح',
-          backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
+          backgroundColor: AppTheme.successColor.withValues(alpha: 0.15),
           colorText: AppTheme.successColor,
           snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
@@ -161,14 +173,14 @@ class ProjectController extends GetxController {
     if (!_connectivity.isOnline.value) {
       await _queue.enqueue(collection: AppConstants.projectsCollection, operation: 'delete', data: {}, docId: id);
       Get.snackbar('💾 تم الحفظ', 'سيتم حذف المشروع عند استعادة الاتصال',
-          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2),
+          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15),
           colorText: AppTheme.warningColor, snackPosition: SnackPosition.BOTTOM);
       return;
     }
     try {
       await _repository.deleteProject(id);
       Get.snackbar('🗑️ تم الحذف', 'تم حذف المشروع',
-          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2),
+          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15),
           colorText: AppTheme.errorColor);
     } catch (e) {
       Get.snackbar('خطأ', 'فشل حذف المشروع: $e');
@@ -179,7 +191,7 @@ class ProjectController extends GetxController {
     try {
       await _repository.assignWorkerToProject(projectId, workerId);
     } catch (e) {
-      Get.snackbar('خطأ', 'فشل إسناد العامل: $e');
+      Get.snackbar('خطأ', 'فشل إسناد المتطوع: $e');
     }
   }
 
@@ -187,7 +199,7 @@ class ProjectController extends GetxController {
     try {
       await _repository.unassignWorkerFromProject(projectId, workerId);
     } catch (e) {
-      Get.snackbar('خطأ', 'فشل إزالة العامل: $e');
+      Get.snackbar('خطأ', 'فشل إزالة المتطوع: $e');
     }
   }
 
@@ -283,3 +295,4 @@ ${project.description}
     super.onClose();
   }
 }
+

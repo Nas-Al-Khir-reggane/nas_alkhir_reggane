@@ -23,7 +23,7 @@ class PendingApprovalScreen extends StatelessWidget {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
               ),
             ),
           ),
@@ -35,7 +35,7 @@ class PendingApprovalScreen extends StatelessWidget {
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
               ),
             ),
           ),
@@ -86,7 +86,7 @@ class PendingApprovalScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                       ),
                       child: Row(
                         children: [
@@ -174,3 +174,4 @@ class PendingApprovalScreen extends StatelessWidget {
     );
   }
 }
+

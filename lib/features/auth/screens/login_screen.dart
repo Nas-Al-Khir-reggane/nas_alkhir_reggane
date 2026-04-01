@@ -72,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
               ),
             ),
           ),
@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
               ),
             ),
           ),
@@ -131,10 +131,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: BoxDecoration(
                         color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                         boxShadow: [
                           BoxShadow(
-                            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+                            color: Theme.of(context).shadowColor.withValues(alpha: 0.75),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -278,8 +278,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       icon: const Icon(Icons.person_outline),
                       label: const Text('طلب خدمة بدون تسجيل'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
-                        side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)),
+                        foregroundColor: Theme.of(context).colorScheme.primary,
+                        side: BorderSide(color: Theme.of(context).colorScheme.primary),
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         textStyle: const TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold),
@@ -295,7 +295,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       label: const Text('تتبع طلب زائر'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
-                        side: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
+                        side: BorderSide(color: Theme.of(context).colorScheme.outline),
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         textStyle: const TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold),
@@ -334,7 +334,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 authController.resetPassword(email);
                 Get.back();
               } else {
-                Get.snackbar('تنبيه', 'يرجى إدخال بريد إلكتروني صالح', backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.2));
+                Get.snackbar('تنبيه', 'يرجى إدخال بريد إلكتروني صالح', backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.15));
               }
             },
           ),
@@ -343,3 +343,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

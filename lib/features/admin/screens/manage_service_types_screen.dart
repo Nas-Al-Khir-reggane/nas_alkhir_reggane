@@ -117,7 +117,7 @@ class ManageServiceTypesScreen extends StatelessWidget {
                         leading: Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                            color: AppTheme.primaryGreen.withValues(alpha: 0.75),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: AppTheme.glassBorder),
                           ),
@@ -217,7 +217,7 @@ class ManageServiceTypesScreen extends StatelessWidget {
                   });
                   Get.back();
                   Get.snackbar('✅ تم', 'تمت إضافة نوع الخدمة بنجاح', 
-                    backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
+                    backgroundColor: AppTheme.successColor.withValues(alpha: 0.15),
                     colorText: AppTheme.successColor);
                 },
                 loadingWidget: const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen)),
@@ -230,3 +230,4 @@ class ManageServiceTypesScreen extends StatelessWidget {
     );
   }
 }
+

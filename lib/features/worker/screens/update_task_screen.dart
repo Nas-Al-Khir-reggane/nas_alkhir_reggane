@@ -50,7 +50,7 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
   void _submitUpdate() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedRequest == null) {
-        Get.snackbar('تنبيه', 'يرجى اختيار المهمة', backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.2));
+        Get.snackbar('تنبيه', 'يرجى اختيار المهمة', backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.15));
         return;
       }
 
@@ -87,7 +87,7 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
               Text('اختر المهمة', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
               const SizedBox(height: 8),
               Obx(() => Container(
-                decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14), border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1))),
+                decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14), border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75))),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<ServiceRequestModel>(
@@ -127,9 +127,9 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
-                        color: isSelected ? type['color'].withValues(alpha: 0.2) : Theme.of(context).cardColor,
+                        color: isSelected ? type['color'].withValues(alpha: 0.75) : Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: isSelected ? type['color'] : Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                        border: Border.all(color: isSelected ? type['color'] : Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -166,7 +166,7 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1), style: BorderStyle.solid),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75), style: BorderStyle.solid),
                   ),
                   child: _imageFile != null
                       ? Stack(
@@ -216,3 +216,4 @@ class _UpdateTaskScreenState extends State<UpdateTaskScreen> {
     );
   }
 }
+

@@ -42,6 +42,12 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
   final TextEditingController deceasedNameController = TextEditingController();
   final TextEditingController pickupLocationController = TextEditingController();
   final TextEditingController burialLocationController = TextEditingController();
+  
+  // Funeral Washing Specific ✨
+  String? deceasedGender;
+  final TextEditingController washingLocationController = TextEditingController();
+  final TextEditingController suppliesController = TextEditingController();
+  
   Set<String> selectedSubOptions = {};
 
   final Map<String, List<String>> _serviceSubOptions = {
@@ -59,11 +65,12 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
     'سقي الماء': ['المساهمة في بئر', 'توصيل شبكة مياه', 'تعبئة صهريج ماء', 'مبرد ماء لمسجد'],
     'حملة دفء الشتاء': ['أغطية (بطانيات)', 'ملابس شتوية', 'مدفأة كهربائية/غاز', 'ترميم سقف'],
     'كسوة العيد والفقراء': ['ملابس أطفال', 'ملابس كبار', 'أحذية'],
-    'صدقات موسمية (هلالات/زكاة)': ['زكاة الفطر', 'زكاة المال', 'فدية صيام', 'أضحية العيد'],
-    'تجهيز بيوت المحتاجين': ['ثلاجة', 'غسالة', 'أفرشة/زرابي', 'أواني مطبخ'],
-    'نقل المرضى (إسعاف)': ['داخل الولاية', 'خارج الولاية', 'نقل مريض غسيل كلوي'],
     'تفريج كربة (مالي)': ['إيجار متأخر', 'ديون صيدلية', 'ديون بقالة', 'فاتورة كهرباء/ماء'],
     'مساعدات مالية': ['إيجار متأخر', 'ديون صيدلية', 'ديون بقالة', 'فاتورة كهرباء/ماء'],
+    'إغاثة بقطرة دم': ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
+    'التبرع بالدم': ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
+    'تغسيل الموتى': ['كفن كامل شامل', 'أدوات غسل فقط', 'لا أحتاج (متوفرة)', 'أحتاج متطوع فقط'],
+    'نقل الجنائز': ['توفير سيارة إسعاف', 'سيارة نقل موتى جنائز', 'لا أحتاج (متوفرة)'],
   };
 
   final List<String> stepLabels = ['معلوماتك', 'الخدمة', 'التأكيد'];
@@ -77,6 +84,8 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
     deceasedNameController.dispose();
     pickupLocationController.dispose();
     burialLocationController.dispose();
+    washingLocationController.dispose();
+    suppliesController.dispose();
     super.dispose();
   }
 
@@ -105,11 +114,27 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
         'details': {},
       };
 
-      if (selectedService!.id == 'funeral_transport') {
+      if (selectedService!.id == 'funeral_transport' || selectedService!.name == 'نقل الجنائز') {
         requestData['details'] = {
           'deceasedName': deceasedNameController.text,
           'pickupLocation': pickupLocationController.text,
           'burialLocation': burialLocationController.text,
+        };
+      } else if (selectedService!.id == 'funeral_ghusl' || selectedService!.name == 'تغسيل الموتى') {
+        requestData['details'] = {
+          'deceasedGender': deceasedGender ?? '',
+          'washingLocation': washingLocationController.text,
+          'supplies': selectedSubOptions.join('، '),
+        };
+      } else if (selectedService!.id == 'blood_donation' || selectedService!.name.contains('دم')) {
+        // إذا كان طلب تبرع بالدم، نضع الفصيلة في حقل خاص ليتعرف عليها النظام
+        final bloodType = selectedSubOptions.firstWhere((opt) => 
+          ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].contains(opt), orElse: () => '');
+        
+        requestData['details'] = {
+          'فصيلة الدم': bloodType,
+          'المستشفى': addressController.text, // كافتراض للزوار، أو يمكنهم كتابتها في الملاحظات
+          'رقم التواصل': normalizedPhone,
         };
       }
 
@@ -143,7 +168,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
 
       Get.offNamed('/guest/success', arguments: {'refNumber': refNumber, 'phone': normalizedPhone});
     } catch (e) {
-      Get.snackbar('خطأ', 'فشل إرسال الطلب: $e', backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2));
+      Get.snackbar('خطأ', 'فشل إرسال الطلب: $e', backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15));
     } finally {
       setState(() => isLoading = false);
     }
@@ -230,12 +255,12 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
             child: Container(
               padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 30),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceColor.withValues(alpha: 0.85),
+                color: AppTheme.surfaceColor.withValues(alpha: 0.75),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2), width: 1.5),
+                border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.75), width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: (Get.isDarkMode ? Colors.black : Colors.grey).withValues(alpha: 0.2),
+                    color: (Get.isDarkMode ? Colors.black : Colors.grey).withValues(alpha: 0.75),
                     blurRadius: 20,
                     offset: const Offset(0, -5),
                   )
@@ -252,14 +277,14 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                         margin: const EdgeInsets.only(bottom: 20),
                         padding: const EdgeInsets.all(12),
                         decoration: AppTheme.glassDecoration.copyWith(
-                          color: AppTheme.textPrimary.withValues(alpha: 0.05),
+                          color: AppTheme.textPrimary.withValues(alpha: 0.75),
                           border: Border.all(color: AppTheme.glassBorder, width: 0.5),
                         ),
                         child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
+                              decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.75), shape: BoxShape.circle),
                               child: Icon(AppConstants.getIconFromName(selectedService!.icon), color: AppTheme.primaryGreen, size: 20),
                             ),
                             const SizedBox(width: 12),
@@ -304,14 +329,25 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                               text: 'التالي',
                               icon: Icons.arrow_forward_rounded,
                               onPressed: () {
-                                if (selectedService!.id == 'funeral_transport') {
+                                if (selectedService!.id == 'funeral_transport' || selectedService!.name == 'نقل الجنائز') {
                                   if (deceasedNameController.text.isEmpty || pickupLocationController.text.isEmpty || burialLocationController.text.isEmpty) {
-                                    Get.snackbar('تنبيه', 'يرجى ملء جميع معلومات الدفن والنقل', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+                                    Get.snackbar('تنبيه', 'يرجى ملء جميع معلومات الدفن والنقل', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15));
                                     return;
                                   }
                                 }
-                                if (selectedService!.id != 'funeral_transport' && descriptionController.text.isEmpty && selectedSubOptions.isEmpty) {
-                                  Get.snackbar('تنبيه', 'يرجى وصف الطلب أو تحديد نوع المساعدة', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+                                if (selectedService!.id == 'funeral_ghusl' || selectedService!.name == 'تغسيل الموتى') {
+                                  if (deceasedGender == null || washingLocationController.text.isEmpty) {
+                                    Get.snackbar('تنبيه', 'يرجى اختيار جنس المتوفى ومكان الغسل', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15));
+                                    return;
+                                  }
+                                }
+                                if (selectedService!.id != 'funeral_transport' && 
+                                    selectedService!.name != 'نقل الجنائز' &&
+                                    selectedService!.id != 'funeral_ghusl' && 
+                                    selectedService!.name != 'تغسيل الموتى' &&
+                                    descriptionController.text.isEmpty && 
+                                    selectedSubOptions.isEmpty) {
+                                  Get.snackbar('تنبيه', 'يرجى وصف الطلب أو تحديد نوع المساعدة', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15));
                                   return;
                                 }
                                 setState(() => currentStep = 3);
@@ -431,7 +467,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                 setState(() => currentStep = 2);
               } else {
                 Get.snackbar('تنبيه', 'يرجى ملء جميع الحقول واختيار الولاية والبلدية', 
-                  backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+                  backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15));
               }
             }
           ),
@@ -531,13 +567,13 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                   child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.cardColor,
+                        color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.75) : AppTheme.cardColor,
                         borderRadius: BorderRadius.circular(15),
                         border: Border.all(
                           color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder,
                           width: isSelected ? 2 : 1
                         ),
-                        boxShadow: isSelected ? [BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.2), blurRadius: 10)] : null,
+                        boxShadow: isSelected ? [BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.75), blurRadius: 10)] : null,
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -589,17 +625,22 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                 _buildSummaryRow('البلدية', selectedCommune ?? ''),
                 _buildSummaryRow('الخدمة', selectedService?.name ?? ''),
                 _buildSummaryRow('الاستعجال', selectedUrgency == 'normal' ? 'عادي' : selectedUrgency == 'urgent' ? 'عاجل' : 'طوارئ'),
-                if (selectedService?.id == 'funeral_transport') ...[
+                if (selectedService?.id == 'funeral_transport' || selectedService?.name == 'نقل الجنائز') ...[
                   _buildSummaryRow('المتوفى', deceasedNameController.text),
                   _buildSummaryRow('مكان النقل', pickupLocationController.text),
                   _buildSummaryRow('الوجهة/المقبرة', burialLocationController.text),
+                ],
+                if (selectedService?.id == 'funeral_ghusl' || selectedService?.name == 'تغسيل الموتى') ...[
+                  _buildSummaryRow('جنس المتوفى', deceasedGender ?? ''),
+                  _buildSummaryRow('مكان الغسل', washingLocationController.text),
+                  _buildSummaryRow('المستلزمات', selectedSubOptions.join('، ')),
                 ],
               ],
             ),
           ),
           const SizedBox(height: 16),
           Container(
-            decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14), border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.3))),
+            decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(14), border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.75))),
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
@@ -685,9 +726,9 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceColor.withValues(alpha: 0.88),
+                  color: AppTheme.surfaceColor.withValues(alpha: 0.75),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                  border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2), width: 1.5),
+                  border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.75), width: 1.5),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -717,7 +758,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                       icon: Icons.send_rounded,
                       onPressed: () async {
                         if (guestNameCtrl.text.isEmpty || guestPhoneCtrl.text.isEmpty) {
-                          Get.snackbar('تنبيه', 'يرجى إدخال الاسم ورقم الهاتف', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+                          Get.snackbar('تنبيه', 'يرجى إدخال الاسم ورقم الهاتف', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15));
                           return;
                         }
                         
@@ -732,10 +773,12 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                         }
                         
                         try {
+                          final currentUid = FirebaseAuth.instance.currentUser?.uid ?? chatId;
                           await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
                           'type': 'guest',
                           'guestName': guestNameCtrl.text,
                           'guestPhone': normalizedPhone,
+                          'participants': FieldValue.arrayUnion([currentUid, 'support']),
                           'lastMessage': 'محادثة جديدة من زائر',
                           'lastMessageAt': FieldValue.serverTimestamp(),
                           'createdAt': FieldValue.serverTimestamp(),
@@ -785,7 +828,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                         Get.snackbar(
                           'تم ✅',
                           'سيتواصل معك المدير على رقم $normalizedPhone',
-                          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
                           duration: const Duration(seconds: 4),
                         );
                       },
@@ -813,9 +856,9 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceColor.withValues(alpha: 0.8),
+                  color: AppTheme.surfaceColor.withValues(alpha: 0.75),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                  border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2), width: 1.5),
+                  border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.75), width: 1.5),
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -826,7 +869,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                         child: Container(
                           width: 40,
                           height: 4,
-                          decoration: BoxDecoration(color: AppTheme.textHint.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
+                          decoration: BoxDecoration(color: AppTheme.textHint.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(2)),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -834,7 +877,7 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                         children: [
                           Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
+                            decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.75), shape: BoxShape.circle),
                             child: Icon(AppConstants.getIconFromName(service.icon), color: AppTheme.primaryGreen, size: 24),
                           ),
                           const SizedBox(width: 12),
@@ -860,6 +903,24 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                         _buildModalField('مكان التواجد (مستشفى، منزل...) *', Icons.location_on_outlined, pickupLocationController),
                         const SizedBox(height: 16),
                         _buildModalField('الوجهة (المقبرة أو مكان آخر) *', Icons.account_balance_outlined, burialLocationController),
+                      ] else if (service.id == 'funeral_ghusl' || service.name == 'تغسيل الموتى') ...[
+                        Text('جنس المتوفى *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            _buildGenderChip(setModalState, 'ذكر', Icons.male_rounded),
+                            const SizedBox(width: 12),
+                            _buildGenderChip(setModalState, 'أنثى', Icons.female_rounded),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        _buildModalField('مكان الغسل (المنزل، المسجد، المستشفى) *', Icons.location_on_outlined, washingLocationController),
+                        const SizedBox(height: 20),
+                        if (_serviceSubOptions.containsKey(service.name)) ...[
+                           Text('المستلزمات المطلوبة (اختياري)', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.bold)),
+                           const SizedBox(height: 12),
+                           _buildSubOptionsChips(service.name, setModalState),
+                        ],
                       ] else ...[
                         if (_serviceSubOptions.containsKey(service.name)) ...[
                           Text('حدد نوع المساعدة المطلوبة *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.bold)),
@@ -872,8 +933,8 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
                               return ChoiceChip(
                                 label: Text(option),
                                 selected: isSelected,
-                                selectedColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
-                                backgroundColor: AppTheme.textPrimary.withValues(alpha: 0.05),
+                                selectedColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                                backgroundColor: AppTheme.textPrimary.withValues(alpha: 0.15),
                                 labelStyle: TextStyle(
                                   color: isSelected ? AppTheme.primaryGreen : AppTheme.textPrimary,
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -944,10 +1005,67 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
           maxLines: maxLines,
           style: TextStyle(color: AppTheme.textPrimary),
           decoration: AppTheme.inputDecoration(label, icon).copyWith(
-            fillColor: AppTheme.textPrimary.withValues(alpha: 0.03),
+            fillColor: AppTheme.textPrimary.withValues(alpha: 0.15),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildGenderChip(Function setModalState, String gender, IconData icon) {
+    final isSelected = deceasedGender == gender;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setModalState(() => deceasedGender = gender),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.75) : AppTheme.cardColor,
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder, width: isSelected ? 2 : 1),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: isSelected ? AppTheme.primaryGreen : AppTheme.textHint, size: 18),
+              const SizedBox(width: 8),
+              Text(gender, style: TextStyle(color: isSelected ? AppTheme.textPrimary : AppTheme.textHint, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubOptionsChips(String serviceName, Function setModalState) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: _serviceSubOptions[serviceName]!.map((option) {
+        final isSelected = selectedSubOptions.contains(option);
+        return ChoiceChip(
+          label: Text(option),
+          selected: isSelected,
+          selectedColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
+          backgroundColor: AppTheme.textPrimary.withValues(alpha: 0.15),
+          labelStyle: TextStyle(
+            color: isSelected ? AppTheme.primaryGreen : AppTheme.textPrimary,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 12,
+          ),
+          side: BorderSide(color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder),
+          onSelected: (selected) {
+            setModalState(() {
+              if (selected) {
+                selectedSubOptions.add(option);
+              } else {
+                selectedSubOptions.remove(option);
+              }
+            });
+          },
+        );
+      }).toList(),
     );
   }
 
@@ -961,10 +1079,10 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
           margin: const EdgeInsets.symmetric(horizontal: 4),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? color.withValues(alpha: 0.15) : AppTheme.textPrimary.withValues(alpha: 0.03),
+            color: isSelected ? color.withValues(alpha: 0.15) : AppTheme.textPrimary.withValues(alpha: 0.75),
             borderRadius: BorderRadius.circular(15),
             border: Border.all(color: isSelected ? color : AppTheme.glassBorder, width: isSelected ? 2 : 1),
-            boxShadow: isSelected ? [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 10)] : null,
+            boxShadow: isSelected ? [BoxShadow(color: color.withValues(alpha: 0.75), blurRadius: 10)] : null,
           ),
           child: Column(
             children: [
@@ -978,3 +1096,4 @@ class _GuestRequestScreenState extends State<GuestRequestScreen> {
     );
   }
 }
+

@@ -143,7 +143,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: showFilters.value
-                            ? AppTheme.primaryGreen.withValues(alpha: 0.15)
+                            ? AppTheme.primaryGreen.withValues(alpha: 0.75)
                             : AppTheme.surfaceColor,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
@@ -229,9 +229,9 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [AppTheme.primaryGreen.withValues(alpha: 0.1), AppTheme.primaryGreen.withValues(alpha: 0.05)]),
+                      gradient: LinearGradient(colors: [AppTheme.primaryGreen.withValues(alpha: 0.15), AppTheme.primaryGreen.withValues(alpha: 0.9)]),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.3)),
+                      border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.75)),
                     ),
                     child: Row(
                       children: [
@@ -294,7 +294,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                                 ids.add(doc.id);
                               }
                             }
-                            return _buildFilterChip('العامل', selectedWorker, names, ids);
+                            return _buildFilterChip('المتطوع', selectedWorker, names, ids);
                           },
                         ),
                         if (anyFilterActive)
@@ -345,7 +345,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                              color: AppTheme.primaryGreen.withValues(alpha: 0.75),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
@@ -454,9 +454,9 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: value.value == 'all' ? AppTheme.cardColor : AppTheme.primaryGreen.withValues(alpha: 0.2),
+              color: value.value == 'all' ? AppTheme.cardColor : AppTheme.primaryGreen.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: value.value == 'all' ? Colors.grey.withValues(alpha: 0.1) : AppTheme.primaryGreen),
+              border: Border.all(color: value.value == 'all' ? Colors.grey.withValues(alpha: 0.75) : AppTheme.primaryGreen),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -497,7 +497,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inbox_outlined, size: 80, color: AppTheme.textHint.withValues(alpha: 0.3)),
+          Icon(Icons.inbox_outlined, size: 80, color: AppTheme.textHint.withValues(alpha: 0.75)),
           const SizedBox(height: 16),
           Text('لا توجد طلبات حالياً', style: TextStyle(color: AppTheme.textHint, fontSize: 16)),
         ],
@@ -562,7 +562,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
           },
           background: Container(
             decoration: BoxDecoration(
-              color: AppTheme.errorColor.withValues(alpha: 0.2),
+              color: AppTheme.errorColor.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(20),
             ),
             padding: const EdgeInsets.only(right: 20),
@@ -592,7 +592,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                        color: AppTheme.primaryGreen.withValues(alpha: 0.75),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(AppConstants.getServiceIcon(request.typeName.isNotEmpty ? request.typeName : request.type), color: AppTheme.primaryGreen, size: 20),
@@ -673,7 +673,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                               }
                               return CircleAvatar(
                                 radius: 10,
-                                backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                                backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
                                 backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? CachedNetworkImageProvider(imageUrl) as ImageProvider : null,
                                 child: (imageUrl == null || imageUrl.isEmpty)
                                   ? Text(request.assignedToName![0], style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 10))
@@ -747,7 +747,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(8)),
       child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
     );
   }
@@ -758,7 +758,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(10)),
         child: FittedBox(
           fit: BoxFit.scaleDown,
           child: Row(
@@ -792,14 +792,14 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                   width: 40,
                   height: 4,
                   margin: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
-              Text('اختر العامل', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                  decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(2))),
+              Text('اختر المتطوع', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: TextField(
                   style: TextStyle(color: AppTheme.textPrimary),
                   decoration: InputDecoration(
-                    hintText: 'ابحث عن عامل...',
+                    hintText: 'ابحث عن متطوع...',
                     hintStyle: TextStyle(color: AppTheme.textHint),
                     prefixIcon: Icon(Icons.search, color: AppTheme.primaryGreen),
                     filled: true,
@@ -828,7 +828,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
 
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                            backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
                             backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? CachedNetworkImageProvider(imageUrl) as ImageProvider : null,
                             child: (imageUrl == null || imageUrl.isEmpty)
                               ? Text(worker['name'][0], style: const TextStyle(color: AppTheme.primaryGreen))
@@ -947,3 +947,4 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
     );
   }
 }
+

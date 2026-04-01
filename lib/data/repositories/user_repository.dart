@@ -42,3 +42,4 @@ class UserRepository {
         .map((snapshot) => snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList());
   }
 }
+

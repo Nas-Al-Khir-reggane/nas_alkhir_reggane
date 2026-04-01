@@ -13,6 +13,7 @@ import '../../../data/models/user_model.dart';
 import '../../../data/models/vehicle_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../core/utils/app_error_handler.dart';
+import '../../../data/services/notification_service.dart';
 
 class AdminController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -110,10 +111,17 @@ class AdminController extends GetxController {
       final serviceTypes = [
         {
           'id': 'funeral_transport',
-          'name': 'إكرام الموتى',
-          'icon': 'mosque',
+          'name': 'إكرام الموتى (نقل)',
+          'icon': 'airport_shuttle',
           'isActive': true,
           'fields': ['اسم المتوفى', 'مكان الاستلام', 'مكان التسليم', 'التاريخ والوقت'],
+        },
+        {
+          'id': 'funeral_ghusl',
+          'name': 'تغسيل الموتى',
+          'icon': 'wash',
+          'isActive': true,
+          'fields': ['جنس المتوفى', 'مكان الغسل', 'المستلزمات المطلوبة', 'رقم هاتف المنسق'],
         },
         {
           'id': 'food_aid',
@@ -239,7 +247,10 @@ class AdminController extends GetxController {
         });
       }
 
-      Get.snackbar('✅ تمت التهيئة', 'تم تحديث الأيقونات والمسميات بنجاح',
+      // تهيئة إعدادات الإصدار والتحديث
+      await initializeVersionConfig(silent: true);
+
+      Get.snackbar('✅ تمت التهيئة', 'تم تحديث الأيقونات والمسميات وإعدادات التحديث بنجاح',
           backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
           colorText: AppTheme.successColor);
 
@@ -251,7 +262,6 @@ class AdminController extends GetxController {
     }
   }
 
-  // باقي الكود كما هو...
   void listenToUrgentRequests() {
     // الاستماع لطلبات الأعضاء
     _urgentRequestsSub = _firestore
@@ -317,7 +327,6 @@ class AdminController extends GetxController {
   Future<void> loadStats() async {
     try {
       // Prefer cached aggregate stats to avoid loading all donations.
-      // This doc is maintained by donation creation flows in-app.
       try {
         final statsDoc = await _firestore.collection('stats').doc('global').get();
         if (statsDoc.exists && (statsDoc.data() as Map<String, dynamic>).containsKey('totalDonations') && (statsDoc.data() as Map<String, dynamic>)['totalDonations'] > 0) {
@@ -449,13 +458,20 @@ class AdminController extends GetxController {
       for (int i = 5; i >= 0; i--) {
         final month = DateTime(now.year, now.month - i, 1);
         final nextMonth = DateTime(now.year, now.month - i + 1, 1);
-        final snap = await _firestore.collection(AppConstants.donationsCollection)
-          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(month))
-          .where('date', isLessThan: Timestamp.fromDate(nextMonth))
-          .get();
-        double total = 0;
-        for (var doc in snap.docs) { total += (doc.data()['amount'] ?? 0).toDouble(); }
-        sixMonthsData.add({'month': monthNames[month.month - 1], 'amount': total / 1000});
+        
+        try {
+          final snap = await _firestore.collection(AppConstants.donationsCollection)
+            .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(month))
+            .where('date', isLessThan: Timestamp.fromDate(nextMonth))
+            .get();
+          
+          double total = 0;
+          for (var doc in snap.docs) { total += (doc.data()['amount'] ?? 0).toDouble(); }
+          sixMonthsData.add({'month': monthNames[month.month - 1], 'amount': total / 1000});
+        } catch (e) {
+          debugPrint('Error fetching donations for month ${month.month}: $e');
+          sixMonthsData.add({'month': monthNames[month.month - 1], 'amount': 0.0});
+        }
       }
       donationsLastSixMonths.value = sixMonthsData;
 
@@ -482,12 +498,14 @@ class AdminController extends GetxController {
       final total = typeCounts.values.fold(0, (a, b) => a + b);
       final colors = [Colors.blue, Colors.green, Colors.red, Colors.orange, Colors.purple, Colors.teal];
       int colorIndex = 0;
-      serviceTypeDistribution.value = typeCounts.entries.map((e) => {
-        'name': AppConstants.translateServiceType(e.key),
-        'count': e.value,
-        'color': colors[colorIndex++ % colors.length],
-        'percentage': total > 0 ? ((e.value / total) * 100).toInt() : 0,
-      }).toList();
+      serviceTypeDistribution.value = typeCounts.isEmpty 
+          ? [] 
+          : typeCounts.entries.map((e) => {
+               'name': e.key, 
+               'count': e.value,
+               'color': colors[colorIndex++ % colors.length],
+               'percentage': total > 0 ? ((e.value / total) * 100).toInt() : 0,
+             }).toList();
 
       final startOfMonth = DateTime(now.year, now.month, 1);
       final monthSnap = await _firestore.collection(AppConstants.serviceRequestsCollection)
@@ -519,9 +537,18 @@ class AdminController extends GetxController {
 
     } catch (e) {
       debugPrint('Error loading chart data: $e');
-      donationsLastSixMonths.value = List.generate(6, (i) => {'month': 'شهر ${i+1}', 'amount': 0.0});
-      serviceTypeDistribution.value = [{'name': 'لا يوجد', 'count': 1, 'color': Colors.grey, 'percentage': 100}];
-      monthlyRequests.value = List.generate(30, (i) => {'day': i + 1, 'count': 0});
+      if (donationsLastSixMonths.isEmpty) {
+        donationsLastSixMonths.value = List.generate(6, (i) {
+          final m = DateTime(DateTime.now().year, DateTime.now().month - (5-i), 1);
+          return {'month': ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'][m.month-1], 'amount': 0.0};
+        });
+      }
+      if (serviceTypeDistribution.isEmpty) {
+        serviceTypeDistribution.value = [];
+      }
+      if (monthlyRequests.isEmpty) {
+        monthlyRequests.value = List.generate(DateTime.now().day, (i) => {'day': i + 1, 'count': 0});
+      }
     }
   }
 
@@ -561,7 +588,7 @@ class AdminController extends GetxController {
         'status': 'in_progress',
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      await _sendNotificationToUser(workerId, 'مهمة جديدة', 'تم إسناد طلب خدمة إليك');
+      await _sendNotificationToUser(workerId, 'مهمة جديدة', 'تم إسناد طلب خدمة إليك', type: 'request_update', data: {'requestId': requestId});
       Get.snackbar('تم الإسناد', 'تم إسناد المهمة بنجاح');
     } catch (e) {
       Get.snackbar('خطأ', e.toString());
@@ -578,9 +605,7 @@ class AdminController extends GetxController {
         'assignedCarId': vehicleId,
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      await _firestore.collection(AppConstants.vehiclesCollection).doc(vehicleId).update({
-        'isAvailable': false,
-      });
+      // إشعار للمسؤول عن السيارة
       Get.snackbar('تم الإسناد', 'تم تخصيص السيارة للطلب');
     } catch (e) {
       Get.snackbar('خطأ', 'فشل إسناد السيارة: $e');
@@ -590,18 +615,86 @@ class AdminController extends GetxController {
   Future<void> updateRequestStatus(String id, String status, {bool isGuest = false}) async {
     try {
       String collection = isGuest ? 'guest_requests' : AppConstants.serviceRequestsCollection;
+      
+      final doc = await _firestore.collection(collection).doc(id).get();
+      if (!doc.exists) return;
+      final data = doc.data() as Map<String, dynamic>;
+
       await _firestore.collection(collection).doc(id).update({
         'status': status,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
+      if (status == 'completed' || status == 'rejected' || status == 'cancelled') {
+        // ✨ إلغاء التتبع الحي لجميع من استجاب لهذا الطلب
+        final responses = data['donorResponses'] ?? [];
+        final batch = _firestore.batch();
+        for (var response in responses) {
+          final uId = response['userId'];
+          if (uId != null) {
+            batch.update(_firestore.collection(AppConstants.usersCollection).doc(uId), {
+              'activeBloodRequestId': FieldValue.delete(),
+              'activeBloodRequestIsGuest': FieldValue.delete(),
+            });
+          }
+        }
+        await batch.commit();
+
+        // تحديث الكائن المحلي إذا كان المستخدم الحالي أحد المستجيبين
+        final currentUserId = _authController.currentUser.value?.id;
+        if (currentUserId != null && responses.any((r) => r['userId'] == currentUserId)) {
+          final user = _authController.currentUser.value!;
+          final map = user.toMap();
+          map.remove('activeBloodRequestId');
+          map.remove('activeBloodRequestIsGuest');
+          _authController.currentUser.value = UserModel.fromMap(map, user.id);
+          _authController.currentUser.refresh();
+        }
+      }
+
       if (status == 'completed') {
-        var doc = await _firestore.collection(collection).doc(id).get();
-        String? vehicleId = doc.data()?['assignedCarId'];
+        String? vehicleId = data['assignedCarId'];
         if (vehicleId != null) {
           await _firestore.collection(AppConstants.vehiclesCollection).doc(vehicleId).update({'isAvailable': true});
         }
+
+        // تحديث إحصائيات المتبرع إذا كان الطلب تبرع بالدم
+        final String serviceType = data['type'] ?? '';
+        String? donorId = data['assignedTo'];
+        
+        final List<dynamic> responsesData = data['donorResponses'] ?? [];
+        if ((donorId == null || donorId.isEmpty) && responsesData.isNotEmpty) {
+           donorId = responsesData.first['userId'];
+           await _firestore.collection(collection).doc(id).update({'assignedTo': donorId});
+        }
+
+        if ((serviceType == 'blood_donation' || serviceType == 'blood_emergency' || data['typeName']?.toString().contains('الدم') == true) && donorId != null && donorId.isNotEmpty) {
+            await confirmDonation(donorId);
+          }
+        }
+        if (!isGuest && data['requesterId'] != null) {
+        String title = 'تحديث حالة الطلب';
+        String body = '';
+        String serviceName = data['typeName'] ?? 'الخدمة';
+        if (status == 'in_progress') {
+          body = 'تم البدء في تنفيذ طلبك ($serviceName)';
+        } else if (status == 'completed') {
+          body = 'تم الانتهاء من تنفيذ طلبك ($serviceName)';
+        } else if (status == 'rejected') {
+          body = 'نأسف، تم رفض طلبك ($serviceName)';
+        } else {
+          body = 'تم تحديث حالة طلبك ($serviceName) إلى $status';
+        }
+
+        await NotificationService.sendNotification(
+          userId: data['requesterId'],
+          type: 'request_update',
+          title: title,
+          body: body,
+          data: {'requestId': id}
+        );
       }
+
       Get.snackbar('تم التحديث', 'تم تغيير حالة الطلب بنجاح');
     } catch (e) {
       Get.snackbar('خطأ', e.toString());
@@ -611,6 +704,38 @@ class AdminController extends GetxController {
   Future<void> deleteRequest(String id, {bool isGuest = false}) async {
     try {
       String collection = isGuest ? 'guest_requests' : AppConstants.serviceRequestsCollection;
+      
+      // ✨ إلغاء التتبع الحي للمتبرعين المستجيبين قبل حذف الطلب
+      final doc = await _firestore.collection(collection).doc(id).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final responses = data['donorResponses'] ?? [];
+        if (responses.isNotEmpty) {
+          final batch = _firestore.batch();
+          for (var response in responses) {
+            final uId = response['userId'];
+            if (uId != null) {
+              batch.update(_firestore.collection(AppConstants.usersCollection).doc(uId), {
+                'activeBloodRequestId': FieldValue.delete(),
+                'activeBloodRequestIsGuest': FieldValue.delete(),
+              });
+            }
+          }
+          await batch.commit();
+          
+          // تحديث الكائن المحلي إذا كان المستخدم الحالي أحدهم
+          final currentUserId = _authController.currentUser.value?.id;
+          if (currentUserId != null && responses.any((r) => r['userId'] == currentUserId)) {
+            final user = _authController.currentUser.value!;
+            final map = user.toMap();
+            map.remove('activeBloodRequestId');
+            map.remove('activeBloodRequestIsGuest');
+            _authController.currentUser.value = UserModel.fromMap(map, user.id);
+            _authController.currentUser.refresh();
+          }
+        }
+      }
+
       await _firestore.collection(collection).doc(id).delete();
       Get.snackbar('🗑️ تم الحذف', 'تم حذف الطلب نهائياً',
           backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2),
@@ -663,15 +788,15 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> _sendNotificationToUser(String userId, String title, String body) async {
+  Future<void> _sendNotificationToUser(String userId, String title, String body, {String type = 'system', Map<String, dynamic>? data}) async {
     try {
-      await _firestore.collection('notifications').add({
-        'userId': userId,
-        'title': title,
-        'body': body,
-        'isRead': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      await NotificationService.sendNotification(
+        userId: userId,
+        type: type,
+        title: title,
+        body: body,
+        data: data,
+      );
     } catch (e) {
       debugPrint('Error sending notification: $e');
     }
@@ -688,4 +813,473 @@ class AdminController extends GetxController {
       Get.snackbar('خطأ', 'حدث خطأ: $e', backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2));
     }
   }
+
+  // تهيئة إعدادات تحديث التطبيق
+  Future<void> initializeVersionConfig({bool silent = false}) async {
+    isLoading.value = true;
+    try {
+      await _firestore.collection('config').doc('version').set({
+        'currentVersion': '1.0.0',
+        'buildNumber': 1,
+        'minVersion': '1.0.0',
+        'forceUpdate': false,
+        'updateUrl': 'https://play.google.com/store/apps/details?id=com.nasalkheir.reggane',
+        'title': 'تحديث جديد متوفر',
+        'message': 'يرجى تحديث التطبيق للحصول على آخر المميزات والتحسينات.',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!silent) {
+        Get.snackbar('✅ تم التفعيل', 'تم تهيئة إعدادات تحديث التطبيق بنجاح',
+            backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
+            colorText: AppTheme.successColor);
+      }
+    } catch (e) {
+      if (!silent) {
+        Get.snackbar('❌ خطأ', 'فشل تهيئة إعدادات التحديث: $e',
+            backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2),
+            colorText: AppTheme.errorColor);
+      }
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // استرجاع الفصائل المتوافقة طبياً (من يمكنه التبرع للمريض)
+  List<String> getCompatibleDonors(String patientType) {
+    switch (patientType) {
+      case 'A+': return ['A+', 'A-', 'O+', 'O-'];
+      case 'A-': return ['A-', 'O-'];
+      case 'B+': return ['B+', 'B-', 'O+', 'O-'];
+      case 'B-': return ['B-', 'O-'];
+      case 'AB+': return ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+      case 'AB-': return ['AB-', 'A-', 'B-', 'O-'];
+      case 'O+': return ['O+', 'O-'];
+      case 'O-': return ['O-'];
+      default: return [patientType];
+    }
+  }
+
+  // إرسال تنبيه مستهدف للمتبرعين بالدم
+  Future<void> sendTargetedBloodAlert({
+    required String bloodType,
+    required String requestId,
+    required String hospital,
+    required String phone,
+    String? targetWilaya,
+    String? targetCommune,
+    bool isGuest = false,
+  }) async {
+    try {
+      isLoading.value = true;
+      
+      List<String> compatibleTypes = getCompatibleDonors(bloodType);
+      
+      Query query = _firestore.collection(AppConstants.usersCollection)
+          .where('bloodType', whereIn: compatibleTypes);
+
+      final usersSnap = await query.get();
+
+      String? cleanWilaya;
+      if (targetWilaya != null && targetWilaya != 'all' && targetWilaya.isNotEmpty) {
+        cleanWilaya = targetWilaya.contains(' - ') ? targetWilaya.split(' - ')[1] : targetWilaya;
+      }
+
+      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
+      
+      final validDonors = usersSnap.docs.where((doc) {
+        final userData = doc.data() as Map<String, dynamic>;
+
+        if (userData['isApproved'] != true) return false;
+        if (userData['receiveBloodAlerts'] != true) return false;
+        if (userData['isDonorAvailable'] != true) return false;
+
+        if (cleanWilaya != null) {
+          final userWilaya = userData['wilaya'] as String? ?? '';
+          if (userWilaya != targetWilaya && userWilaya != cleanWilaya) return false;
+        }
+
+        if (targetCommune != null && targetCommune != 'all' && targetCommune.isNotEmpty) {
+          final userCommune = userData['commune'] as String? ?? '';
+          if (userCommune != targetCommune) return false;
+        }
+
+        if (userData['lastDonatedAt'] != null) {
+          final lastDonation = (userData['lastDonatedAt'] as Timestamp).toDate();
+          if (lastDonation.isAfter(thirtyDaysAgo)) return false;
+        }
+
+        return true;
+      }).toList();
+
+      if (validDonors.isEmpty) {
+        Get.snackbar('تنبيه', 'لا يوجد متبرعون متوافقون ومتاحون في النطاق الجغرافي المحدد حالياً.',
+          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2),
+          colorText: AppTheme.warningColor,
+          duration: const Duration(seconds: 5));
+        return;
+      }
+
+      String title = '🩸 نداء إنساني عاجل: فصيلة $bloodType مطلوبة';
+      String body = 'أخي في الله، أنت ممن يمكنهم إنقاذ حياة مريض بحاجة لفصيلة $bloodType في $hospital. كن أنت الأمل المتجدد وساهم في إحياء نفس.';
+
+      int count = 0;
+      for (var doc in validDonors) {
+        if (doc.id == _authController.currentUser.value?.id) continue;
+
+        await NotificationService.sendNotification(
+          userId: doc.id,
+          type: 'blood_emergency',
+          title: title,
+          body: body,
+          data: {
+            'requestId': requestId,
+            'bloodType': bloodType,
+            'hospital': hospital,
+            'phone': phone,
+            'isGuest': isGuest.toString(),
+            'type': 'blood_emergency'
+          }
+        );
+        count++;
+      }
+
+      if (count > 0) {
+        Get.snackbar('✅ تم الإرسال', 'تم إرسال نداء الاستغاثة إلى $count متبرع متوافق وجاهز بنجاح',
+            backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
+            colorText: AppTheme.successColor,
+            duration: const Duration(seconds: 5));
+      }
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'فشل إرسال التنبيهات: $e',
+          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2),
+          colorText: AppTheme.errorColor);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // تسجيل استجابة المتبرع لنداء استغاثة
+  Future<void> respondToBloodAlert({
+    required String requestId,
+    required String donorName,
+    required String donorPhone,
+    bool isGuest = false,
+  }) async {
+    try {
+      String collection = isGuest ? 'guest_requests' : AppConstants.serviceRequestsCollection;
+      final docRef = _firestore.collection(collection).doc(requestId);
+      
+      final docSnap = await docRef.get();
+      if (docSnap.exists) {
+        final data = docSnap.data() as Map<String, dynamic>;
+        final List<dynamic> existingResponses = data['donorResponses'] ?? [];
+        final currentUserId = _authController.currentUser.value?.id;
+        
+        if (existingResponses.any((r) => r['userId'] == currentUserId)) {
+          return; 
+        }
+      }
+      
+      await docRef.update({
+        'donorResponses': FieldValue.arrayUnion([{
+          'userName': donorName,
+          'userPhone': donorPhone,
+          'respondedAt': Timestamp.now(),
+          'userId': _authController.currentUser.value?.id,
+        }])
+      });
+
+      final currentUserId = _authController.currentUser.value?.id;
+      if (currentUserId != null) {
+        await _firestore.collection(AppConstants.usersCollection).doc(currentUserId).update({
+          'activeBloodRequestId': requestId,
+          'activeBloodRequestIsGuest': isGuest,
+        });
+        
+        final user = _authController.currentUser.value;
+        if (user != null) {
+           _authController.currentUser.value = user.copyWith(
+             activeBloodRequestId: requestId,
+             activeBloodRequestIsGuest: isGuest,
+           );
+           _authController.currentUser.refresh();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error recording donor response: $e');
+    }
+  }
+
+  // إرسال إشعار تشجيعي للمتبرعين الآخرين عند استجابة أحدهم
+  Future<void> notifyOtherDonors({
+    required String requestId,
+    required String bloodType,
+    required String hospital,
+    required String respondingDonorId,
+    bool isGuest = false,
+  }) async {
+    try {
+      final String collection = isGuest ? 'guest_requests' : AppConstants.serviceRequestsCollection;
+      final doc = await _firestore.collection(collection).doc(requestId).get();
+      if (!doc.exists) return;
+      final data = doc.data() as Map<String, dynamic>;
+
+      final String? targetWilaya = data['wilaya'];
+      final String? targetCommune = data['commune'];
+
+      List<String> compatibleTypes = getCompatibleDonors(bloodType);
+      Query query = _firestore.collection(AppConstants.usersCollection)
+          .where('bloodType', whereIn: compatibleTypes)
+          .where('isApproved', isEqualTo: true)
+          .where('receiveBloodAlerts', isEqualTo: true)
+          .where('isDonorAvailable', isEqualTo: true);
+
+      final usersSnap = await query.get();
+
+      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
+      for (var doc in usersSnap.docs) {
+        final userId = doc.id;
+        if (userId == respondingDonorId) continue;
+
+        final userData = doc.data() as Map<String, dynamic>;
+        final lastDonated = (userData['lastDonatedAt'] as Timestamp?)?.toDate();
+        if (lastDonated != null && lastDonated.isAfter(thirtyDaysAgo)) continue;
+
+        await NotificationService.sendNotification(
+          userId: userId,
+          type: 'blood_encouragement',
+          title: '🩸 بشرى سارة - فرصة ذهبية للخير!',
+          body: 'أبشر! استجاب أحد المتبرعين الكرام لنداء فصيلة ($bloodType). من يرغب في التبرع لاحتياط $hospital فلا يضيع الفرصة، فتبرعك اليوم قد ينقذ روحاً أخرى غداً. ﴿وَمَنْ أَحْيَاهَا فَكَأَنَّمَا أَحْيَا النَّاسَ جَمِيعًا﴾',
+          data: {
+            'requestId': requestId,
+            'bloodType': bloodType,
+            'hospital': hospital,
+            'isGuest': isGuest.toString(),
+            'type': 'blood_encouragement',
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint('Error sending motivational notifications: $e');
+    }
+  }
+
+  // تأكيد متبرع محدد للقيام بالمهمة
+  Future<void> confirmDonor({
+    required String requestId,
+    required String donorId,
+    required String donorName,
+    bool isGuest = false,
+  }) async {
+    try {
+      isLoading.value = true;
+      String collection = isGuest ? 'guest_requests' : AppConstants.serviceRequestsCollection;
+      
+      await _firestore.collection(collection).doc(requestId).update({
+        'assignedTo': donorId,
+        'assignedToName': donorName,
+        'status': 'in_progress',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      final reqDoc = await _firestore.collection(collection).doc(requestId).get();
+      final reqData = reqDoc.data() as Map<String, dynamic>? ?? {};
+      final bloodType = reqData['details']?['فصيلة الدم'] ?? reqData['details']?['bloodType'] ?? '';
+      final hospital = reqData['details']?['المستشفى'] ?? reqData['details']?['hospital'] ?? '';
+      final contactPhone = reqData['details']?['رقم التواصل'] ?? reqData['phone'] ?? '';
+      
+      await NotificationService.sendNotification(
+        userId: donorId,
+        type: 'donor_confirmed',
+        title: '✅ تم اختيارك للمساعدة',
+        body: 'جزاك الله خيراً، تم اختيارك لتوفير فصيلة ($bloodType) في $hospital. يرجى التوجه للموقع.',
+        data: {
+          'requestId': requestId,
+          'bloodType': bloodType,
+          'hospital': hospital,
+          'phone': contactPhone,
+          'isGuest': isGuest.toString(),
+        },
+      );
+
+      if (!isGuest && reqData['requesterId'] != null) {
+        await NotificationService.sendNotification(
+          userId: reqData['requesterId'],
+          type: 'request_update',
+          title: '🚑 المساعدة في الطريق!',
+          body: 'بشرى سارة! المتبرع $donorName في طريقه إليك لتوفير الدم المطلوب.',
+          data: {'requestId': requestId},
+        );
+      }
+
+      Get.snackbar('✅ تم التأكيد', 'تم إسناد المهمة للمتبرع $donorName بنجاح',
+        backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
+        colorText: AppTheme.successColor);
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل تأكيد المتبرع: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // إرسال إعلان عام لجميع المستخدمين
+  Future<void> sendGlobalAnnouncement({
+    required String title,
+    required String body,
+  }) async {
+    isLoading.value = true;
+    try {
+      final usersSnap = await _firestore.collection(AppConstants.usersCollection)
+          .where('isApproved', isEqualTo: true)
+          .get();
+
+      int count = 0;
+      final batch = _firestore.batch();
+
+      for (var doc in usersSnap.docs) {
+        final notifRef = _firestore.collection('notifications').doc();
+        batch.set(notifRef, {
+          'userId': doc.id,
+          'type': 'announcement',
+          'title': title,
+          'body': body,
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        count++;
+      }
+
+      await batch.commit();
+
+      Get.snackbar('✅ تم الإرسال', 'تم إرسال الإعلان إلى $count مستخدم بنجاح',
+          backgroundColor: AppTheme.successColor.withValues(alpha: 0.15),
+          colorText: AppTheme.successColor);
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'فشل إرسال الإعلان: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // تحديث إعدادات التبرع للمستخدم الحالي
+  Future<void> updateUserDonorSettings({bool? receiveAlerts, bool? isAvailable}) async {
+    try {
+      final user = _authController.currentUser.value;
+      if (user == null) return;
+
+      Map<String, dynamic> updates = {};
+      if (receiveAlerts != null) updates['receiveBloodAlerts'] = receiveAlerts;
+      if (isAvailable != null) updates['isDonorAvailable'] = isAvailable;
+
+      if (updates.isEmpty) return;
+
+      await _firestore.collection(AppConstants.usersCollection).doc(user.id).update(updates);
+      
+      _authController.currentUser.value = user.copyWith(
+        receiveBloodAlerts: receiveAlerts ?? user.receiveBloodAlerts,
+        isDonorAvailable: isAvailable ?? user.isDonorAvailable,
+      );
+
+      Get.snackbar('✅ تم التحديث', 'تم حفظ التعديلات بنجاح', 
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppTheme.successColor.withValues(alpha: 0.15),
+        colorText: AppTheme.successColor);
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'فشل تحديث الإعدادات');
+    }
+  }
+
+  // تأكيد إتمام عملية التبرع وتحديث العداد
+  Future<void> confirmDonation(String userId) async {
+    try {
+      final userDoc = await _firestore.collection(AppConstants.usersCollection).doc(userId).get();
+      if (!userDoc.exists) return;
+
+      final data = userDoc.data()!;
+      final currentCount = data['bloodDonationsCount'] ?? 0;
+
+      await _firestore.collection(AppConstants.usersCollection).doc(userId).update({
+        'bloodDonationsCount': currentCount + 1,
+        'lastDonatedAt': FieldValue.serverTimestamp(),
+        'isDonorAvailable': false,
+      });
+
+      await NotificationService.sendNotification(
+        userId: userId,
+        type: 'donation_confirmed',
+        title: 'بارك الله فيك! ❤️',
+        body: 'تم تسجيل تبرعك بنجاح. شكراً لإنقاذك حياة إنسان.',
+        data: {'newCount': (currentCount + 1).toString()}
+      );
+    } catch (e) {
+      debugPrint('ConfirmDonation Error: $e');
+    }
+  }
+
+  Future<void> updateUserRole(String userId, String newRole) async {
+    try {
+      await _firestore.collection(AppConstants.usersCollection).doc(userId).update({
+        'role': newRole,
+      });
+      Get.snackbar('تم التحديث', 'تم تغيير رتبة المستخدم إلى $newRole');
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل تحديث الرتبة: $e');
+    }
+  }
+
+  Future<void> seedDefaultServices() async {
+    isLoading.value = true;
+    try {
+      final snapshot = await _firestore.collection('service_types').get();
+      final existingNames = snapshot.docs.map((doc) => doc['name'] as String).toList();
+      
+      final Map<String, List<String>> defaultFields = {
+        'نقل الجنائز': ['اسم المتوفى', 'مكان الوفاة', 'الوجهة المقصودة', 'رقم هاتف الأهل'],
+        'تغسيل الموتى': ['اسم المتوفى', 'جنس المتوفى', 'مكان الغسل', 'المستلزمات', 'رقم هاتف الأهل'],
+        'مساعدات غذائية': ['عدد أفراد الأسرة', 'العنوان بالتفصيل', 'الحالة الاجتماعية'],
+        'مساعدات مالية': ['المبلغ المطلوب تقريباً', 'السبب', 'رقم الهاتف'],
+        'مساعدة طبية': ['نوع المساعدة', 'اسم المستشفى', 'رقم الملف الطبي'],
+        'تعليم وكفالة أيتام': ['عدد الأيتام', 'المستوى الدراسي', 'العنوان'],
+        'بناء وتعمير': ['نوع العمل', 'العنوان', 'مساحة المسكن'],
+      };
+
+      int addedCount = 0;
+      for (String serviceName in AppConstants.defaultServiceTypes) {
+        if (!existingNames.contains(serviceName)) {
+          String icon = 'category';
+          if (serviceName.contains('جنازة') || serviceName.contains('جنائز')) icon = 'mosque';
+          if (serviceName.contains('غسل')) icon = 'waves';
+          if (serviceName.contains('طبية')) icon = 'hospital';
+          if (serviceName.contains('غذائية')) icon = 'shopping_basket';
+          if (serviceName.contains('مالية')) icon = 'payments';
+          
+          await _firestore.collection('service_types').add({
+            'name': serviceName,
+            'icon': icon,
+            'isActive': true,
+            'popularity': 0,
+            'fields': defaultFields[serviceName] ?? ['الوصف', 'العنوان', 'رقم الهاتف'],
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+          addedCount++;
+        }
+      }
+
+      if (addedCount > 0) {
+        Get.snackbar('✅ تم بنجاح', 'تمت استعادة $addedCount من الخدمات الأساسية المفقودة',
+            backgroundColor: AppTheme.successColor.withValues(alpha: 0.15),
+            colorText: AppTheme.successColor);
+      } else {
+        Get.snackbar('ℹ️ تنبيه', 'جميع الخدمات الأساسية موجودة بالفعل في النظام',
+            backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15),
+            colorText: AppTheme.warningColor);
+      }
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'فشل استعادة الخدمات الأساسية: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
 }
+

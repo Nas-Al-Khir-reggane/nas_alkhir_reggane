@@ -44,7 +44,7 @@ class WorkerDetailScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: Get.isDarkMode 
                       ? AppTheme.darkBgGradient 
-                      : LinearGradient(colors: [AppTheme.primaryGreen.withValues(alpha: 0.1), AppTheme.backgroundColor])
+                      : LinearGradient(colors: [AppTheme.primaryGreen.withValues(alpha: 0.15), AppTheme.backgroundColor])
                 ),
                 child: SafeArea(
                   child: Column(
@@ -58,7 +58,7 @@ class WorkerDetailScreen extends StatelessWidget {
                               children: [
                                 CircleAvatar(
                                   radius: 45,
-                                  backgroundColor: roleColor.withValues(alpha: 0.3),
+                                  backgroundColor: roleColor.withValues(alpha: 0.15),
                                   backgroundImage: (worker.profileImage != null && worker.profileImage!.isNotEmpty)
                                       ? CachedNetworkImageProvider(worker.profileImage!) as ImageProvider
                                       : null,
@@ -93,7 +93,7 @@ class WorkerDetailScreen extends StatelessWidget {
                                   const SizedBox(height: 4),
                                   Container(
                                     decoration: BoxDecoration(
-                                        color: roleColor.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)),
+                                        color: roleColor.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(10)),
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     child: Text(roleName,
                                         style: TextStyle(color: roleColor, fontWeight: FontWeight.w600, fontSize: 12)),
@@ -135,7 +135,7 @@ class WorkerDetailScreen extends StatelessWidget {
                 itemBuilder: (context) => [
                   const PopupMenuItem(value: 'edit', child: Text('تعديل البيانات')),
                   PopupMenuItem(value: 'toggle_avail', child: Text(worker.isAvailable ? 'تعيين مشغول' : 'تعيين متاح')),
-                  const PopupMenuItem(value: 'rate', child: Text('تقييم العامل')),
+                  const PopupMenuItem(value: 'rate', child: Text('تقييم المتطوع')),
                   PopupMenuItem(
                       value: 'disable',
                       child: Text(worker.isActive ? 'تعطيل الحساب' : 'تفعيل الحساب',
@@ -305,7 +305,7 @@ class WorkerDetailScreen extends StatelessWidget {
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                               leading: Container(
                                 decoration: BoxDecoration(
-                                    color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                                    color: AppTheme.primaryGreen.withValues(alpha: 0.75),
                                     borderRadius: BorderRadius.circular(10)),
                                 padding: const EdgeInsets.all(8),
                                 child: const Icon(Icons.assignment, color: AppTheme.primaryGreen, size: 18),
@@ -351,7 +351,7 @@ class WorkerDetailScreen extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(12)),
             padding: const EdgeInsets.all(10),
             child: Icon(icon, color: color, size: 22),
           ),
@@ -459,3 +459,4 @@ class WorkerDetailScreen extends StatelessWidget {
     );
   }
 }
+

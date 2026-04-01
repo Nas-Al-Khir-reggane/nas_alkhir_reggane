@@ -78,3 +78,4 @@ class ConnectivityService extends GetxService {
     super.onClose();
   }
 }
+

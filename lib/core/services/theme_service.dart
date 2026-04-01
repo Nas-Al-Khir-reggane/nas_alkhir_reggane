@@ -74,3 +74,4 @@ class ThemeService {
     return "الوضع الداكن";
   }
 }
+

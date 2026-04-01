@@ -34,7 +34,7 @@ class WorkersScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: TextField(
               controller: controller.searchController,
-              decoration: AppTheme.inputDecoration('ابحث باسم العامل أو هاتفه...', Icons.search),
+              decoration: AppTheme.inputDecoration('ابحث باسم المتطوع أو هاتفه...', Icons.search),
               style: TextStyle(color: AppTheme.textPrimary),
             ),
           ),
@@ -126,7 +126,7 @@ class WorkersScreen extends StatelessWidget {
                   children: [
                     Icon(Icons.person_add, color: Colors.black, size: 20),
                     SizedBox(width: 8),
-                    Text('إضافة عامل',
+                    Text('إضافة متطوع',
                         style: TextStyle(
                             color: Colors.black,
                             fontWeight: FontWeight.w800,
@@ -252,7 +252,7 @@ class WorkersScreen extends StatelessWidget {
                   margin: const EdgeInsets.symmetric(horizontal: 3),
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    color: isSelected ? activeColor.withValues(alpha: 0.2) : Theme.of(context).cardColor,
+                    color: isSelected ? activeColor.withValues(alpha: 0.75) : Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: isSelected ? activeColor : AppTheme.glassBorder),
                   ),
@@ -309,7 +309,7 @@ class WorkersScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: AppTheme.cardShadow,
           border: Border.all(
-              color: worker.isAvailable ? AppTheme.glassBorder : AppTheme.warningColor.withValues(alpha: 0.3)),
+              color: worker.isAvailable ? AppTheme.glassBorder : AppTheme.warningColor.withValues(alpha: 0.75)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -321,7 +321,7 @@ class WorkersScreen extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundColor: roleColor.withValues(alpha: 0.2),
+                    backgroundColor: roleColor.withValues(alpha: 0.15),
                     backgroundImage: (worker.profileImage != null && worker.profileImage!.isNotEmpty)
                         ? CachedNetworkImageProvider(worker.profileImage!) as ImageProvider
                         : null,
@@ -371,7 +371,7 @@ class WorkersScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      decoration: BoxDecoration(color: roleColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(color: roleColor.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -488,7 +488,7 @@ class WorkersScreen extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(8)),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -520,7 +520,7 @@ class WorkersScreen extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.people_outline, size: 80, color: AppTheme.textHint.withValues(alpha: 0.3)),
+          Icon(Icons.people_outline, size: 80, color: AppTheme.textHint.withValues(alpha: 0.75)),
           const SizedBox(height: 16),
           Text('لا يوجد عمال مطابقين للبحث', style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
         ],
@@ -559,7 +559,7 @@ class WorkersScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text('إضافة عامل جديد',
+                    Text('إضافة متطوع جديد',
                         style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
                     const Spacer(),
                     IconButton(icon: const Icon(Icons.close), onPressed: () => Get.back()),
@@ -608,7 +608,7 @@ class WorkersScreen extends StatelessWidget {
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           decoration: BoxDecoration(
-                            color: isSelected ? color.withValues(alpha: 0.2) : Theme.of(context).cardColor,
+                            color: isSelected ? color.withValues(alpha: 0.75) : Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                                 color: isSelected ? color : AppTheme.glassBorder, width: isSelected ? 2 : 1),
@@ -659,7 +659,7 @@ class WorkersScreen extends StatelessWidget {
                 Obx(() => controller.isLoading.value
                     ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
                     : AppTheme.gradientButton(
-                        text: 'إضافة العامل',
+                        text: 'إضافة المتطوع',
                         icon: Icons.person_add,
                         onPressed: () {
                           if (nameController.text.isEmpty ||
@@ -669,7 +669,7 @@ class WorkersScreen extends StatelessWidget {
                               emailController.text.isEmpty ||
                               passwordController.text.isEmpty) {
                             Get.snackbar('تنبيه', 'يرجى ملء جميع الحقول المطلوبة',
-                                backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+                                backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15));
                             return;
                           }
                           controller.addWorker({
@@ -744,7 +744,7 @@ class WorkersScreen extends StatelessWidget {
                           leading: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                                color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                                color: AppTheme.primaryGreen.withValues(alpha: 0.75),
                                 borderRadius: BorderRadius.circular(10)),
                             child: const Icon(Icons.volunteer_activism, color: AppTheme.primaryGreen, size: 20),
                           ),
@@ -791,7 +791,7 @@ class WorkersScreen extends StatelessWidget {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('اختر التقييم المناسب لأداء العامل', style: TextStyle(color: AppTheme.textSecondary)),
+              Text('اختر التقييم المناسب لأداء المتطوع', style: TextStyle(color: AppTheme.textSecondary)),
               const SizedBox(height: 20),
               _buildRatingStars(selectedRating, (rating) => setDialogState(() => selectedRating = rating)),
               const SizedBox(height: 12),
@@ -830,3 +830,4 @@ class WorkersScreen extends StatelessWidget {
     );
   }
 }
+

@@ -22,6 +22,10 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   
   int _currentIndex = 0; // 0 for Pending, 1 for All Users
   String _searchQuery = "";
+  String? _selectedBloodType; // null for all
+  String? _selectedService; // 🆕 فلتر الخدمة
+  String? _selectedGenderFilter; // 🆕 فلتر الجنس
+  String? _selectedExpertise; // 🆕 فلتر الخبرة (خبير/مساعد)
 
   @override
   void initState() {
@@ -48,7 +52,11 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           children: [
             _buildHeader(),
             _buildCustomToggle(),
-            if (_currentIndex == 1) _buildSearchBar(),
+            if (_currentIndex == 1) ...[
+              _buildSearchBar(),
+              _buildBloodTypeFilters(),
+              _buildWorkerFilters(), // 🆕 فلاتر التخصص والجنس
+            ],
             Expanded(
               child: _currentIndex == 0 ? _buildPendingTab() : _buildAllUsersTab(),
             ),
@@ -84,7 +92,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+              color: AppTheme.primaryGreen.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.people_alt_rounded, color: AppTheme.primaryGreen),
@@ -151,13 +159,159 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 5, 20, 15),
+      padding: const EdgeInsets.fromLTRB(20, 5, 20, 10),
       child: FadeInDown(
         duration: const Duration(milliseconds: 300),
         child: TextField(
           controller: _searchController,
           style: TextStyle(color: AppTheme.textPrimary),
           decoration: AppTheme.inputDecoration('البحث بالاسم أو الهاتف...', Icons.search_rounded),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBloodTypeFilters() {
+    final List<String> bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+    return FadeInDown(
+      delay: const Duration(milliseconds: 100),
+      child: Container(
+        height: 60,
+        margin: const EdgeInsets.only(bottom: 10),
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          children: [
+            _buildFilterChip('الكل', null),
+            ...bloodTypes.map((type) => _buildFilterChip(type, type)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWorkerFilters() {
+    final List<Map<String, dynamic>> workerServices = [
+      {'id': 'funeral_transport', 'name': 'جنائز', 'icon': Icons.airport_shuttle_rounded},
+      {'id': 'funeral_ghusl', 'name': 'تغسيل', 'icon': Icons.wash_rounded},
+      {'id': 'medical_aid', 'name': 'إسعاف', 'icon': Icons.medical_services_rounded},
+      {'id': 'food_aid', 'name': 'توزيع', 'icon': Icons.shopping_bag_rounded},
+      {'id': 'construction', 'name': 'ترميم', 'icon': Icons.construction_rounded},
+    ];
+
+    return FadeInDown(
+      delay: const Duration(milliseconds: 150),
+      child: Column(
+        children: [
+          Container(
+            height: 45,
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                _buildGenderFilterChip('الجميع', null),
+                _buildGenderFilterChip('رجال', 'ذكر'),
+                _buildGenderFilterChip('نساء', 'أنثى'),
+              ],
+            ),
+          ),
+          Container(
+            height: 50,
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                _buildServiceFilterChip('كل الخدمات', null, Icons.all_inclusive_rounded),
+                ...workerServices.map((s) => _buildServiceFilterChip(s['name'], s['id'], s['icon'])),
+              ],
+            ),
+          ),
+          if (_selectedService == 'funeral_ghusl')
+            FadeInLeft(
+              child: Container(
+                height: 40,
+                margin: const EdgeInsets.only(bottom: 10),
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    _buildExpertiseFilterChip('الكل', null),
+                    _buildExpertiseFilterChip('خبراء فقط', 'expert'),
+                    _buildExpertiseFilterChip('مساعدين فقط', 'assistant'),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpertiseFilterChip(String label, String? expertise) {
+    bool isSelected = _selectedExpertise == expertise;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label, style: TextStyle(color: isSelected ? Colors.white : AppTheme.textSecondary, fontSize: 11)),
+        selected: isSelected,
+        onSelected: (val) => setState(() => _selectedExpertise = val ? expertise : null),
+        selectedColor: Colors.orangeAccent.withValues(alpha: 0.15),
+        backgroundColor: AppTheme.surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Widget _buildGenderFilterChip(String label, String? gender) {
+    bool isSelected = _selectedGenderFilter == gender;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label, style: TextStyle(color: isSelected ? Colors.black : AppTheme.textSecondary, fontSize: 12)),
+        selected: isSelected,
+        onSelected: (val) => setState(() => _selectedGenderFilter = val ? gender : null),
+        selectedColor: Colors.blueAccent.withValues(alpha: 0.15),
+        backgroundColor: AppTheme.surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      ),
+    );
+  }
+
+  Widget _buildServiceFilterChip(String label, String? serviceId, IconData icon) {
+    bool isSelected = _selectedService == serviceId;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        avatar: Icon(icon, size: 14, color: isSelected ? Colors.black : AppTheme.primaryGreen),
+        label: Text(label, style: TextStyle(color: isSelected ? Colors.black : AppTheme.textSecondary, fontSize: 12)),
+        selected: isSelected,
+        onSelected: (val) => setState(() => _selectedService = val ? serviceId : null),
+        selectedColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
+        backgroundColor: AppTheme.surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String? type) {
+    bool isSelected = _selectedBloodType == type;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label, style: TextStyle(
+          color: isSelected ? Colors.black : AppTheme.textSecondary,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          fontSize: 13,
+        )),
+        selected: isSelected,
+        onSelected: (val) => setState(() => _selectedBloodType = val ? type : null),
+        selectedColor: AppTheme.primaryGreen,
+        backgroundColor: AppTheme.surfaceColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder),
         ),
       ),
     );
@@ -288,9 +442,21 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         
         var docs = snapshot.data?.docs.where((doc) {
           var data = doc.data() as Map<String, dynamic>;
-          String rName = (data['name'] ?? '').toString().toLowerCase();
-          String rPhone = (data['phone'] ?? '').toString();
-          return rName.contains(_searchQuery) || rPhone.contains(_searchQuery);
+          UserModel user = UserModel.fromMap(data, doc.id);
+          
+          String rName = user.name.toLowerCase();
+          String rPhone = user.phone;
+          String? bType = user.bloodType;
+          String rGender = user.gender;
+          List<String> services = user.volunteerServices;
+
+          bool matchesSearch = rName.contains(_searchQuery) || rPhone.contains(_searchQuery);
+          bool matchesBlood = _selectedBloodType == null || bType == _selectedBloodType;
+          bool matchesGender = _selectedGenderFilter == null || rGender.contains(_selectedGenderFilter!);
+          bool matchesService = _selectedService == null || services.contains(_selectedService);
+          bool matchesExpertise = _selectedExpertise == null || user.ghuslExpertise == _selectedExpertise;
+          
+          return matchesSearch && matchesBlood && matchesGender && matchesService && matchesExpertise;
         }).toList() ?? [];
 
         if (docs.isEmpty) return _buildEmptyState('لا توجد مستخدمين يطابقون البحث');
@@ -323,6 +489,10 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                               Icon(Icons.badge_outlined, color: AppTheme.primaryGreen, size: 14),
                               const SizedBox(width: 4),
                               Text(user.role.displayName, style: TextStyle(color: AppTheme.primaryGreen, fontSize: 11, fontWeight: FontWeight.bold)),
+                              if (user.bloodType != null) ...[
+                                const SizedBox(width: 8),
+                                _buildBloodTypeBadge(user),
+                              ],
                               const SizedBox(width: 8),
                               Icon(Icons.phone_outlined, color: AppTheme.textHint, size: 14),
                               const SizedBox(width: 4),
@@ -364,7 +534,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.group_off_outlined, size: 80, color: AppTheme.textHint.withValues(alpha: 0.3)),
+            Icon(Icons.group_off_outlined, size: 80, color: AppTheme.textHint.withValues(alpha: 0.75)),
             const SizedBox(height: 16),
             Text(message, style: TextStyle(color: AppTheme.textHint, fontSize: 15)),
           ],
@@ -377,11 +547,11 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.5), width: 2),
+        border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.75), width: 2),
       ),
       child: CircleAvatar(
         radius: 22,
-        backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
+        backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
         backgroundImage: (user.profileImage != null && user.profileImage!.isNotEmpty) ? CachedNetworkImageProvider(user.profileImage!) as ImageProvider : null,
         child: (user.profileImage == null || user.profileImage!.isEmpty)
             ? Text(user.name.isNotEmpty ? user.name[0] : '?', style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 18))
@@ -389,16 +559,48 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       ),
     );
   }
-
   Widget _buildStatusBadge(String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+        color: color.withValues(alpha: 0.75),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.75)),
       ),
       child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _buildBloodTypeBadge(UserModel user) {
+    // التحقق من فترة الـ 30 يوماً
+    bool isResting = false;
+    if (user.lastDonatedAt != null) {
+      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
+      isResting = user.lastDonatedAt!.isAfter(thirtyDaysAgo);
+    }
+    
+    // اللون بناءً على الجاهزية
+    Color color = (user.isDonorAvailable && !isResting) ? AppTheme.errorColor : AppTheme.textHint;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.75)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.bloodtype, size: 12, color: color),
+          const SizedBox(width: 2),
+          Text(user.bloodType!, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+          if (isResting) ...[
+            const SizedBox(width: 4),
+            Icon(Icons.timer_outlined, size: 12, color: color),
+          ],
+        ],
+      ),
     );
   }
 
@@ -422,8 +624,8 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           decoration: BoxDecoration(
             color: AppTheme.surfaceColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-            border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.3), width: 1.5),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20)],
+            border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.75), width: 1.5),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.75), blurRadius: 20)],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -512,6 +714,24 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
             _buildUserInfoRow(Icons.home_outlined, "العنوان", user.address),
             const SizedBox(height: 12),
             _buildUserInfoRow(Icons.badge_outlined, "الرتبة", user.role.displayName),
+            const SizedBox(height: 12),
+            _buildUserInfoRow(Icons.male_rounded, "الجنس", user.gender),
+            const SizedBox(height: 12),
+            _buildUserInfoRow(Icons.bloodtype_outlined, "فصيلة الدم", user.bloodType ?? "غير محدد"),
+            if (user.role == UserRole.worker) ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              _buildUserInfoRow(Icons.volunteer_activism, "التخصصات", user.volunteerServices.join(' - ')),
+              if (user.volunteerServices.contains('funeral_ghusl')) ...[
+                const SizedBox(height: 12),
+                _buildUserInfoRow(Icons.star_rounded, "خبرة التغسيل", user.ghuslExpertise == 'expert' ? 'خبير / قائد' : 'مساعد / متدرب'),
+              ],
+              if (user.otherServices != null && user.otherServices!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildUserInfoRow(Icons.add_task_rounded, "خدمات أخرى", user.otherServices!),
+              ],
+            ],
             const SizedBox(height: 30),
             SizedBox(
               width: double.infinity,
@@ -528,3 +748,4 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     );
   }
 }
+

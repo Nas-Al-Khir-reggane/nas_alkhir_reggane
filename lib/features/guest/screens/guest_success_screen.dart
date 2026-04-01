@@ -36,7 +36,7 @@ class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
     final phone = phoneController.text.trim().replaceAll(' ', '');
     if (phone.isEmpty) {
       Get.snackbar('تنبيه', 'يرجى إدخال رقم الهاتف للتتبع',
-          backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.2));
+          backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.15));
       return;
     }
 
@@ -54,7 +54,7 @@ class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
 
       if (querySnapshot.docs.isEmpty) {
         Get.snackbar('عذراً', 'لم نتمكن من العثور على طلب بهذا الرقم المرجعي ورقم الهاتف.',
-            backgroundColor: errorColor.withValues(alpha: 0.2));
+            backgroundColor: errorColor.withValues(alpha: 0.15));
         return;
       }
 
@@ -68,7 +68,7 @@ class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
       Get.toNamed('/beneficiary/request-status', arguments: requestModel);
     } catch (e) {
       Get.snackbar('خطأ', 'حدث خطأ أثناء البحث عن الطلب. يرجى المحاولة لاحقاً',
-          backgroundColor: errorColor.withValues(alpha: 0.2));
+          backgroundColor: errorColor.withValues(alpha: 0.15));
     } finally {
       if (mounted) setState(() => isTracking = false);
     }
@@ -109,7 +109,7 @@ class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
                   width: 100,
                   height: 100,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.8)]),
+                    gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.9)]),
                     shape: BoxShape.circle,
                     boxShadow: AppTheme.greenGlow,
                   ),
@@ -155,7 +155,7 @@ class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
                             onPressed: () {
                               Clipboard.setData(ClipboardData(text: widget.refNumber));
                               Get.snackbar('نجاح', 'تم نسخ الرقم المرجعي بنجاح',
-                                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2));
+                                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15));
                             },
                           ),
                         ],
@@ -226,3 +226,4 @@ class _GuestSuccessScreenState extends State<GuestSuccessScreen> {
     );
   }
 }
+

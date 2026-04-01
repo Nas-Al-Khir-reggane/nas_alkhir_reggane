@@ -19,7 +19,7 @@ class VisualEffects {
             color: Colors.transparent,
             child: InkWell(
               borderRadius: borderRadius ?? BorderRadius.circular(16),
-              splashColor: splashColor?.withValues(alpha: 0.2) ?? AppTheme.primaryGreen.withValues(alpha: 0.2),
+              splashColor: splashColor?.withValues(alpha: 0.15) ?? AppTheme.primaryGreen.withValues(alpha: 0.15),
               highlightColor: Colors.transparent,
               onTap: onTap,
             ),
@@ -48,10 +48,10 @@ class VisualEffects {
         filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
         child: Container(
           decoration: BoxDecoration(
-            color: color.withValues(alpha: opacity),
+            color: color.withValues(alpha: 0.75),
             borderRadius: borderRadius,
             border: Border.all(
-              color: color.withValues(alpha: 0.1),
+              color: color.withValues(alpha: 0.75),
               width: 1.0,
             ),
           ),
@@ -69,7 +69,7 @@ class VisualEffects {
   }) {
     return Shimmer.fromColors(
       baseColor: Colors.grey.withValues(alpha: 0.15),
-      highlightColor: Colors.grey.withValues(alpha: 0.05),
+      highlightColor: Colors.grey.withValues(alpha: 0.15),
       direction: ShimmerDirection.rtl, // توافق تام مع الاتجاه العربي
       child: Container(
         width: width,
@@ -209,9 +209,9 @@ class _AnimatedAmbientGradientState extends State<_AnimatedAmbientGradient> with
               center: Alignment(-0.8 + (_controller.value * 1.6), 0.8 - (_controller.value * 1.6)),
               radius: 2.0,
               colors: [
-                widget.isDark ? AppTheme.primaryGreen.withValues(alpha: 0.03) : AppTheme.primaryGreen.withValues(alpha: 0.05),
+                widget.isDark ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.primaryGreen.withValues(alpha: 0.15),
                 Colors.transparent,
-                widget.isDark ? Colors.blueAccent.withValues(alpha: 0.01) : Colors.blueAccent.withValues(alpha: 0.02),
+                widget.isDark ? Colors.blueAccent.withValues(alpha: 0.15) : Colors.blueAccent.withValues(alpha: 0.15),
               ],
             ),
           ),
@@ -220,3 +220,4 @@ class _AnimatedAmbientGradientState extends State<_AnimatedAmbientGradient> with
     );
   }
 }
+

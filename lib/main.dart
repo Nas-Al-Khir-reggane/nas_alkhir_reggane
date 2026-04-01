@@ -14,18 +14,36 @@ import 'package:timeago/timeago.dart' as timeago;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // تهيئة الخدمات
-  final themeService = ThemeService();
-  await themeService.init();
-  
-  timeago.setLocaleMessages('ar', timeago.ArMessages());
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
-  await NotificationService.init();
+  // صائد أخطاء Flutter (لحل مشكلة الشاشة الحمراء)
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('🛑 Flutter Error: ${details.exception}');
+    debugPrint('🛑 StackTrace: ${details.stack}');
+  };
 
-  runApp(const NasAlKheirApp());
+  try {
+    // تهيئة الخدمات
+    final themeService = ThemeService();
+    await themeService.init();
+    
+    timeago.setLocaleMessages('ar', timeago.ArMessages());
+    
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+    
+    // تشغيل الإشعارات في الخلفية لضمان عدم تعليق الواجهة
+    NotificationService.init().catchError((e) {
+      debugPrint('⚠️ Notification Init Failed: $e');
+    });
+
+    runApp(const NasAlKheirApp());
+  } catch (e, stack) {
+    debugPrint('💥 Critical Startup Error: $e');
+    debugPrint('💥 StackTrace: $stack');
+  }
 }
 
 class NasAlKheirApp extends StatelessWidget {
@@ -57,3 +75,4 @@ class NasAlKheirApp extends StatelessWidget {
     );
   }
 }
+

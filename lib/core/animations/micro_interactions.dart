@@ -41,7 +41,7 @@ class MicroInteractions {
       // تأثير Pill عند التفعيل
       decoration: isActive
           ? BoxDecoration(
-              color: activeColor.withValues(alpha: 0.15),
+              color: activeColor.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(14),
             )
           : null,
@@ -181,9 +181,9 @@ class _AnimatedFocusFieldState extends State<_AnimatedFocusField> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           boxShadow: _isFocused && !widget.isError
-              ? [BoxShadow(color: Theme.of(context).primaryColor.withValues(alpha: 0.15), blurRadius: 15, spreadRadius: 2)]
+              ? [BoxShadow(color: Theme.of(context).primaryColor.withValues(alpha: 0.75), blurRadius: 15, spreadRadius: 2)]
               : widget.isError
-                  ? [BoxShadow(color: Colors.redAccent.withValues(alpha: 0.2), blurRadius: 15, spreadRadius: 2)]
+                  ? [BoxShadow(color: Colors.redAccent.withValues(alpha: 0.75), blurRadius: 15, spreadRadius: 2)]
                   : [],
         ),
         child: widget.isError 
@@ -226,3 +226,4 @@ class _HoverScaleState extends State<_HoverScale> {
     );
   }
 }
+

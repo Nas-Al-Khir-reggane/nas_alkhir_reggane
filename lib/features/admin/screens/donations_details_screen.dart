@@ -83,7 +83,7 @@ class DonationsDetailsScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.goldAccent.withValues(alpha: 0.3),
+              color: AppTheme.goldAccent.withValues(alpha: 0.75),
               blurRadius: 20,
               offset: const Offset(0, 10),
             )
@@ -195,7 +195,7 @@ class DonationsDetailsScreen extends StatelessWidget {
                       backDrawRodData: BackgroundBarChartRodData(
                         show: true,
                         toY: maxY,
-                        color: AppTheme.cardColor.withValues(alpha: 0.5),
+                        color: AppTheme.cardColor.withValues(alpha: 0.75),
                       ),
                     ),
                   ],
@@ -259,7 +259,7 @@ class DonationsDetailsScreen extends StatelessWidget {
                       leading: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppTheme.goldAccent.withValues(alpha: 0.1),
+                          color: AppTheme.goldAccent.withValues(alpha: 0.75),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.volunteer_activism, color: AppTheme.goldAccent),
@@ -280,7 +280,7 @@ class DonationsDetailsScreen extends StatelessWidget {
                       trailing: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: AppTheme.successColor.withValues(alpha: 0.1),
+                          color: AppTheme.successColor.withValues(alpha: 0.75),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -300,3 +300,4 @@ class DonationsDetailsScreen extends StatelessWidget {
     );
   }
 }
+

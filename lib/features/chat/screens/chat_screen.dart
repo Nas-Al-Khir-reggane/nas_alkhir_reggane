@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'dart:math';
 import 'dart:async';
 import 'dart:convert';
@@ -14,7 +15,8 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:shimmer/shimmer.dart';
 import 'package:swipe_to/swipe_to.dart';
-import 'package:flutter_vibrate/flutter_vibrate.dart';
+import 'package:animate_do/animate_do.dart';
+
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/services/notification_service.dart';
 import '../../../data/models/chat_message_model.dart';
@@ -166,10 +168,14 @@ class _ChatScreenState extends State<ChatScreen> {
     final chatId = _getChatId();
     if (chatId == 'invalid_chat') return;
     
+    final isAdmin = _authController.currentUser.value?.role == UserRole.admin || _authController.currentUser.value?.role == UserRole.superAdmin;
+    
     await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
       'unreadCount': {
         _effectiveUserId: 0,
-      }
+      },
+      if (isAdmin) 'guestUnreadCount': 0,
+      if (isAdmin) 'hasUnreadGuestMessage': false,
     }, SetOptions(merge: true));
   }
 
@@ -346,7 +352,7 @@ class _ChatScreenState extends State<ChatScreen> {
       'خطأ',
       'حدث خطأ في $operation',
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red.withValues(alpha: 0.1),
+      backgroundColor: Colors.red.withValues(alpha: 0.15),
       duration: const Duration(seconds: 3),
     );
   }
@@ -451,7 +457,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             child: AnimatedContainer(
                               duration: const Duration(seconds: 1),
                               key: message.id != null ? _messageKeys[message.id!] : null,
-                              color: _highlightedMessageId == message.id ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.2) : Colors.transparent,
+                              color: _highlightedMessageId == message.id ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.75) : Colors.transparent,
                               child: _buildMessageBubble(message, previousMessage),
                             ),
                           );
@@ -665,7 +671,7 @@ class _ChatScreenState extends State<ChatScreen> {
       return Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
           shape: BoxShape.circle,
         ),
         child: Icon(Icons.groups_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
@@ -687,7 +693,7 @@ class _ChatScreenState extends State<ChatScreen> {
       },
       child: CircleAvatar(
         radius: 20,
-        backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+        backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
         backgroundImage: (profileImage != null && profileImage.isNotEmpty) ? CachedNetworkImageProvider(profileImage) as ImageProvider : null,
         child: (profileImage == null || profileImage.isEmpty)
           ? Text(widget.targetUserName != null && widget.targetUserName!.isNotEmpty ? widget.targetUserName![0] : '?', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary))
@@ -833,7 +839,7 @@ class _ChatScreenState extends State<ChatScreen> {
     Get.snackbar(
       'تم تصدير المحادثة 🖨️',
       'تم نسخ السجل النصي للحافظة.',
-      backgroundColor: primaryColor.withValues(alpha: 0.1),
+      backgroundColor: primaryColor.withValues(alpha: 0.15),
       colorText: primaryColor,
       duration: const Duration(seconds: 4),
     );
@@ -881,7 +887,7 @@ class _ChatScreenState extends State<ChatScreen> {
           margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 30),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.75),
             borderRadius: BorderRadius.circular(15),
           ),
           child: Text(
@@ -909,9 +915,9 @@ class _ChatScreenState extends State<ChatScreen> {
               margin: const EdgeInsets.symmetric(vertical: 20),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: Theme.of(context).cardColor.withValues(alpha: 0.5), 
+                color: Theme.of(context).cardColor.withValues(alpha: 0.75), 
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1))
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75))
               ),
               child: Text(
                 _formatDividerDate(message.createdAt),
@@ -921,7 +927,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         SwipeTo(
           onRightSwipe: (details) {
-            Vibrate.feedback(FeedbackType.light);
+            HapticFeedback.lightImpact();
             setState(() => _replyingTo = message);
           },
           child: GestureDetector(
@@ -951,6 +957,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           clipBehavior: Clip.none,
                           children: [
                             Container(
+                          key: _messageKeys.putIfAbsent(message.id!, () => GlobalKey()),
                           constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
                           decoration: BoxDecoration(
                             gradient: isMe ? LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary]) : null,
@@ -963,7 +970,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: isMe ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1),
+                                color: isMe ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.75),
                                 blurRadius: 10,
                                 offset: const Offset(0, 5),
                               )
@@ -1024,7 +1031,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               decoration: BoxDecoration(
                                 color: Theme.of(context).cardColor,
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                                 boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: const Offset(0, 2))],
                               ),
                               child: Row(
@@ -1095,7 +1102,7 @@ class _ChatScreenState extends State<ChatScreen> {
               'مستخدم زائر 👤',
               'هذا المستخدم يتواصل كزائر، لا يوجد ملف شخصي متاح.',
               snackPosition: SnackPosition.TOP,
-              backgroundColor: Theme.of(context).cardColor.withValues(alpha: 0.9),
+              backgroundColor: Theme.of(context).cardColor.withValues(alpha: 0.15),
               colorText: Theme.of(context).colorScheme.onSurface,
             );
           } else {
@@ -1105,7 +1112,7 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2), width: 1),
+            border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), width: 1),
           ),
           child: CircleAvatar(
             radius: 22,
@@ -1174,7 +1181,7 @@ class _ChatScreenState extends State<ChatScreen> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isMe ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.05),
+          color: isMe ? Colors.black.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.75),
           borderRadius: BorderRadius.circular(10),
           border: Border(right: BorderSide(color: isMe ? Colors.black45 : Theme.of(context).colorScheme.primary, width: 3)),
         ),
@@ -1190,85 +1197,296 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _showLongPressMenu(ChatMessageModel message) {
-    Vibrate.feedback(FeedbackType.medium);
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+    HapticFeedback.heavyImpact();
+    
+    // حساب موقع الرسالة لإظهار القوائم بالنسبة لها
+    final RenderBox? renderBox = _messageKeys[message.id]?.currentContext?.findRenderObject() as RenderBox?;
+    final position = renderBox?.localToGlobal(Offset.zero);
+    final size = renderBox?.size;
+
+    if (position == null || size == null) return;
+
+    // الثوابت للتصميم المدمج
+    const double emojiBarHeight = 55;
+    const double actionBarHeight = 70;
+    const double spacing = 8;
+    final double screenHeight = Get.height;
+    
+    // حساب الإزاحة الذكية (Smart Shift) لتجنب الخروج عن الشاشة
+    double yOffset = 0;
+    double totalHeightNeeded = emojiBarHeight + size.height + actionBarHeight + (spacing * 2);
+    
+    // إذا كنت في أسفل الشاشة، ارفع المجموعة للأعلى
+    if (position.dy + size.height + actionBarHeight + spacing > screenHeight - 40) {
+      yOffset = (position.dy + size.height + actionBarHeight + spacing) - (screenHeight - 40);
+    }
+
+    Get.dialog(
+      Scaffold(
+        backgroundColor: Colors.black.withValues(alpha: 0.15), // تعتيم خفيف جداً بدون Blur
+        body: GestureDetector(
+          onTap: () => Get.back(),
+          child: Stack(
+            children: [
+              // 1. شريط التفاعلات الأفقي (فوق الرسالة)
+              Positioned(
+                top: position.dy - emojiBarHeight - spacing - yOffset,
+                left: 20,
+                right: 20,
+                child: Center(
+                  child: FadeInDown(
+                    duration: const Duration(milliseconds: 200),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 1)],
+                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ...['👍', '❤️', '😂', '😮', '😢', '🙏'].asMap().entries.map((entry) {
+                            return ZoomIn(
+                              delay: Duration(milliseconds: entry.key * 30),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(20),
+                                onTap: () { Get.back(); _addReaction(message, entry.value); },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                  child: Text(entry.value, style: const TextStyle(fontSize: 24)),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          InkWell(
+                            onTap: () { Get.back(); _showFullEmojiPicker(message); },
+                            child: Container(
+                              margin: const EdgeInsets.only(left: 4),
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), shape: BoxShape.circle),
+                              child: Icon(Icons.add, color: Theme.of(context).colorScheme.primary, size: 18),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 2. شريط الإجراءات الأفقي المدمج (تحت الرسالة)
+              Positioned(
+                top: position.dy + size.height + spacing - yOffset,
+                left: 20,
+                right: 20,
+                child: Center(
+                  child: FadeInUp(
+                    duration: const Duration(milliseconds: 200),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 1)],
+                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildMiniHorizontalAction(
+                            Icons.reply_rounded, 
+                            'رد', 
+                            () { Get.back(); setState(() => _replyingTo = message); }
+                          ),
+                          _buildMiniDivider(),
+                          _buildMiniHorizontalAction(
+                            Icons.copy_rounded, 
+                            'نسخ', 
+                            () { 
+                              Get.back(); 
+                              Clipboard.setData(ClipboardData(text: message.message));
+                              Get.snackbar('نسخ', 'تم نسخ النص', snackPosition: SnackPosition.TOP, duration: const Duration(seconds: 1));
+                            }
+                          ),
+                          _buildMiniDivider(),
+                          if (message.senderId == _effectiveUserId) ...[
+                            _buildMiniHorizontalAction(
+                              Icons.edit_outlined, 
+                              'تعديل', 
+                              () { 
+                                Get.back(); 
+                                setState(() { _editingMessage = message; _messageController.text = message.message; }); 
+                              }
+                            ),
+                            _buildMiniDivider(),
+                          ],
+                          _buildMiniHorizontalAction(
+                            Icons.forward_rounded, 
+                            'توجيه', 
+                            () { Get.back(); _showForwardSelector(message); }
+                          ),
+                          if (message.senderId == _effectiveUserId || _authController.currentUser.value?.role == UserRole.admin) ...[
+                            _buildMiniDivider(),
+                            _buildMiniHorizontalAction(
+                              Icons.delete_outline_rounded, 
+                              'حذف', 
+                              () { Get.back(); if (message.id != null) _deleteMessage(message.id!); },
+                              color: Theme.of(context).colorScheme.error
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+      useSafeArea: false,
+      barrierColor: Colors.transparent,
+    );
+  }
+
+  // ودجت مساعد لعنصر الإجراء الأفقي الصغير
+  Widget _buildMiniHorizontalAction(IconData icon, String title, VoidCallback onTap, {Color? color}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: ['👍', '❤️', '🙏', '😂', '😮', '😢'].map((emoji) {
-                return GestureDetector(
-                  onTap: () async {
-                    Get.back();
-                    if (message.id != null) {
-                       await FirebaseFirestore.instance.collection('chats').doc(_getChatId()).collection('messages').doc(message.id).set({
-                         'reactions': {_effectiveUserId: emoji}
-                       }, SetOptions(merge: true));
-                       Vibrate.feedback(FeedbackType.light);
-                    }
-                  },
-                  child: Text(emoji, style: const TextStyle(fontSize: 28)),
-                );
-              }).toList(),
+            Icon(icon, color: color ?? Theme.of(context).colorScheme.onSurface, size: 20),
+            const SizedBox(height: 4),
+            Text(
+              title, 
+              style: GoogleFonts.tajawal(
+                fontSize: 10, 
+                fontWeight: FontWeight.bold, 
+                color: color ?? Theme.of(context).colorScheme.onSurfaceVariant
+              )
             ),
-            const SizedBox(height: 16),
-            const Divider(),
-            ListTile(
-              leading: Icon(Icons.reply_rounded, color: Theme.of(context).colorScheme.onSurface),
-              title: Text('رد', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
-              onTap: () {
-                Get.back();
-                setState(() => _replyingTo = message);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.edit_outlined, color: Theme.of(context).colorScheme.onSurface),
-              title: Text('تعديل', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
-              onTap: () {
-                Get.back();
-                setState(() {
-                  _editingMessage = message;
-                  _messageController.text = message.message;
-                });
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.copy_rounded, color: Theme.of(context).colorScheme.onSurface),
-              title: Text('نسخ النص', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
-              onTap: () {
-                Get.back();
-                Clipboard.setData(ClipboardData(text: message.message));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.forward_rounded, color: Theme.of(context).colorScheme.primary),
-              title: Text('إعادة توجيه', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
-              onTap: () {
-                Get.back();
-                _showForwardSelector(message);
-              },
-            ),
-            if (message.senderId == _effectiveUserId || (_effectiveUserId.isEmpty && message.senderName == _effectiveUserName))
-              ListTile(
-                leading: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
-                title: Text('سحب الرسالة', style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                onTap: () {
-                  Get.back();
-                  if (message.id != null) _deleteMessage(message.id!);
-                },
-              ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildMiniDivider() => Container(width: 1, height: 25, color: Colors.grey.withValues(alpha: 0.75));
+
+
+
+
+  // إضافة تفاعل للرسالة
+  void _addReaction(ChatMessageModel message, String emoji) async {
+    if (message.id != null) {
+      await FirebaseFirestore.instance.collection('chats').doc(_getChatId()).collection('messages').doc(message.id).set({
+        'reactions': {_effectiveUserId: emoji}
+      }, SetOptions(merge: true));
+      HapticFeedback.lightImpact();
+    }
+  }
+
+  // القائمة الموسعة للإيموجي
+  void _showFullEmojiPicker(ChatMessageModel message) {
+    final List<String> emojis = [
+      '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', 
+      '😋', '😛', '😝', '😜', '🧐', '😎', '🤩', '🥳', '😏', '😔', '😟', '😢', '😭', '😤', '😠', '😡', '🤯', 
+      '😳', '🥵', '🥶', '😱', '😨', '😰', '🤤', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '😈', '👿', '👻',
+      '💀', '👽', '👾', '🤖', '🎃', '😺', '🤲', '👐', '🙌', '👏', '🤝', '👍', '👎', '👊', '✊', '🤛', '🤜',
+      '🤞', '✌️', '🤟', '🤘', '👌', '🤌', '🤏', '👈', '👉', '👆', '👇', '✋', '🤚', '🖐', '🖖', '👋', '🤙',
+      '💪', '🦾', '🙏', '🧠', '👀', '👁', '👅', '👄', '💋', '🩸', '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤'
+    ];
+
+    Get.bottomSheet(
+      Container(
+        height: MediaQuery.of(context).size.height * 0.65,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.75),
+              blurRadius: 20,
+              spreadRadius: 5,
+            )
+          ],
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 45, 
+              height: 5, 
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75), 
+                borderRadius: BorderRadius.circular(10)
+              )
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              child: Row(
+                children: [
+                  Text(
+                    'اختر تفاعل', 
+                    style: GoogleFonts.tajawal(
+                      fontWeight: FontWeight.bold, 
+                      fontSize: 20,
+                      color: Theme.of(context).colorScheme.onSurface
+                    )
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Get.back(),
+                    icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 6, 
+                  mainAxisSpacing: 15, 
+                  crossAxisSpacing: 15
+                ),
+                itemCount: emojis.length,
+                itemBuilder: (context, index) => GestureDetector(
+                  onTap: () { 
+                    Get.back(); 
+                    _addReaction(message, emojis[index]); 
+                  },
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Text(
+                      emojis[index], 
+                      style: const TextStyle(fontSize: 28)
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+    );
+  }
+
 
   void _showForwardSelector(ChatMessageModel message) {
     String query = '';
@@ -1420,7 +1638,7 @@ class _ChatScreenState extends State<ChatScreen> {
           padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 10, top: 10, left: 12, right: 12),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface, 
-            boxShadow: [BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05), offset: const Offset(0, -2), blurRadius: 4)]
+            boxShadow: [BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), offset: const Offset(0, -2), blurRadius: 4)]
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -1429,12 +1647,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 onTap: () => Get.snackbar(
                   'قريباً 🚀',
                   'ميزة إرسال الصور ستتوفر في التحديث القادم',
-                  backgroundColor: Theme.of(context).cardColor.withValues(alpha: 0.9),
+                  backgroundColor: Theme.of(context).cardColor.withValues(alpha: 0.15),
                   colorText: Theme.of(context).colorScheme.onSurface,
                   snackPosition: SnackPosition.TOP,
                 ),
                 child: Container(
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05), shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75), shape: BoxShape.circle),
                   padding: const EdgeInsets.all(12),
                   child: Icon(Icons.photo_camera, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 24),
                 ),
@@ -1444,12 +1662,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 onTap: () => Get.snackbar(
                   'قريباً 🎙️',
                   'ميزة الرسائل الصوتية ستتوفر في التحديث القادم',
-                  backgroundColor: Theme.of(context).cardColor.withValues(alpha: 0.9),
+                  backgroundColor: Theme.of(context).cardColor.withValues(alpha: 0.15),
                   colorText: Theme.of(context).colorScheme.onSurface,
                   snackPosition: SnackPosition.TOP,
                 ),
                 child: Container(
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05), shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75), shape: BoxShape.circle),
                   padding: const EdgeInsets.all(12),
                   child: Icon(Icons.mic_none_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 24),
                 ),
@@ -1460,7 +1678,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                   ),
                   child: TextField(
                     controller: _messageController,
@@ -1539,7 +1757,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildEditPreview() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
       child: Row(
         children: [
           Icon(Icons.edit, size: 16, color: Theme.of(context).colorScheme.primary),
@@ -1568,7 +1786,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'خطأ',
         'لا يمكن تحديد المحادثة. تأكد من البيانات',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        backgroundColor: Colors.red.withValues(alpha: 0.15),
       );
       return;
     }
@@ -1603,6 +1821,20 @@ class _ChatScreenState extends State<ChatScreen> {
 
       final String sendingName = _effectiveUserName;
       
+      // تحديث بيانات المحادثة الرئيسية أولاً لضمان وجود الصلاحيات (Participants Array) قبل إرسال الرسالة
+      try {
+        await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
+          'lastMessage': imageUrl != null ? '📷 صورة' : text,
+          'lastMessageAt': FieldValue.serverTimestamp(),
+          'type': widget.isGroupChat ? 'group' : (chatId.startsWith('guest_') ? 'guest' : 'private'),
+          'participants': FieldValue.arrayUnion([_effectiveUserId, if (widget.targetUserId != null) widget.targetUserId!]),
+          'participantNames.$_effectiveUserId': sendingName,
+          'participantAvatars.$_effectiveUserId': _currentUserImage ?? '',
+        }, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('⚠️ تحذير: فشل تحديث وثيقة المحادثة: $e');
+      }
+
       try {
         await messagesRef.add({
           'senderId': _effectiveUserId,
@@ -1624,15 +1856,6 @@ class _ChatScreenState extends State<ChatScreen> {
         _handleError('إرسال الرسالة (عذراً، قد يكون هناك مشكلة في الصلاحيات)', e);
         return;
       }
-
-      await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
-        'lastMessage': imageUrl != null ? '📷 صورة' : text,
-        'lastMessageAt': FieldValue.serverTimestamp(),
-        'type': widget.isGroupChat ? 'group' : (chatId.startsWith('guest_') ? 'guest' : 'private'),
-        'participants': FieldValue.arrayUnion([_effectiveUserId, if (widget.targetUserId != null) widget.targetUserId!]),
-        'participantNames.$_effectiveUserId': sendingName,
-        'participantAvatars.$_effectiveUserId': _currentUserImage ?? '',
-      }, SetOptions(merge: true));
 
       // جلب اسم وصورة المستقبل إذا لم تكن موجودة (لمزامنة البيانات في صندوق الرسائل)
       if (widget.targetUserId != null && widget.targetUserId!.isNotEmpty && !widget.isGroupChat) {
@@ -1682,13 +1905,15 @@ class _ChatScreenState extends State<ChatScreen> {
         }, SetOptions(merge: true));
       }
 
-      // حفظ بيانات الزائر إذا كان زائراً لضمان بقاء المحادثة مرئية للمديرين
+      // حفظ بيانات الزائر وتحديث عداد الرسائل غير المقروءة للإدارة
       if (chatId.startsWith('guest_')) {
         await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
-          'type': 'guest', // التأكيد على نوع المحادثة
+          'type': 'guest',
           'guestName': _effectiveUserName,
           'guestPhone': _effectiveUserId.replaceFirst('guest_', ''),
           'lastMessageAt': FieldValue.serverTimestamp(),
+          'hasUnreadGuestMessage': true,
+          'guestUnreadCount': FieldValue.increment(1),
         }, SetOptions(merge: true));
       }
 
@@ -1798,7 +2023,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'خطأ',
         'فشل حذف الرسالة',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        backgroundColor: Colors.red.withValues(alpha: 0.15),
       );
     }
   }
@@ -1853,7 +2078,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           final worker = workers[index];
                           return ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                               backgroundImage: (worker.profileImage != null && worker.profileImage!.isNotEmpty) ? CachedNetworkImageProvider(worker.profileImage!) as ImageProvider : null,
                               child: (worker.profileImage == null || worker.profileImage!.isEmpty) ? Text(worker.name[0], style: TextStyle(color: Theme.of(context).colorScheme.primary)) : null,
                             ),
@@ -1895,3 +2120,4 @@ class _FullScreenImage extends StatelessWidget {
     );
   }
 }
+

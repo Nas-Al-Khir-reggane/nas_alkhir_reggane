@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -9,8 +11,8 @@ plugins {
 }
 
 android {
-    namespace = "com.nasalkheir.nas_al_kheir"
-    compileSdk = flutter.compileSdkVersion
+    namespace = "com.nasalkheir.nas_alkheir_app"
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -24,17 +26,47 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.nasalkheir.nas_al_kheir"
-        minSdk = flutter.minSdkVersion 
-        targetSdk = flutter.targetSdkVersion
+        applicationId = "com.nasalkheir.nas_alkheir_app"
+        minSdk = flutter.minSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
     }
 
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+
     buildTypes {
         release {
+            // 1. تفعيل تقليص الكود وتشفيره
+            isMinifyEnabled = true
+            
+            // 2. تفعيل حذف الصور والموارد غير المستخدمة
+            isShrinkResources = true
+            
+            // 3. ملفات القواعد الافتراضية لحماية الكود
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+
             signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
+    applicationVariants.all {
+        val variant = this
+        outputs.all {
+            val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
+            val abi = output.getFilter(com.android.build.OutputFile.ABI)
+            if (abi != null) {
+                output.outputFileName = "Nas_Al_Kheir_${variant.versionName}_$abi.apk"
+            } else {
+                output.outputFileName = "Nas_Al_Kheir_${variant.versionName}.apk"
+            }
         }
     }
 }
@@ -44,5 +76,5 @@ flutter {
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

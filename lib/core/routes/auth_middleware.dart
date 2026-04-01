@@ -9,8 +9,12 @@ class AuthMiddleware extends GetMiddleware {
   RouteSettings? redirect(String? route) {
     final authController = Get.find<AuthController>();
     
-    final args = Get.arguments as Map<String, dynamic>?;
-    final String? chatId = args?['chatId'];
+    // التحقق من نوع البيانات المرسلة بأمان لتجنب الخطأ الذي ظهر في السجلات
+    String? chatId;
+    if (Get.arguments is Map<String, dynamic>) {
+      final args = Get.arguments as Map<String, dynamic>;
+      chatId = args['chatId'];
+    }
 
     // إذا لم يكن المستخدم مسجلاً دخوله، وجهه لصفحة تسجيل الدخول (إلا إذا كانت دردشة زائر)
     if (authController.currentUser.value == null) {
@@ -31,3 +35,4 @@ class AuthMiddleware extends GetMiddleware {
     return null;
   }
 }
+

@@ -93,7 +93,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
             color: Theme.of(context).colorScheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -2))
+              BoxShadow(color: Colors.black.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, -2))
             ],
           ),
           child: BottomNavigationBar(
@@ -223,7 +223,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [Theme.of(context).cardColor, Theme.of(context).colorScheme.surface]),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
             ),
             child: Padding(
               padding: EdgeInsets.all(20),
@@ -257,7 +257,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                   ),
                   padding: const EdgeInsets.all(30),
                   child: Column(
@@ -285,10 +285,10 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                           color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: [
-                            BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
+                            BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4))
                           ],
                           border: Border.all(
-                              color: _urgencyBorderColor(request.urgency, context).withValues(alpha: 0.3)),
+                              color: _urgencyBorderColor(request.urgency, context).withValues(alpha: 0.15)),
                         ),
                         padding: const EdgeInsets.all(16),
                         child: Row(
@@ -329,7 +329,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                                     child: Container(
                                       margin: const EdgeInsets.only(top: 6),
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.15),
+                                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.75),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -400,15 +400,15 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    categoryColor.withValues(alpha: 0.18),
+                    categoryColor.withValues(alpha: 0.15),
                     Theme.of(context).cardColor,
                     Theme.of(context).cardColor,
                   ],
                 ),
                 borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: categoryColor.withValues(alpha: 0.4), width: 1.5),
+                border: Border.all(color: categoryColor.withValues(alpha: 0.75), width: 1.5),
                 boxShadow: [
-                  BoxShadow(color: categoryColor.withValues(alpha: 0.2), blurRadius: 18, offset: const Offset(0, 7)),
+                  BoxShadow(color: categoryColor.withValues(alpha: 0.75), blurRadius: 18, offset: const Offset(0, 7)),
                 ],
               ),
               child: Column(
@@ -418,7 +418,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [categoryColor.withValues(alpha: 0.3), categoryColor.withValues(alpha: 0.06)],
+                        colors: [categoryColor.withValues(alpha: 0.15), categoryColor.withValues(alpha: 0.9)],
                         begin: Alignment.topRight,
                         end: Alignment.bottomLeft,
                       ),
@@ -429,9 +429,9 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                         Container(
                           width: 48, height: 48,
                           decoration: BoxDecoration(
-                            color: categoryColor.withValues(alpha: 0.2),
+                            color: categoryColor.withValues(alpha: 0.75),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: categoryColor.withValues(alpha: 0.5)),
+                            border: Border.all(color: categoryColor.withValues(alpha: 0.75)),
                           ),
                           child: Icon(Icons.volunteer_activism, color: categoryColor, size: 26),
                         ),
@@ -445,7 +445,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: categoryColor.withValues(alpha: 0.15),
+                                  color: categoryColor.withValues(alpha: 0.75),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text('نشط', style: TextStyle(color: categoryColor, fontSize: 12, fontWeight: FontWeight.w800)),
@@ -519,7 +519,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                   ),
 
                   const SizedBox(height: 12),
-                  Divider(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1), height: 1),
+                  Divider(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75), height: 1),
                   const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.all(12),
@@ -539,7 +539,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                          border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -565,7 +565,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.9), fontSize: 13, fontWeight: FontWeight.w500)),
+        Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), fontSize: 13, fontWeight: FontWeight.w500)),
         Text(value, style: TextStyle(color: valueColor, fontWeight: FontWeight.w800, fontSize: 14)),
       ],
     );
@@ -647,7 +647,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
                                       color: _urgencyBorderColor(request.urgency, context)
-                                          .withValues(alpha: 0.3)),
+                                          .withValues(alpha: 0.15)),
                                 ),
                                 padding: const EdgeInsets.all(14),
                                 child: Row(
@@ -717,7 +717,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                 decoration: BoxDecoration(
                   color: isReached ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
                   shape: BoxShape.circle,
-                  border: Border.all(color: isReached ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
+                  border: Border.all(color: isReached ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                 ),
                 child: isReached
                     ? Icon(Icons.check, color: Theme.of(context).colorScheme.onPrimary, size: 10)
@@ -727,7 +727,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                 Expanded(
                   child: Container(
                     height: 2,
-                    color: (idx < currentStageIndex) ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                    color: (idx < currentStageIndex) ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.75),
                   ),
                 ),
             ],
@@ -784,7 +784,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
   Color _urgencyBorderColor(String urgency, BuildContext context) {
     switch (urgency) {
       case 'emergency': return Theme.of(context).colorScheme.error;
-      case 'urgent': return Theme.of(context).colorScheme.primary.withValues(alpha: 0.7);
+      case 'urgent': return Theme.of(context).colorScheme.primary.withValues(alpha: 0.15);
       default: return Theme.of(context).colorScheme.primary;
     }
   }
@@ -868,7 +868,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                     decoration: BoxDecoration(
                       color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                      border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                     ),
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -891,7 +891,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                       trailing: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(Icons.chat_bubble_outline, color: Theme.of(context).colorScheme.primary, size: 20),
@@ -915,12 +915,12 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
       case 'completed': color = Theme.of(context).colorScheme.primary; break;
       case 'rejected': color = Theme.of(context).colorScheme.error; break;
       case 'in_progress': color = Theme.of(context).colorScheme.secondary; break;
-      default: color = Theme.of(context).colorScheme.primary.withValues(alpha: 0.7);
+      default: color = Theme.of(context).colorScheme.primary.withValues(alpha: 0.15);
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withValues(alpha: 0.75),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -962,7 +962,7 @@ class _BenefArcPainter extends CustomPainter {
       canvas.drawArc(Rect.fromCircle(center: center, radius: radius), startAngle, sweepAngle * progress, false, fgPaint);
 
       final glowPaint = Paint()
-        ..color = activeColor.withValues(alpha: 0.25)
+        ..color = activeColor.withValues(alpha: 0.15)
         ..strokeWidth = strokeWidth + 4
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
@@ -974,3 +974,4 @@ class _BenefArcPainter extends CustomPainter {
   @override
   bool shouldRepaint(_BenefArcPainter old) => old.progress != progress;
 }
+

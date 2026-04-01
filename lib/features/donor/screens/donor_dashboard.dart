@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/routes/app_routes.dart';
+import 'package:animate_do/animate_do.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../controllers/donor_controller.dart';
 import '../../chat/controllers/chat_controller.dart';
@@ -101,7 +102,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
             color: Theme.of(context).cardColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             boxShadow: [
-              BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
+              BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4))
             ],
           ),
           child: BottomNavigationBar(
@@ -110,7 +111,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
             backgroundColor: Colors.transparent,
             elevation: 0,
             selectedItemColor: Theme.of(context).colorScheme.primary,
-            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15),
             type: BottomNavigationBarType.fixed,
             items: [
               const BottomNavigationBarItem(
@@ -185,9 +186,9 @@ class _DonorDashboardState extends State<DonorDashboard> {
                 onTap: () => donorController.showCertificate(),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.15),
+                    color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.75),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.4)),
+                    border: Border.all(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.75)),
                   ),
                   padding: const EdgeInsets.all(10),
                   child: Row(
@@ -233,29 +234,48 @@ class _DonorDashboardState extends State<DonorDashboard> {
             ],
           ),
           const SizedBox(height: 20),
+          Obx(() {
+            final activeReqId = authController.currentUser.value?.activeBloodRequestId;
+            final isGuestReq = authController.currentUser.value?.activeBloodRequestIsGuest ?? false;
+            
+            if (activeReqId != null && activeReqId.isNotEmpty) {
+              return Column(
+                children: [
+                  _buildLiveTrackingBanner(activeReqId, isGuestReq),
+                  const SizedBox(height: 20),
+                ],
+              );
+            }
+            return const SizedBox.shrink();
+          }),
           Row(
             children: [
               Expanded(
                 child: Obx(() => _buildDonorKPI(
-                      'إجمالي تبرعاتي',
-                      '${projectController.formatNumber(donorController.totalDonated.value)} دج',
-                      Icons.volunteer_activism,
-                      LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)]),
-                      onTap: _showAllDonations,
+                      'أرواح أُنقذت',
+                      '${(authController.currentUser.value?.bloodDonationsCount ?? 0) * 3}',
+                      Icons.favorite_rounded,
+                      const LinearGradient(colors: [Colors.pinkAccent, Colors.pink]),
+                      onTap: () => Get.toNamed(AppRoutes.bloodDonorProfile),
                     )),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Obx(() => _buildDonorKPI(
-                      'عدد التبرعات',
-                      donorController.donationsCount.value.toString(),
-                      Icons.receipt_long,
-                      LinearGradient(colors: [Theme.of(context).colorScheme.secondary, Theme.of(context).colorScheme.secondary.withValues(alpha: 0.7)]),
-                      onTap: _showAllDonations,
+                      'تبرعات الدم',
+                      '${authController.currentUser.value?.bloodDonationsCount ?? 0}',
+                      Icons.bloodtype_rounded,
+                      const LinearGradient(colors: [Colors.redAccent, Colors.red]),
+                      onTap: () => Get.toNamed(AppRoutes.bloodDonorProfile),
                     )),
               ),
             ],
           ),
+          const SizedBox(height: 24),
+          const SizedBox(height: 24),
+          _buildBloodDonationServiceCard(),
+          const SizedBox(height: 24),
+          _buildHealthTipsCarousel(),
           const SizedBox(height: 24),
           _buildAdminTeamSection(),
           const SizedBox(height: 24),
@@ -270,7 +290,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                         decoration: BoxDecoration(
                           color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                          border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                         ),
                         padding: const EdgeInsets.all(16),
                         child: Row(
@@ -361,7 +381,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                   ),
                   padding: const EdgeInsets.all(30),
                   child: Column(
@@ -395,7 +415,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                           color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
-                            BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
+                            BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4))
                           ],
                         ),
                         padding: const EdgeInsets.all(14),
@@ -405,7 +425,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                               decoration: BoxDecoration(
                                 color: donation.donorId == 'anonymous'
                                     ? Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15)
-                                    : Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                                    : Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               padding: const EdgeInsets.all(10),
@@ -440,7 +460,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                         width: 4,
                                         height: 4,
                                         decoration: BoxDecoration(
-                                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5), shape: BoxShape.circle),
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), shape: BoxShape.circle),
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
@@ -465,7 +485,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(donation.status, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 10)),
@@ -585,14 +605,14 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       decoration: BoxDecoration(
                         color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)),
+                        border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75)),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           CircleAvatar(
                             radius: 25,
-                            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                             backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty)
                                 ? CachedNetworkImageProvider(admin.profileImage!) as ImageProvider
                                 : null,
@@ -633,7 +653,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(2)))),
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(2)))),
                 const SizedBox(height: 20),
                 Text('الفريق الإداري', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                 const SizedBox(height: 16),
@@ -653,7 +673,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                           final admin = UserModel.fromMap(admins[index].data() as Map<String, dynamic>, admins[index].id);
                           return ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                               backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty) ? CachedNetworkImageProvider(admin.profileImage!) as ImageProvider : null,
                               child: (admin.profileImage == null || admin.profileImage!.isEmpty) ? Text(admin.name[0], style: TextStyle(color: Theme.of(context).colorScheme.primary)) : null,
                             ),
@@ -742,6 +762,94 @@ class _DonorDashboardState extends State<DonorDashboard> {
     });
   }
 
+  Widget _buildBloodDonationServiceCard() {
+    return Obx(() {
+      final user = authController.currentUser.value;
+      if (user == null) return const SizedBox.shrink();
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader('🩸 خدمة إغاثة بقطرة دم', ''),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.75)),
+              boxShadow: [
+                BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4))
+              ],
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.errorColor.withValues(alpha: 0.75),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.bloodtype_rounded, color: AppTheme.errorColor),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                           Text('فصيلتي: ${user.bloodType ?? 'غير محدد'}', 
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 16)),
+                           Text(user.isDonorAvailable ? 'أنت جاهز للتبرع حالياً' : 'أنت في فترة الراحة الطبية', 
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    AppTheme.gradientButton(
+                      text: 'الملف الطبي',
+                      onPressed: () => Get.toNamed(AppRoutes.bloodDonorProfile),
+                    ),
+                  ],
+                ),
+                if (user.lastDonatedAt != null) ...[
+                   const Padding(
+                     padding: EdgeInsets.symmetric(vertical: 12),
+                     child: Divider(color: Colors.white10),
+                   ),
+                   Row(
+                     children: [
+                       const Icon(Icons.timer_outlined, color: Colors.orange, size: 18),
+                       const SizedBox(width: 8),
+                       _buildRestPeriodStatus(user),
+                     ],
+                   ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      );
+    });
+  }
+
+  Widget _buildRestPeriodStatus(UserModel user) {
+    if (user.lastDonatedAt == null) return const SizedBox.shrink();
+    
+    final now = DateTime.now();
+    final difference = now.difference(user.lastDonatedAt!);
+    final daysPassed = difference.inDays;
+    final remaining = 30 - daysPassed;
+
+    if (remaining > 0) {
+      return Text('متبقي $remaining يوم على موعد تبرعك القادم', 
+        style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12));
+    } else {
+      return const Text('يمكنك التبرع الآن، جزاك الله خيراً', 
+        style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12));
+    }
+  }
+
   Widget _buildDonorProjectCard(ProjectModel project) {
     final cat = ProjectController.categories
         .firstWhere((c) => c['id'] == project.category, orElse: () => ProjectController.categories.last);
@@ -757,7 +865,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: categoryColor.withValues(alpha: 0.4), width: 1.5),
+        border: Border.all(color: categoryColor.withValues(alpha: 0.75), width: 1.5),
       ),
       child: Column(
         children: [
@@ -767,7 +875,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
             child: Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: categoryColor.withValues(alpha: 0.08),
+                color: categoryColor.withValues(alpha: 0.75),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: Row(
@@ -775,9 +883,9 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   Container(
                     width: 52, height: 52,
                     decoration: BoxDecoration(
-                      color: categoryColor.withValues(alpha: 0.25),
+                      color: categoryColor.withValues(alpha: 0.75),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: categoryColor.withValues(alpha: 0.5)),
+                      border: Border.all(color: categoryColor.withValues(alpha: 0.75)),
                     ),
                     child: Icon(cat['icon'] as IconData, color: categoryColor, size: 28),
                   ),
@@ -797,7 +905,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.amber.withValues(alpha: 0.9),
+                                  color: Colors.amber.withValues(alpha: 0.75),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Row(
@@ -822,7 +930,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(project.status, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 10)),
@@ -928,7 +1036,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -1012,7 +1120,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)))),
+                Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(2)))),
                 Text('جميع تبرعاتي',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface)),
                 const SizedBox(height: 16),
@@ -1040,7 +1148,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                 child: Row(
                                   children: [
                                     Container(
-                                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(10)),
                                       padding: const EdgeInsets.all(10),
                                       child: Icon(Icons.volunteer_activism, color: Theme.of(context).colorScheme.primary, size: 20),
                                     ),
@@ -1061,7 +1169,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700)),
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(4)),
                                           child: Text(donation.status, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 9)),
                                         ),
                                       ],
@@ -1132,7 +1240,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                 fontSize: 15)),
                         Text('انضم لمجتمع المتبرعين',
                             style: TextStyle(
-                                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7), fontSize: 12)),
+                                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.75), fontSize: 12)),
                       ],
                     ),
                   ),
@@ -1186,7 +1294,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                     decoration: BoxDecoration(
                       color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                      border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                     ),
                     child: ListTile(
                       contentPadding:
@@ -1221,7 +1329,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       trailing: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Icon(Icons.chat_bubble_outline,
@@ -1242,7 +1350,116 @@ class _DonorDashboardState extends State<DonorDashboard> {
       ],
     );
   }
+
+  Widget _buildHealthTipsCarousel() {
+    final tips = [
+      {'icon': Icons.water_drop, 'text': 'اشرب الكثير من الماء قبل التبرع للحفاظ على تدفق الدم'},
+      {'icon': Icons.restaurant, 'text': 'تناول وجبة خفيفة غنية بالحديد اليوم لتعويض النقص'},
+      {'icon': Icons.bed, 'text': 'تجنب الأنشطة الشاقة لمدة 24 ساعة بعد التبرع بالدم'},
+      {'icon': Icons.sentiment_very_satisfied, 'text': 'ابتسامتك وعطاؤك قد تكون الأمل العظيم لعائلة كاملة'},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('💡 نصائح تهمك', ''),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 90,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: tips.length,
+            itemBuilder: (context, index) {
+              return Container(
+                width: 250,
+                margin: const EdgeInsets.only(left: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(tips[index]['icon'] as IconData, color: Theme.of(context).colorScheme.primary, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        tips[index]['text'] as String,
+                        style: GoogleFonts.tajawal(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ✨ زر التتبع الحي لطلب الدم
+  Widget _buildLiveTrackingBanner(String requestId, bool isGuest) {
+    return GestureDetector(
+      onTap: () {
+        Get.toNamed('/blood-emergency', arguments: {
+           'requestId': requestId,
+           'isGuest': isGuest.toString(),
+        });
+      },
+      child: FadeInDown(
+        duration: const Duration(milliseconds: 600),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Colors.orangeAccent, Colors.deepOrange],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(color: Colors.deepOrange.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.75), shape: BoxShape.circle),
+                child: const Icon(Icons.directions_run_rounded, color: Colors.white, size: 28),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'أنت في مهمة إنقاذ الآن 🚑',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'انقر هنا للعودة لصفحة التتبع الحي للنداء',
+                      style: TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
+
 
 class _ArcProgressPainter extends CustomPainter {
   final double progress;
@@ -1276,7 +1493,7 @@ class _ArcProgressPainter extends CustomPainter {
           Rect.fromCircle(center: center, radius: radius), startAngle, sweepAngle * progress, false, fgPaint);
 
       final glowPaint = Paint()
-        ..color = color.withValues(alpha: 0.3)
+        ..color = color.withValues(alpha: 0.15)
         ..strokeWidth = strokeWidth + 4
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
@@ -1290,3 +1507,4 @@ class _ArcProgressPainter extends CustomPainter {
   bool shouldRepaint(_ArcProgressPainter old) =>
       old.progress != progress || old.color != color;
 }
+

@@ -1,41 +1,42 @@
 {
   "project_info": {
-    "project_number": "197382034070",
-    "project_id": "nas-al-kheir-app",
-    "storage_bucket": "nas-al-kheir-app.firebasestorage.app"
+    "project_number": "363230035601",
+    "project_id": "ness-alkheirapp",
+    "storage_bucket": "ness-alkheirapp.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:197382034070:android:8a72a415ac4e82405768b7",
+        "mobilesdk_app_id": "1:363230035601:android:ddc73f9642880a66a34930",
         "android_client_info": {
-          "package_name": "com.nasalkheir.nas_al_kheir"
+          "package_name": "com.nasalkheir.nas_alkheir_app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "197382034070-uel8i4gfhs5f2r7ao1v2girk93lfho85.apps.googleusercontent.com",
+          "client_id": "363230035601-6nc6rer9b9ofhq94107ssiqhpkd917ce.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nasalkheir.nas_alkheir_app",
+            "certificate_hash": "eacfe5e87431dc2ff30c01fdd9b5baea9b7268f6"
+          }
+        },
+        {
+          "client_id": "363230035601-osij1th7ij07dmbvr7a0e21drlvt4i2c.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyA3TA21W0g0l-VQZYw-vh4ZyAVjIvA0g8w"
+          "current_key": "AIzaSyAewraw4FIKKGNWMloB8_Nhhay0stlejV0"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "197382034070-uel8i4gfhs5f2r7ao1v2girk93lfho85.apps.googleusercontent.com",
+              "client_id": "363230035601-osij1th7ij07dmbvr7a0e21drlvt4i2c.apps.googleusercontent.com",
               "client_type": 3
-            },
-            {
-              "client_id": "197382034070-gb9lh5blslcrb006iuou799h52pcp91v.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.nasalkheir.nasAlKheir"
-              }
             }
           ]
         }

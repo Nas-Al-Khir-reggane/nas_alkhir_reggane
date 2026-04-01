@@ -8,6 +8,7 @@ import '../../../data/models/project_model.dart';
 import '../../../data/models/donation_model.dart';
 import '../../../data/models/worker_update_model.dart';
 import '../controllers/project_controller.dart';
+import '../../donor/controllers/donor_controller.dart';
 import 'package:intl/intl.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:cached_network_image/cached_network_image.dart';
@@ -41,7 +42,7 @@ class ProjectDetailScreen extends StatelessWidget {
               background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [categoryColor.withValues(alpha: 0.4), AppTheme.backgroundColor],
+                    colors: [categoryColor.withValues(alpha: 0.15), AppTheme.backgroundColor],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                   ),
@@ -56,7 +57,7 @@ class ProjectDetailScreen extends StatelessWidget {
                           children: [
                             Container(
                               decoration: BoxDecoration(
-                                color: categoryColor.withValues(alpha: 0.2),
+                                color: categoryColor.withValues(alpha: 0.75),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               padding: const EdgeInsets.all(14),
@@ -83,7 +84,7 @@ class ProjectDetailScreen extends StatelessWidget {
                                       const SizedBox(width: 8),
                                       Container(
                                         decoration: BoxDecoration(
-                                          color: categoryColor.withValues(alpha: 0.15),
+                                          color: categoryColor.withValues(alpha: 0.75),
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         padding: const EdgeInsets.symmetric(
@@ -236,7 +237,7 @@ class ProjectDetailScreen extends StatelessWidget {
                       crossAxisSpacing: 12,
                       children: [
                         _buildStatCard('المتبرعون', project.donorsCount.toString(), Icons.people, AppTheme.primaryGreen),
-                        _buildStatCard('العمال', project.assignedWorkers.length.toString(), Icons.engineering, Colors.blue),
+                        _buildStatCard('المتطوعون', project.assignedWorkers.length.toString(), Icons.engineering, Colors.blue),
                         _buildStatCard('أيام متبقية', projectController.daysLeft(project.deadline), Icons.timer, AppTheme.warningColor),
                         _buildStatCard('بداية المشروع', DateFormat('yyyy/MM/dd').format(project.createdAt), Icons.update, AppTheme.textSecondary),
                       ],
@@ -262,7 +263,16 @@ class ProjectDetailScreen extends StatelessWidget {
                           child: AppTheme.gradientButton(
                             text: 'إضافة تبرع',
                             icon: Icons.volunteer_activism,
-                            onPressed: () => Get.toNamed('/donor/donate', arguments: project),
+                            onPressed: () {
+                              // تهيئة مشروع محدد في الـ DonorController قبل الانتقال
+                              try {
+                                final donorController = Get.find<DonorController>();
+                                donorController.preSelectProject(project.id, project.name);
+                              } catch (e) {
+                                debugPrint('DonorController not initialized yet: $e');
+                              }
+                              Get.toNamed('/donor/donate');
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -270,7 +280,7 @@ class ProjectDetailScreen extends StatelessWidget {
                           child: OutlinedButton.icon(
                             onPressed: () => _showAssignWorkerSheet(context),
                             icon: const Icon(Icons.person_add),
-                            label: const Text('إسناد عامل'),
+                            label: const Text('إسناد متطوع'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppTheme.primaryGreen,
                               side: const BorderSide(color: AppTheme.primaryGreen),
@@ -288,12 +298,16 @@ class ProjectDetailScreen extends StatelessWidget {
                     _buildSection(
                       '💚 المتبرعون',
                       StreamBuilder<QuerySnapshot>(
+                        // إزالة ORDER BY لتجنب الحاجة لفهارس (Indexes) وتعطيل العرض
+                        // سنقوم بالترتيب برمجياً داخل الكود لضمان اشتغاله فوراً
                         stream: FirebaseFirestore.instance
                             .collection(AppConstants.donationsCollection)
                             .where('projectId', isEqualTo: project.id)
-                            .orderBy('amount', descending: true)
                             .snapshots(),
                         builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                          }
                           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                             return Center(
                               child: Padding(
@@ -303,13 +317,24 @@ class ProjectDetailScreen extends StatelessWidget {
                               ),
                             );
                           }
+
+                          // الترتيب اليدوي (الأحدث أولاً) لتجنب Index error
+                          final docs = snapshot.data!.docs.toList();
+                          docs.sort((a, b) {
+                            final aDate = (a.data() as Map<String, dynamic>)['date'] as Timestamp?;
+                            final bDate = (b.data() as Map<String, dynamic>)['date'] as Timestamp?;
+                            if (aDate == null) return 1;
+                            if (bDate == null) return -1;
+                            return bDate.compareTo(aDate);
+                          });
+
                           return ListView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            itemCount: snapshot.data!.docs.length,
+                            itemCount: docs.length,
                             itemBuilder: (context, index) {
                               final donation = DonationModel.fromMap(
-                                snapshot.data!.docs[index].data() as Map<String, dynamic>,
+                                docs[index].data() as Map<String, dynamic>,
                               );
                               return ListTile(
                                 contentPadding: EdgeInsets.zero,
@@ -321,7 +346,7 @@ class ProjectDetailScreen extends StatelessWidget {
                                       imageUrl = (userSnap.data!.data() as Map<String, dynamic>)['profileImage'];
                                     }
                                     return CircleAvatar(
-                                      backgroundColor: AppTheme.goldAccent.withValues(alpha: 0.2),
+                                      backgroundColor: AppTheme.goldAccent.withValues(alpha: 0.15),
                                       backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? CachedNetworkImageProvider(imageUrl) as ImageProvider : null,
                                       child: (imageUrl == null || imageUrl.isEmpty)
                                           ? Text(
@@ -354,12 +379,15 @@ class ProjectDetailScreen extends StatelessWidget {
                     _buildSection(
                       '🔧 التحديثات الميدانية',
                       StreamBuilder<QuerySnapshot>(
+                        // إزالة ORDER BY لتجنب الحاجة لفهارس (Indexes)
                         stream: FirebaseFirestore.instance
                             .collection('worker_updates')
                             .where('projectId', isEqualTo: project.id)
-                            .orderBy('createdAt', descending: true)
                             .snapshots(),
                         builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                          }
                           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                             return Center(
                               child: Padding(
@@ -369,14 +397,25 @@ class ProjectDetailScreen extends StatelessWidget {
                               ),
                             );
                           }
+
+                          // الترتيب اليدوي (الأحدث أولاً)
+                          final docs = snapshot.data!.docs.toList();
+                          docs.sort((a, b) {
+                            final aDate = (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+                            final bDate = (b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+                            if (aDate == null) return 1;
+                            if (bDate == null) return -1;
+                            return bDate.compareTo(aDate);
+                          });
+
                           return ListView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            itemCount: snapshot.data!.docs.length,
+                            itemCount: docs.length,
                             itemBuilder: (context, index) {
                               var update = WorkerUpdate.fromMap(
-                                snapshot.data!.docs[index].data() as Map<String, dynamic>,
-                                snapshot.data!.docs[index].id,
+                                docs[index].data() as Map<String, dynamic>,
+                                docs[index].id,
                               );
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 12),
@@ -400,7 +439,7 @@ class ProjectDetailScreen extends StatelessWidget {
                                             }
                                             return CircleAvatar(
                                               radius: 16,
-                                              backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                                              backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
                                               backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? CachedNetworkImageProvider(imageUrl) as ImageProvider : null,
                                               child: (imageUrl == null || imageUrl.isEmpty)
                                                   ? Text(update.workerName.isNotEmpty ? update.workerName[0] : 'W',
@@ -465,7 +504,7 @@ class ProjectDetailScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: color.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 20),
@@ -518,7 +557,7 @@ class ProjectDetailScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('إسناد عامل للمشروع',
+            Text('إسناد متطوع للمشروع',
                 style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             Expanded(
@@ -536,7 +575,7 @@ class ProjectDetailScreen extends StatelessWidget {
                       bool isAssigned = project.assignedWorkers.contains(worker.id);
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
                           child: Text(worker['name'][0], style: TextStyle(color: AppTheme.primaryGreen)),
                         ),
                         title: Text(worker['name'], style: TextStyle(color: AppTheme.textPrimary)),
@@ -563,3 +602,4 @@ class ProjectDetailScreen extends StatelessWidget {
     );
   }
 }
+

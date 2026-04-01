@@ -50,7 +50,7 @@ class _DonateScreenState extends State<DonateScreen> {
   void _onDonate() {
     double amount = selectedAmount ?? double.tryParse(amountController.text) ?? 0;
     if (amount <= 0) {
-      Get.snackbar('تنبيه', 'يرجى إدخال مبلغ صحيح', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.2));
+      Get.snackbar('تنبيه', 'يرجى إدخال مبلغ صحيح', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15));
       return;
     }
     
@@ -172,7 +172,7 @@ class _DonateScreenState extends State<DonateScreen> {
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.cardColor,
+                        color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.75) : AppTheme.cardColor,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                             color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder,
@@ -218,7 +218,7 @@ class _DonateScreenState extends State<DonateScreen> {
                       Switch(
                         value: isAnonymous,
                         onChanged: (v) => setState(() => isAnonymous = v),
-                        activeTrackColor: AppTheme.primaryGreen.withValues(alpha: 0.5),
+                        activeTrackColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
                         activeThumbColor: AppTheme.primaryGreen,
                       ),
                     ],
@@ -239,7 +239,7 @@ class _DonateScreenState extends State<DonateScreen> {
                       Switch(
                         value: isRecurring,
                         onChanged: (v) => setState(() => isRecurring = v),
-                        activeTrackColor: AppTheme.primaryGreen.withValues(alpha: 0.5),
+                        activeTrackColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
                         activeThumbColor: AppTheme.primaryGreen,
                       ),
                     ],
@@ -288,7 +288,7 @@ class _DonateScreenState extends State<DonateScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.cardColor,
+          color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.75) : AppTheme.cardColor,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
               color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder,
@@ -298,7 +298,7 @@ class _DonateScreenState extends State<DonateScreen> {
         child: Row(
           children: [
             Container(
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(10)),
               padding: const EdgeInsets.all(8),
               child: Icon(icon, color: color, size: 18),
             ),
@@ -415,3 +415,4 @@ class ThankYouDialog extends StatelessWidget {
     );
   }
 }
+

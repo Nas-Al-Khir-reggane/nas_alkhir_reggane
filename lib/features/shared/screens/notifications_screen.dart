@@ -59,7 +59,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       _tabFilters = [
         null,
         ['request_update', 'request_approved', 'request_rejected'],
-        ['announcement', 'system', 'new_donation', 'new_project'],
+        ['announcement', 'system', 'new_donation', 'new_project', 'blood_emergency', 'blood_encouragement'],
       ];
     }
   }
@@ -97,7 +97,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(Icons.notifications_active_outlined, color: Theme.of(context).colorScheme.primary),
@@ -141,11 +141,11 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: Theme.of(context).cardColor.withValues(alpha: 0.7),
+                color: Theme.of(context).cardColor.withValues(alpha: 0.75),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                 boxShadow: [
-                  BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                  BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4)),
                 ],
               ),
               child: ClipRRect(
@@ -212,7 +212,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                       onPressed: () {
                         notificationService.deleteAllRead();
                         Get.back();
-                        Get.snackbar('تم', 'تم حذف الإشعارات المقروءة', backgroundColor: Colors.green.withValues(alpha: 0.2));
+                        Get.snackbar('تم', 'تم حذف الإشعارات المقروءة', backgroundColor: Colors.green.withValues(alpha: 0.15));
                       },
                       child: Text('حذف الكل', style: TextStyle(color: Theme.of(context).colorScheme.error, fontFamily: 'Tajawal')),
                     ),
@@ -237,7 +237,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           notificationService.markAllAsRead();
           Get.snackbar('تم', 'تم تحديد جميع الإشعارات كمقروءة',
             snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green.withValues(alpha: 0.2),
+            backgroundColor: Colors.green.withValues(alpha: 0.15),
             colorText: Colors.green,
             duration: const Duration(seconds: 2));
         },
@@ -246,9 +246,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+            border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
             boxShadow: [
-              BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
+              BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4))
             ],
           ),
           child: Row(
@@ -280,11 +280,28 @@ class _NotificationList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // We only query by userId from the server.
-    // Client-side filtering applies the type conditions to prevent composite index errors.
-    Query query = FirebaseFirestore.instance
-        .collection('notifications')
-        .where('userId', isEqualTo: userId);
+    final authController = Get.find<AuthController>();
+    final role = authController.currentUser.value?.role;
+    final isAdmin = role == UserRole.admin || role == UserRole.superAdmin;
+
+    // We fetch notifications for the user, and if they are an admin, we also fetch broadcast notifications
+    Query query = FirebaseFirestore.instance.collection('notifications');
+    if (isAdmin) {
+      query = query.where(
+        Filter.or(
+          Filter('userId', isEqualTo: userId),
+          Filter('targetRole', isEqualTo: 'admin'),
+          Filter('targetRole', isEqualTo: 'all'),
+        )
+      );
+    } else {
+      query = query.where(
+        Filter.or(
+          Filter('userId', isEqualTo: userId),
+          Filter('targetRole', isEqualTo: 'all'),
+        )
+      );
+    }
 
     return StreamBuilder<QuerySnapshot>(
       stream: query.snapshots(),
@@ -296,7 +313,7 @@ class _NotificationList extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.75), shape: BoxShape.circle),
                   child: Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 40),
                 ),
                 const SizedBox(height: 16),
@@ -360,7 +377,7 @@ class _NotificationList extends StatelessWidget {
                   padding: const EdgeInsets.only(left: 20),
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
+                    color: Theme.of(context).colorScheme.error.withValues(alpha: 0.75),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: const Icon(Icons.delete_outline, color: Colors.white),
@@ -388,9 +405,9 @@ class _NotificationList extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
                 shape: BoxShape.circle,
-                border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), width: 2),
+                border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), width: 2),
               ),
               child: Icon(Icons.notifications_active_outlined,
                   size: 50, color: Theme.of(context).colorScheme.primary),
@@ -405,7 +422,7 @@ class _NotificationList extends StatelessWidget {
             const SizedBox(height: 8),
             Text('سوف تظهر التنبيهات المخصصة لك هنا',
                 style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8), fontSize: 13, fontFamily: 'Tajawal')),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), fontSize: 13, fontFamily: 'Tajawal')),
           ],
         ),
       ),
@@ -469,13 +486,13 @@ class _NotificationCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isRead
-                ? Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)
-                : color.withValues(alpha: 0.4),
+                ? Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)
+                : color.withValues(alpha: 0.75),
             width: isRead ? 1 : 1.5,
           ),
           boxShadow: isRead ? [] : [
             BoxShadow(
-              color: color.withValues(alpha: 0.12),
+              color: color.withValues(alpha: 0.75),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -490,7 +507,7 @@ class _NotificationCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
+                  color: color.withValues(alpha: 0.75),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(icon, color: color, size: 22),
@@ -508,7 +525,7 @@ class _NotificationCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.12),
+                            color: color.withValues(alpha: 0.75),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -530,7 +547,7 @@ class _NotificationCard extends StatelessWidget {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
+                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
                                     blurRadius: 4)
                               ],
                             ),
@@ -611,6 +628,11 @@ class _NotificationCard extends StatelessWidget {
         type == 'request_approved' ||
         type == 'request_rejected' ||
         type == 'new_project' ||
+        type == 'blood_emergency' ||
+        type == 'blood_encouragement' ||
+        type == 'blood_donation_complete' ||
+        type == 'donor_confirmed' ||
+        type == 'donor_responding' ||
         type == 'chat' ||
         type == 'new_message' ||
         type == 'guest_message';
@@ -662,6 +684,38 @@ class _NotificationCard extends StatelessWidget {
           Get.toNamed('/chat/group');
         }
         break;
+      case 'blood_emergency':
+      case 'blood_encouragement':
+        final Map<String, dynamic> args = {
+          'requestId': data['requestId'] ?? (data['data'] != null ? data['data']['requestId'] : null),
+          'bloodType': data['bloodType'] ?? (data['data'] != null ? data['data']['bloodType'] : null),
+          'hospital': data['hospital'] ?? (data['data'] != null ? data['data']['hospital'] : null),
+          'phone': data['phone'] ?? (data['data'] != null ? data['data']['phone'] : null),
+        };
+        Get.toNamed('/blood-emergency', arguments: args);
+        break;
+      case 'blood_donation_complete':
+        Get.toNamed('/blood-donor-profile');
+        break;
+      case 'donor_confirmed':
+        if (data['requestId'] != null) {
+          final Map<String, dynamic> args = {
+            'requestId': data['requestId'],
+            'bloodType': data['bloodType'],
+            'hospital': data['hospital'],
+            'phone': data['phone'],
+          };
+          Get.toNamed('/blood-emergency', arguments: args);
+        }
+        break;
+      case 'donor_responding':
+        if (data['requestId'] != null) {
+          Get.toNamed('/admin/request-detail', arguments: {
+            'requestId': data['requestId'],
+            'isGuest': data['isGuest'] == 'true',
+          });
+        }
+        break;
       default:
         break;
     }
@@ -679,6 +733,11 @@ class _NotificationCard extends StatelessWidget {
       case 'new_message': return Colors.teal;
       case 'guest_message': return Colors.teal;
       case 'announcement': return Colors.orange;
+      case 'blood_emergency': return Theme.of(context).colorScheme.error;
+      case 'blood_encouragement': return Colors.green;
+      case 'blood_donation_complete': return Colors.green;
+      case 'donor_confirmed': return Colors.green;
+      case 'donor_responding': return Colors.orange;
       default: return Theme.of(context).colorScheme.primary;
     }
   }
@@ -695,6 +754,11 @@ class _NotificationCard extends StatelessWidget {
       case 'new_message': return Icons.chat_bubble_rounded;
       case 'guest_message': return Icons.chat_bubble_rounded;
       case 'announcement': return Icons.campaign_rounded;
+      case 'blood_emergency': return Icons.volunteer_activism;
+      case 'blood_encouragement': return Icons.diversity_1_rounded;
+      case 'blood_donation_complete': return Icons.military_tech_rounded;
+      case 'donor_confirmed': return Icons.verified_rounded;
+      case 'donor_responding': return Icons.directions_run_rounded;
       default: return Icons.notifications_rounded;
     }
   }
@@ -711,7 +775,13 @@ class _NotificationCard extends StatelessWidget {
       case 'new_message': return 'رسالة';
       case 'guest_message': return 'رسالة زائر';
       case 'announcement': return 'إعلان';
+      case 'blood_emergency': return 'نداء استغاثة';
+      case 'blood_encouragement': return 'فرصة تبرع';
+      case 'blood_donation_complete': return 'إتمام تبرع';
+      case 'donor_confirmed': return 'تأكيد متبرع';
+      case 'donor_responding': return 'متبرع مستجيب';
       default: return 'إشعار';
     }
   }
 }
+

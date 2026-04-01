@@ -35,7 +35,7 @@ class ManageTaskTypesScreen extends StatelessWidget {
                 child: ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(10)),
                     child: const Icon(Icons.task_alt, color: AppTheme.primaryGreen),
                   ),
                   title: Text(type.name, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
@@ -109,3 +109,4 @@ class ManageTaskTypesScreen extends StatelessWidget {
     );
   }
 }
+

@@ -24,10 +24,10 @@ class ProjectShareCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.backgroundColor,
         borderRadius: BorderRadius.circular(35),
-        border: Border.all(color: categoryColor.withValues(alpha: 0.6), width: 2.5),
+        border: Border.all(color: categoryColor.withValues(alpha: 0.75), width: 2.5),
         boxShadow: [
           BoxShadow(
-            color: categoryColor.withValues(alpha: 0.15),
+            color: categoryColor.withValues(alpha: 0.75),
             blurRadius: 40,
             spreadRadius: -10,
           )
@@ -44,7 +44,7 @@ class ProjectShareCard extends StatelessWidget {
               height: 150,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: categoryColor.withValues(alpha: 0.1),
+                color: categoryColor.withValues(alpha: 0.75),
               ),
             ),
           ),
@@ -59,10 +59,10 @@ class ProjectShareCard extends StatelessWidget {
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [AppTheme.primaryGreen, AppTheme.primaryGreen.withValues(alpha: 0.7)],
+                        colors: [AppTheme.primaryGreen, AppTheme.primaryGreen.withValues(alpha: 0.9)],
                       ),
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.3), blurRadius: 10)],
+                      boxShadow: [BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.75), blurRadius: 10)],
                     ),
                     child: const Icon(Icons.volunteer_activism, color: Colors.white, size: 26),
                   ),
@@ -79,7 +79,7 @@ class ProjectShareCard extends StatelessWidget {
                         Text(
                           'معاً لنصنع الفرق الملموس',
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: AppTheme.primaryGreen.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.w500, fontFamily: 'Tajawal'),
+                          style: TextStyle(color: AppTheme.primaryGreen.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.w500, fontFamily: 'Tajawal'),
                         ),
                       ],
                     ),
@@ -90,7 +90,7 @@ class ProjectShareCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: categoryColor,
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: [BoxShadow(color: categoryColor.withValues(alpha: 0.4), blurRadius: 8)],
+                      boxShadow: [BoxShadow(color: categoryColor.withValues(alpha: 0.75), blurRadius: 8)],
                     ),
                     child: Text(
                       categoryName,
@@ -134,12 +134,12 @@ class ProjectShareCard extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      AppTheme.textPrimary.withValues(alpha: 0.05),
-                      AppTheme.textPrimary.withValues(alpha: 0.02),
+                      AppTheme.textPrimary.withValues(alpha: 0.15),
+                      AppTheme.textPrimary.withValues(alpha: 0.15),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppTheme.textPrimary.withValues(alpha: 0.1)),
+                  border: Border.all(color: AppTheme.textPrimary.withValues(alpha: 0.75)),
                 ),
                 child: GoalGridProgress(
                   budget: project.budget,
@@ -148,6 +148,7 @@ class ProjectShareCard extends StatelessWidget {
                   activeColor: categoryColor,
                   isScrollable: false,
                   forceComplete: true, 
+                  maxDisplayUnits: 120, // Limit display to 120 icons (12 rows)
                 ),
               ),
               
@@ -159,7 +160,7 @@ class ProjectShareCard extends StatelessWidget {
                   'قال الله تعالى: {وَمَا تُنفِقُوا مِنْ خَيْرٍ فَإِنَّ اللَّهَ بِهِ عَلِيمٌ}',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: AppTheme.primaryGreen.withValues(alpha: 0.9),
+                    color: AppTheme.primaryGreen.withValues(alpha: 0.75),
                     fontSize: 12,
                     fontStyle: FontStyle.italic,
                     fontFamily: 'Tajawal',
@@ -178,9 +179,9 @@ class ProjectShareCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                       decoration: BoxDecoration(
-                        color: AppTheme.textPrimary.withValues(alpha: 0.05),
+                        color: AppTheme.textPrimary.withValues(alpha: 0.75),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppTheme.textPrimary.withValues(alpha: 0.02)),
+                        border: Border.all(color: AppTheme.textPrimary.withValues(alpha: 0.75)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,7 +215,7 @@ class ProjectShareCard extends StatelessWidget {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: [
-                            BoxShadow(color: categoryColor.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: -5)
+                            BoxShadow(color: categoryColor.withValues(alpha: 0.75), blurRadius: 20, spreadRadius: -5)
                           ],
                         ),
                         child: QrImageView(
@@ -254,3 +255,4 @@ class ProjectShareCard extends StatelessWidget {
     return amount.toStringAsFixed(0);
   }
 }
+

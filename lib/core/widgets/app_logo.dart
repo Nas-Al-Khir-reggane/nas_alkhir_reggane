@@ -21,7 +21,7 @@ class AppLogo extends StatelessWidget {
         shape: BoxShape.circle,
         boxShadow: showGlow ? [
           BoxShadow(
-            color: (color ?? Colors.black).withValues(alpha: 0.1),
+            color: (color ?? Colors.black).withValues(alpha: 0.75),
             blurRadius: 20,
             offset: const Offset(0, 10),
           )
@@ -39,3 +39,4 @@ class AppLogo extends StatelessWidget {
     );
   }
 }
+

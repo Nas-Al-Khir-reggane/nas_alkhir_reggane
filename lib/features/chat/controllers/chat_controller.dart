@@ -39,12 +39,13 @@ class ChatController extends GetxController {
             final unreadMap = Map<String, dynamic>.from(data['unreadCount'] ?? {});
             int userUnread = (unreadMap[user.uid] ?? 0) as int;
             
-            // 2. For admins, also count chats with new guest messages if they haven't joined yet
-            if (isAdmin && data['type'] == 'guest' && data['hasUnreadGuestMessage'] == true) {
+            // 2. For admins, also count guest messages in guest chats
+            if (isAdmin && data['type'] == 'guest') {
+              final int guestUnread = (data['guestUnreadCount'] ?? 0) as int;
               final participants = List.from(data['participants'] ?? []);
               if (!participants.contains(user.uid)) {
-                // If it's a new guest chat and this admin hasn't opened it yet
-                userUnread = userUnread > 0 ? userUnread : 1; 
+                // If the admin hasn't joined, use the guestUnreadCount
+                userUnread = guestUnread;
               }
             }
             
@@ -58,3 +59,4 @@ class ChatController extends GetxController {
     });
   }
 }
+

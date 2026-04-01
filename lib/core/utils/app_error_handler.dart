@@ -12,7 +12,7 @@ class AppErrorHandler {
     Get.snackbar(
       'تنبيه',
       customMessage ?? 'حدث خطأ في الاتصال، يرجى المحاولة لاحقاً',
-      backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2),
+      backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15),
       colorText: AppTheme.errorColor,
       snackPosition: SnackPosition.BOTTOM,
       margin: const EdgeInsets.all(16),
@@ -21,3 +21,4 @@ class AppErrorHandler {
     );
   }
 }
+

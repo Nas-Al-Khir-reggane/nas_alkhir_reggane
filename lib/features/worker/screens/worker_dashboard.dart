@@ -98,7 +98,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
             color: Theme.of(context).colorScheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             boxShadow: [
-              BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
+              BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4))
             ],
           ),
           child: BottomNavigationBar(
@@ -107,7 +107,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
             backgroundColor: Colors.transparent,
             elevation: 0,
             selectedItemColor: Theme.of(context).colorScheme.primary,
-            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15),
             type: BottomNavigationBarType.fixed,
             items: [
               const BottomNavigationBarItem(
@@ -160,7 +160,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                       )),
                   Container(
                     margin: const EdgeInsets.only(top: 4),
-                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(8)),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     child: Obx(() => Text(
                           workerController.currentWorker.value?.workerRole ?? 'متطوع',
@@ -179,7 +179,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: workerController.isAvailable.value 
                       ? Theme.of(context).colorScheme.primary 
-                      : Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+                      : Theme.of(context).colorScheme.error.withValues(alpha: 0.15),
                     foregroundColor: workerController.isAvailable.value 
                       ? Theme.of(context).colorScheme.onPrimary 
                       : Theme.of(context).colorScheme.error,
@@ -233,7 +233,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                   'المنجزة',
                   workerController.completedTasksCount,
                   Icons.task_alt,
-                  LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.8)]),
+                  LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.9)]),
                 ),
               ),
             ],
@@ -245,9 +245,9 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)),
+              border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75)),
             ),
             child: Row(
               children: [
@@ -286,14 +286,14 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
                   ),
                   padding: const EdgeInsets.all(30),
                   child: Column(
                     children: [
-                      Icon(Icons.task_alt, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5), size: 40),
+                      Icon(Icons.task_alt, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), size: 40),
                       const SizedBox(height: 12),
-                      Text('لا توجد مهام حالية', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)), textAlign: TextAlign.center),
+                      Text('لا توجد مهام حالية', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75)), textAlign: TextAlign.center),
                     ],
                   ),
                 )
@@ -338,7 +338,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('غرفة الفريق الجماعية', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w800, fontSize: 15, fontFamily: 'Tajawal')),
-                        Text('الدردشة مع جميع أعضاء الفريق', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7), fontSize: 12, fontFamily: 'Tajawal')),
+                        Text('الدردشة مع جميع أعضاء الفريق', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.75), fontSize: 12, fontFamily: 'Tajawal')),
                       ],
                     ),
                   ),
@@ -365,7 +365,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                       decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16)),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                           backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty) ? CachedNetworkImageProvider(admin.profileImage!) as ImageProvider : null,
                           child: (admin.profileImage == null || admin.profileImage!.isEmpty) ? Text(admin.name[0], style: TextStyle(color: Theme.of(context).colorScheme.primary)) : null,
                         ),
@@ -461,20 +461,20 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: urgencyColor.withValues(alpha: 0.4)),
+        border: Border.all(color: urgencyColor.withValues(alpha: 0.75)),
       ),
       child: Column(
         children: [
           Container(
             decoration: BoxDecoration(
-              color: urgencyColor.withValues(alpha: 0.08),
+              color: urgencyColor.withValues(alpha: 0.75),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             ),
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
                 Container(
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.all(10),
                   child: Icon(Icons.airport_shuttle, color: Theme.of(context).colorScheme.primary, size: 22),
                 ),
@@ -490,7 +490,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: urgencyColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(color: urgencyColor.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(8)),
                   child: Text(request.urgency, style: TextStyle(color: urgencyColor, fontSize: 10, fontWeight: FontWeight.bold)),
                 ),
               ],
@@ -535,3 +535,4 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     );
   }
 }
+

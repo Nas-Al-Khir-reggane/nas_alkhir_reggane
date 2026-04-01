@@ -113,7 +113,7 @@ class OfflineQueueService extends GetxService {
         '✅ تمت المزامنة',
         'تم إرسال جميع الطلبات المحفوظة بنجاح',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: const Color(0xFF00C853).withValues(alpha: 0.2),
+        backgroundColor: const Color(0xFF00C853).withValues(alpha: 0.15),
         colorText: const Color(0xFF00C853),
         duration: const Duration(seconds: 4),
       );
@@ -179,3 +179,4 @@ class OfflineQueueService extends GetxService {
     pendingCount.value = 0;
   }
 }
+
