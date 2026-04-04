@@ -1,0 +1,338 @@
+:root {
+    --primary: #1e3a2f;      /* أخضر داكن (ناس الخير) */
+    --primary-light: #2c5545;
+    --accent: #d4af37;       /* ذهبي */
+    --accent-hover: #b8972e;
+    --text-primary: #ffffff;
+    --text-second: rgba(255, 255, 255, 0.7);
+    --bg-dark: #0f1c16;      /* خلفية ليلية */
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Tajawal', sans-serif;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* --- الخلفية الحركية (Blobs) --- */
+.background-blobs {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.blob {
+    position: absolute;
+    filter: blur(80px);
+    border-radius: 50%;
+    opacity: 0.5;
+    animation: float 20s infinite ease-in-out alternate;
+}
+
+.blob-1 {
+    top: -10%;
+    left: -10%;
+    width: 50vw;
+    height: 50vw;
+    background: var(--primary);
+}
+
+.blob-2 {
+    bottom: -20%;
+    right: -10%;
+    width: 60vw;
+    height: 60vw;
+    background: rgba(212, 175, 55, 0.15); /* لون ذهبي خفيف جداً */
+    animation-delay: -5s;
+}
+
+@keyframes float {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(5%, 10%) scale(1.1); }
+}
+
+/* --- الحاوية الأساسية --- */
+.container {
+    width: 100%;
+    max-width: 800px;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 1;
+}
+
+/* --- الهيدر و الشعار --- */
+.header {
+    text-align: center;
+    margin-bottom: 40px;
+    animation: fadeInDown 1s ease;
+}
+
+.logo-container {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--accent), var(--primary));
+    border-radius: 30px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    transform: rotate(-5deg);
+    transition: transform 0.3s ease;
+}
+
+.logo-container:hover {
+    transform: rotate(0deg) scale(1.05);
+}
+
+.logo-icon {
+    color: white;
+}
+
+.app-title {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+    background: linear-gradient(to left, #fff, var(--accent));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.app-subtitle {
+    font-size: 1.2rem;
+    color: var(--text-second);
+    max-width: 500px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+/* --- الزجاجيات (Glassmorphism Panels) --- */
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: 24px;
+    padding: 30px;
+    width: 100%;
+    margin-bottom: 30px;
+    animation: fadeInUp 1s ease 0.2s both;
+}
+
+/* --- قسم التحميل --- */
+.download-section {
+    text-align: center;
+}
+
+.download-section h2 {
+    font-size: 1.8rem;
+    margin-bottom: 5px;
+    font-weight: 700;
+}
+
+.version-info {
+    color: var(--accent);
+    font-size: 0.9rem;
+    margin-bottom: 25px;
+    font-weight: 500;
+}
+
+.buttons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* --- الأزرار الفخمة --- */
+.download-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 20px;
+    border-radius: 16px;
+    text-decoration: none;
+    color: white;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    position: relative;
+}
+
+.download-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.download-btn:not(.disabled):hover::before {
+    left: 100%;
+}
+
+.download-btn.primary {
+    background: linear-gradient(135deg, var(--primary-light), var(--primary));
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.download-btn.secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.download-btn:not(.disabled):hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+}
+
+.download-btn.primary:not(.disabled):hover {
+    box-shadow: 0 10px 25px rgba(44, 85, 69, 0.5);
+}
+
+.download-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+.btn-icon {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.1);
+    border-radius: 12px;
+}
+
+.btn-text {
+    flex-grow: 1;
+    text-align: right;
+    margin-right: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.btn-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.btn-desc {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.7);
+}
+
+.download-icon {
+    font-size: 1.2rem;
+    color: var(--accent);
+}
+
+/* --- التحميل والأخطاء --- */
+.spinner-container {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.error-msg {
+    margin-top: 20px;
+    color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+}
+
+/* --- قسم المميزات --- */
+.features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    width: 100%;
+}
+
+.feature-item {
+    text-align: center;
+    padding: 25px 20px;
+    margin-bottom: 0;
+    transition: transform 0.3s ease;
+    animation: fadeInUp 1s ease 0.4s both;
+}
+
+.feature-item:hover {
+    transform: translateY(-5px);
+}
+
+.feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: 15px;
+    text-shadow: 0 0 20px rgba(255,255,255,0.2);
+}
+
+.color-red { color: #ff4757; }
+.color-green { color: #2ed573; }
+.color-gold { color: var(--accent); }
+
+.feature-item h3 {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+}
+
+.feature-item p {
+    font-size: 0.9rem;
+    color: var(--text-second);
+    line-height: 1.5;
+}
+
+/* --- الفوتر --- */
+footer {
+    margin-top: 40px;
+    text-align: center;
+    color: var(--text-second);
+    font-size: 0.9rem;
+}
+
+/* --- الانيميشين --- */
+@keyframes spin { 100% { transform: rotate(360deg); } }
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}

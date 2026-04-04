@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تطبيق ناس الخير - حمل الآن</title>
+    
+    <!-- خطوط جوجل (Tajawal) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    
+    <!-- الأيقونات (FontAwesome) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- ملفات التنسيق والتشغيل -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <main class="container">
+        <!-- قسم الشعار والعنوان -->
+        <header class="header">
+            <div class="logo-container">
+                <i class="fa-solid fa-hand-holding-heart fa-3x logo-icon"></i>
+            </div>
+            <h1 class="app-title">ناس الخير</h1>
+            <p class="app-subtitle">تطبيق صُنع بحب لتسهيل التبرع بالدم، وجمع المتطوعين لخدمة أهالي رقان وما جاورها.</p>
+        </header>
+
+        <!-- قسم التحميل الزجاجي (Glassmorphism) -->
+        <section class="download-section glass-panel">
+            <h2>شاركنا الأجر</h2>
+            <p class="version-info" id="versionInfo">نبحث عن أحدث نسخة متوفرة...</p>
+            
+            <div class="buttons-container">
+                <!-- زر التحميل الموحد -->
+                <a href="#" class="download-btn primary disabled" id="btn-main-download">
+                    <div class="btn-icon">
+                        <i class="fa-solid fa-mobile-screen"></i>
+                    </div>
+                    <div class="btn-text" style="margin-right: 15px; text-align: right;">
+                        <span class="btn-title">تحميل التطبيق</span>
+                        <span class="btn-desc">متاح لأجهزة أندرويد</span>
+                    </div>
+                    <i class="fa-solid fa-download download-icon" style="margin-right: auto; margin-left:10px;"></i>
+                </a>
+            </div>
+            
+            <div id="loading-spinner" class="spinner-container">
+                <div class="spinner"></div>
+                <p>يتم تجهيز رابط التحميل...</p>
+            </div>
+            
+            <div id="error-message" class="error-msg" style="display: none;">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>التطبيق غير متوفر للتحميل حالياً، نرجو العودة لاحقاً.</span>
+            </div>
+        </section>
+
+        <!-- مميزات التطبيق -->
+        <section class="features">
+            <div class="feature-item glass-panel">
+                <i class="fa-solid fa-droplet feature-icon color-red"></i>
+                <h3>قطرة دم</h3>
+                <p>كن سبباً في استمرار حياة. نصلك بمن يحتاج زمرة دمك في الوقت المناسب.</p>
+            </div>
+            <div class="feature-item glass-panel">
+                <i class="fa-solid fa-hands-holding-child feature-icon color-green"></i>
+                <h3>يد العون</h3>
+                <p>ننظم جهود المتطوعين لتصل المساعدة لمن يستحقها بمنتهى السرية والكرامة.</p>
+            </div>
+            <div class="feature-item glass-panel">
+                <i class="fa-solid fa-bed feature-icon color-gold"></i>
+                <h3>ستر وإكرام</h3>
+                <p>إدارة وتوفير خدمات تغسيل الموتى وتكفينهم، ابتغاءً لمرضاة الله.</p>
+            </div>
+        </section>
+
+        <footer>
+            <p>جميع الحقوق محفوظة &copy; تطبيق ناس الخير 2026</p>
+        </footer>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
