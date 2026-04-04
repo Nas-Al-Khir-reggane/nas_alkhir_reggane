@@ -434,7 +434,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         ],
                       ),
                     );
-                  }).toList(),
+                  }).toList().cast<Widget>(),
                 ),
               ),
             ),
@@ -472,23 +472,40 @@ class _ReportsScreenState extends State<ReportsScreen> {
             children: [
               _buildHeader(),
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: AppTheme.darkSurface,
-                  borderRadius: BorderRadius.circular(20),
+                  color: Get.isDarkMode ? AppTheme.darkSurface : Colors.black.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(22),
                   border: Border.all(color: AppTheme.glassBorder),
                 ),
                 child: TabBar(
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerColor: Colors.transparent,
+                  isScrollable: false,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 4),
                   indicator: BoxDecoration(
                     color: AppTheme.primaryGreen.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppTheme.primaryGreen),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppTheme.primaryGreen, width: 1.5),
                   ),
                   labelColor: AppTheme.primaryGreen,
                   unselectedLabelColor: AppTheme.textHint,
-                  tabs: const [
-                    Tab(child: Text("المخططات والإحصائيات", style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Tajawal'))),
-                    Tab(child: Text("سجل النشاطات المفصل", style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Tajawal'))),
+                  labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontFamily: 'Tajawal', fontSize: 13),
+                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Tajawal', fontSize: 13),
+                  tabs: [
+                    Tab(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text("المخططات والإحصائيات", style: const TextStyle(fontFamily: 'Tajawal')),
+                      ),
+                    ),
+                    Tab(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text("سجل النشاطات المفصل", style: const TextStyle(fontFamily: 'Tajawal')),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -531,11 +548,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 Text("نظرة عامة", style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: AppTheme.darkSurface, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppTheme.glassBorder)),
+                  decoration: BoxDecoration(
+                    color: Get.isDarkMode ? AppTheme.darkSurface : Colors.black.withValues(alpha: 0.05), 
+                    borderRadius: BorderRadius.circular(20), 
+                    border: Border.all(color: AppTheme.glassBorder)
+                  ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _filter,
-                      dropdownColor: AppTheme.backgroundColor,
+                      dropdownColor: AppTheme.surfaceColor,
                       style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
                       icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.primaryGreen, size: 18),
                       items: const [
@@ -557,7 +578,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           const SizedBox(height: 30),
           FadeInUp(delay: const Duration(milliseconds: 400), child: _buildSectionTitle("الخدمات المقدمة (توزيع)")),
           FadeInUp(delay: const Duration(milliseconds: 500), child: _buildPieChart()),
-          const SizedBox(height: 80),
+          const SizedBox(height: 160),
         ],
       ),
     );
@@ -698,27 +719,53 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(20, 20, 20, 10),
+      padding: const EdgeInsets.all(20),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              IconButton(icon: const Icon(Icons.arrow_back_ios_new, size: 20), color: AppTheme.textPrimary, onPressed: () => Get.back()),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('التقارير والإحصاءات', style: TextStyle(color: AppTheme.textPrimary, fontSize: 22, fontWeight: FontWeight.w900)),
-                  Text('تحليل البيانات واستخراج المستندات', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
-                ],
-              ),
-            ],
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 22), 
+            color: AppTheme.textPrimary, 
+            onPressed: () => Get.back(),
+            style: IconButton.styleFrom(
+              backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'التقارير والإحصاءات', 
+                  style: TextStyle(
+                    color: AppTheme.textPrimary, 
+                    fontSize: 22, 
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                  )
+                ),
+                Text(
+                  'تحليل الأداء واستخراج المستندات', 
+                  style: TextStyle(
+                    color: AppTheme.textSecondary, 
+                    fontSize: 13, 
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'Tajawal',
+                  )
+                ),
+              ],
+            ),
           ),
           Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.analytics_outlined, color: AppTheme.primaryGreen),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryGreen.withValues(alpha: 0.1), 
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.1)),
+            ),
+            child: const Icon(Icons.analytics_rounded, color: AppTheme.primaryGreen, size: 28),
           ),
         ],
       ),

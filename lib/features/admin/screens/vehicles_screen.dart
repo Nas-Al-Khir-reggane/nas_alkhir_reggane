@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'full_screen_map_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/vehicle_model.dart';
@@ -110,13 +110,13 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                   style: TextStyle(color: AppTheme.textPrimary),
                   decoration: AppTheme.inputDecoration("الموديل (اختياري)", Icons.directions_car_filled_outlined),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                           side: const BorderSide(color: AppTheme.glassBorder),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
@@ -124,10 +124,11 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                         child: Text("إلغاء", style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'Tajawal')),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: AppTheme.gradientButton(
                         text: "حفظ وإضافة",
+                        horizontalPadding: 12,
                         icon: Icons.add_circle_outline,
                         onPressed: () {
                           if (formKey.currentState!.validate()) {
@@ -153,6 +154,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -403,46 +405,61 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
             ),
           ),
 
-          // قسم الخريطة المصغر
+          // قسم تتبع الموقع (نسخة خفيفة للأداء)
           if (v.currentLocation != null)
-            Container(
-              height: 220,
-              margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppTheme.glassBorder),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: FlutterMap(
-                  options: MapOptions(
-                    initialCenter: LatLng(v.currentLocation!.latitude, v.currentLocation!.longitude),
-                    initialZoom: 14.5,
-                    interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
-                  ),
+            GestureDetector(
+              onTap: () => Get.to(() => FullScreenMapScreen(
+                targetLocation: LatLng(v.currentLocation!.latitude, v.currentLocation!.longitude),
+                title: 'تتبع الحافلة: ${v.plateNumber}',
+                initialZoom: 16,
+              ), transition: Transition.fadeIn),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.1)),
+                ),
+                child: Row(
                   children: [
-                    TileLayer(
-                      urlTemplate: Get.isDarkMode 
-                        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                      subdomains: const ['a', 'b', 'c', 'd'],
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.satellite_alt_rounded, color: AppTheme.primaryGreen, size: 24),
                     ),
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          point: LatLng(v.currentLocation!.latitude, v.currentLocation!.longitude),
-                          width: 40,
-                          height: 40,
-                          child: Transform.rotate(
-                            angle: v.heading * (3.141592653589793 / 180),
-                            child: const Icon(
-                              Icons.navigation_rounded,
-                              color: AppTheme.primaryGreen,
-                              size: 30,
-                            ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('آخر موقع مرصود للحافلة', 
+                            style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 4),
+                          Text('إحداثيات: ${v.currentLocation!.latitude.toStringAsFixed(4)}, ${v.currentLocation!.longitude.toStringAsFixed(4)}', 
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontFamily: 'Tajawal')
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryGreen,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.3), blurRadius: 8)],
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.map_outlined, color: Colors.black, size: 16),
+                          SizedBox(width: 6),
+                          Text('تتبع', style: TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -632,13 +649,13 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                     style: TextStyle(color: AppTheme.textPrimary),
                     decoration: AppTheme.inputDecoration("الموديل", Icons.directions_car_filled_outlined),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                             side: const BorderSide(color: AppTheme.glassBorder),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
@@ -646,10 +663,11 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                           child: Text("إلغاء", style: TextStyle(color: AppTheme.textHint, fontFamily: 'Tajawal')),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: AppTheme.gradientButton(
                           text: isUploading ? "جاري الرفع..." : "حفظ التعديلات",
+                          horizontalPadding: 12,
                           icon: Icons.check_circle_outline,
                           onPressed: isUploading ? null : () async {
                             if (formKey.currentState!.validate()) {
@@ -688,6 +706,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),

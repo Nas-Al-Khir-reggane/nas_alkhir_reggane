@@ -37,6 +37,7 @@ import '../../../core/widgets/role_guard.dart';
 import 'project_detail_screen.dart';
 import '../widgets/dashboard_header.dart';
 import '../../shared/widgets/community_pulse_card.dart';
+import '../../shared/widgets/app_drawer.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -119,6 +120,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           isDark: Theme.of(context).brightness == Brightness.dark,
           child: Scaffold(
             backgroundColor: Colors.transparent, // Allow ambient to show
+            drawer: const AppDrawer(),
             body: IndexedStack(
               index: _currentIndex,
               children: screens,
@@ -464,7 +466,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   )
                 : const SizedBox.shrink()),
 
-            const CommunityPulseCard(),
+            const RepaintBoundary(child: CommunityPulseCard()),
             const SizedBox(height: 12),
 
              const RoleGuard(
@@ -493,12 +495,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ],
             ),
             const SizedBox(height: 14),
-            const StatsGrid(),
+            const RepaintBoundary(child: StatsGrid()),
             
             const SizedBox(height: 24),
             
             // --- Mission Control Map ---
-            MissionControlMap(),
+            const RepaintBoundary(child: MissionControlMap()),
             
             const SizedBox(height: 24),
             Obx(() => controller.urgentRequests.isNotEmpty
@@ -542,61 +544,63 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           ),
                         );
                       }
-                      return LineChart(
-                            LineChartData(
-                              gridData: FlGridData(
-                                  show: true, drawVerticalLine: false, getDrawingHorizontalLine: (_) => FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15), strokeWidth: 1)),
-                              titlesData: FlTitlesData(
-                                bottomTitles: AxisTitles(
-                                  sideTitles: SideTitles(
-                                    showTitles: true,
-                                    getTitlesWidget: (v, _) {
-                                      final index = v.toInt();
-                                      if (index < 0 || index >= controller.donationsLastSixMonths.length) return const SizedBox.shrink();
-                                      return Text(
-                                        controller.donationsLastSixMonths[index]['month'],
-                                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10));
-                                    },
+                      return RepaintBoundary(
+                        child: LineChart(
+                              LineChartData(
+                                gridData: FlGridData(
+                                    show: true, drawVerticalLine: false, getDrawingHorizontalLine: (_) => FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15), strokeWidth: 1)),
+                                titlesData: FlTitlesData(
+                                  bottomTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      getTitlesWidget: (v, _) {
+                                        final index = v.toInt();
+                                        if (index < 0 || index >= controller.donationsLastSixMonths.length) return const SizedBox.shrink();
+                                        return Text(
+                                          controller.donationsLastSixMonths[index]['month'],
+                                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10));
+                                      },
+                                    ),
                                   ),
-                                ),
-                                leftTitles: AxisTitles(
-                                  sideTitles: SideTitles(
-                                    showTitles: true,
-                                    reservedSize: 30,
-                                    getTitlesWidget: (v, _) => Text('${v.toInt()}k', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
+                                  leftTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      reservedSize: 30,
+                                      getTitlesWidget: (v, _) => Text('${v.toInt()}k', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
+                                    ),
                                   ),
+                                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                 ),
-                                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              ),
-                              borderData: FlBorderData(show: false),
-                              lineBarsData: [
-                                LineChartBarData(
-                                  spots: controller.donationsLastSixMonths
-                                      .asMap()
-                                      .entries
-                                      .map((e) => FlSpot(e.key.toDouble(), (e.value['amount'] ?? 0.0).toDouble()))
-                                      .toList(),
-                                  isCurved: true,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  barWidth: 3,
-                                  belowBarData: BarAreaData(show: true, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)),
-                                  dotData: FlDotData(
-                                      show: true,
-                                      getDotPainter: (spot, percent, bar, index) =>
-                                          FlDotCirclePainter(radius: 4, color: Theme.of(context).colorScheme.primary, strokeColor: Theme.of(context).colorScheme.surface, strokeWidth: 2)),
-                                )
-                              ],
-                              lineTouchData: LineTouchData(
-                                touchTooltipData: LineTouchTooltipData(
-                                  getTooltipItems: (spots) => spots
-                                      .map((s) => LineTooltipItem('${s.y.toInt()} دج',
-                                          TextStyle(color: Theme.of(context).colorScheme.primary, fontFamily: 'Tajawal', fontWeight: FontWeight.w600)))
-                                      .toList(),
+                                borderData: FlBorderData(show: false),
+                                lineBarsData: [
+                                  LineChartBarData(
+                                    spots: controller.donationsLastSixMonths
+                                        .asMap()
+                                        .entries
+                                        .map((e) => FlSpot(e.key.toDouble(), (e.value['amount'] ?? 0.0).toDouble()))
+                                        .toList(),
+                                    isCurved: true,
+                                    color: Theme.of(context).colorScheme.primary,
+                                    barWidth: 3,
+                                    belowBarData: BarAreaData(show: true, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)),
+                                    dotData: FlDotData(
+                                        show: true,
+                                        getDotPainter: (spot, percent, bar, index) =>
+                                            FlDotCirclePainter(radius: 4, color: Theme.of(context).colorScheme.primary, strokeColor: Theme.of(context).colorScheme.surface, strokeWidth: 2)),
+                                  )
+                                ],
+                                lineTouchData: LineTouchData(
+                                  touchTooltipData: LineTouchTooltipData(
+                                    getTooltipItems: (spots) => spots
+                                        .map((s) => LineTooltipItem('${s.y.toInt()} دج',
+                                            TextStyle(color: Theme.of(context).colorScheme.primary, fontFamily: 'Tajawal', fontWeight: FontWeight.w600)))
+                                        .toList(),
+                                  ),
                                 ),
                               ),
                             ),
-                          );
+                      );
                     }),
                   ),
                   const SizedBox(height: 24),
@@ -889,6 +893,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                       Text(intl.DateFormat('MM/dd').format(donation.date), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
                                     ],
                                   ),
+                                  if (donation.proofImageUrl != null && donation.proofImageUrl!.isNotEmpty) ...[
+                                    const SizedBox(width: 4),
+                                    IconButton(
+                                      icon: const Icon(Icons.receipt_long, color: AppTheme.goldAccent, size: 20),
+                                      onPressed: () => _showProofImage(context, donation.id, donation.proofImageUrl!),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                    ),
+                                  ],
                                   if (controller.isSuperAdmin) ...[
                                     const SizedBox(width: 8),
                                     IconButton(
@@ -1243,6 +1256,67 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   },
                 )),
         ],
+      ),
+    );
+  }
+
+  void _showProofImage(BuildContext context, String donationId, String url) {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        contentPadding: EdgeInsets.zero,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              child: CachedNetworkImage(
+                imageUrl: url,
+                placeholder: (context, url) => const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+                errorWidget: (context, url, error) => const Icon(Icons.error),
+                fit: BoxFit.contain,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => Get.back(),
+                    icon: const Icon(Icons.close),
+                    label: const Text('إغلاق', style: TextStyle(fontFamily: 'Tajawal')),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Get.back();
+                      Get.dialog(
+                        AlertDialog(
+                          title: const Text('حذف الإثبات؟', style: TextStyle(fontFamily: 'Tajawal')),
+                          content: const Text('سيتم حذف الصورة نهائياً لتوفير المساحة. هل أنت متأكد؟', style: TextStyle(fontFamily: 'Tajawal')),
+                          actions: [
+                            TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
+                            TextButton(
+                              onPressed: () {
+                                Get.back();
+                                controller.clearDonationProof(donationId);
+                              },
+                              child: const Text('حذف الإثبات', style: TextStyle(color: Colors.red, fontFamily: 'Tajawal')),
+                            ),
+                          ],
+                        )
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red.withValues(alpha: 0.1), foregroundColor: Colors.red, elevation: 0),
+                    icon: const Icon(Icons.delete_sweep_rounded),
+                    label: const Text('مسح الإثبات', style: TextStyle(fontFamily: 'Tajawal')),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

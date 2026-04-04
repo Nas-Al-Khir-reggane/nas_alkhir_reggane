@@ -14,6 +14,7 @@ import '../../../data/models/service_request_model.dart';
 import '../../../data/models/user_model.dart';
 import './update_task_screen.dart';
 import './task_detail_screen.dart';
+import '../../shared/widgets/app_drawer.dart';
 import '../../../data/services/notification_service.dart';
 import '../../shared/widgets/community_pulse_card.dart';
 import '../../../core/animations/scroll_animations.dart';
@@ -119,6 +120,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
       },
       child: Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        drawer: const AppDrawer(),
         body: IndexedStack(
           index: _currentIndex,
           children: [
@@ -187,45 +189,64 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
           // Custom AppBar
           Row(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('أهلاً,', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
-                  Obx(() => Text(
-                        workerController.currentWorker.value?.name ?? 'المتطوع',
-                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 20, fontWeight: FontWeight.w700),
-                      )),
-                  Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    child: Obx(() => Text(
-                          workerController.currentWorker.value?.workerRole ?? 'متطوع',
-                          style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 12),
-                        )),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              IconButton(
-                icon: Icon(Icons.person_outline, color: Theme.of(context).colorScheme.primary, size: 28),
-                onPressed: () => Get.toNamed('/profile'),
+              Builder(
+                builder: (context) => IconButton(
+                  icon: Icon(Icons.menu_rounded, color: Theme.of(context).colorScheme.primary, size: 28),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                ),
               ),
               const SizedBox(width: 8),
-              Obx(() => ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: workerController.isAvailable.value 
-                      ? Theme.of(context).colorScheme.primary 
-                      : Theme.of(context).colorScheme.error.withValues(alpha: 0.15),
-                    foregroundColor: workerController.isAvailable.value 
-                      ? Theme.of(context).colorScheme.onPrimary 
-                      : Theme.of(context).colorScheme.error,
-                    elevation: workerController.isAvailable.value ? 2 : 0,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('أهلاً,', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
+                    Obx(() => Text(
+                          workerController.currentWorker.value?.name ?? 'المتطوع',
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )),
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      child: Obx(() => Text(
+                            workerController.currentWorker.value?.workerRole ?? 'متطوع',
+                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 11),
+                          )),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: Icon(Icons.person_outline, color: Theme.of(context).colorScheme.primary, size: 26),
+                onPressed: () => Get.toNamed('/profile'),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Obx(() => FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: workerController.isAvailable.value 
+                        ? Theme.of(context).colorScheme.primary 
+                        : Theme.of(context).colorScheme.error.withValues(alpha: 0.15),
+                      foregroundColor: workerController.isAvailable.value 
+                        ? Theme.of(context).colorScheme.onPrimary 
+                        : Theme.of(context).colorScheme.error,
+                      elevation: workerController.isAvailable.value ? 2 : 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    ),
+                    label: Text(workerController.isAvailable.value ? 'متاح الآن' : 'غير متاح', style: const TextStyle(fontSize: 12)),
+                    icon: Icon(workerController.isAvailable.value ? Icons.check_circle_outline : Icons.do_not_disturb_on, size: 18),
+                    onPressed: () => workerController.toggleAvailability(),
                   ),
-                  label: Text(workerController.isAvailable.value ? 'متاح الآن' : 'غير متاح'),
-                  icon: Icon(workerController.isAvailable.value ? Icons.check_circle_outline : Icons.do_not_disturb_on),
-                  onPressed: () => workerController.toggleAvailability(),
                 )),
+              ),
               Obx(() => Stack(
                 children: [
                   IconButton(
@@ -372,6 +393,62 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
               : Column(
                   children: workerController.myTasks.map((request) => _buildTaskCard(request)).toList(),
                 )),
+
+          // ======== 🆕 قسم الخدمات الإضافية ========
+          Obx(() {
+            final user = workerController.currentWorker.value;
+            if (user == null || user.additionalRoles.isEmpty) return const SizedBox.shrink();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Icon(Icons.more_horiz_rounded, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text('خدمات إضافية لك',
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                
+                if (user.additionalRoles.contains('canDonate')) ...[
+                  _buildExtraServiceCard(
+                    title: 'تبرع بالدم',
+                    subtitle: 'تصفح نداءات الطوارئ وسجل تبرعك',
+                    icon: Icons.bloodtype,
+                    color: Colors.redAccent,
+                    onTap: () => authController.switchActiveRole(UserRole.donor),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildExtraServiceCard(
+                    title: 'التبرع المالي والدعم',
+                    subtitle: 'تصفح المشاريع وساهم في الخير',
+                    icon: Icons.favorite_rounded,
+                    color: Colors.pinkAccent,
+                    onTap: () => Get.toNamed(AppRoutes.donorDonate),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                
+                if (user.additionalRoles.contains('canRequestService')) ...[
+                  _buildExtraServiceCard(
+                    title: 'طلب خدمة / مساعدة',
+                    subtitle: 'طلب دعم من الجمعية أو خدمة معينة',
+                    icon: Icons.handshake,
+                    color: Colors.orange,
+                    onTap: () => authController.switchActiveRole(UserRole.beneficiary),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ],
+            );
+          }),
+          // ===========================================
 
           const SizedBox(height: 80),
         ],
@@ -708,6 +785,62 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
       ),
       ),
     ),
+    );
+  }
+
+  Widget _buildExtraServiceCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15)),
+                    const SizedBox(height: 4),
+                    Text(subtitle,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 12)),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant, size: 16),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

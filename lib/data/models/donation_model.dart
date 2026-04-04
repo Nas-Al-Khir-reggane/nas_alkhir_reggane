@@ -13,6 +13,8 @@ class DonationModel {
   final String? notes;
   final bool isRecurring; // تبرع شهري
   final bool isAnonymous; // تبرع مجهول
+  final String? proofImageUrl;
+  final String? proofImageId;
 
   DonationModel({
     required this.id,
@@ -27,6 +29,8 @@ class DonationModel {
     this.notes,
     this.isRecurring = false,
     this.isAnonymous = false,
+    this.proofImageUrl,
+    this.proofImageId,
   });
 
   static String normalizeMethod(String? rawMethod) {
@@ -85,6 +89,8 @@ class DonationModel {
       'notes': notes,
       'isRecurring': isRecurring,
       'isAnonymous': isAnonymous,
+      'proofImageUrl': proofImageUrl,
+      'proofImageId': proofImageId,
     };
   }
 
@@ -104,6 +110,8 @@ class DonationModel {
       notes: map['notes'],
       isRecurring: map['isRecurring'] ?? false,
       isAnonymous: map['isAnonymous'] ?? false,
+      proofImageUrl: map['proofImageUrl'],
+      proofImageId: map['proofImageId'],
     );
   }
 
@@ -120,6 +128,8 @@ class DonationModel {
     String? notes,
     bool? isRecurring,
     bool? isAnonymous,
+    String? proofImageUrl,
+    String? proofImageId,
   }) {
     return DonationModel(
       id: id ?? this.id,
@@ -134,6 +144,8 @@ class DonationModel {
       notes: notes ?? this.notes,
       isRecurring: isRecurring ?? this.isRecurring,
       isAnonymous: isAnonymous ?? this.isAnonymous,
+      proofImageUrl: proofImageUrl ?? this.proofImageUrl,
+      proofImageId: proofImageId ?? this.proofImageId,
     );
   }
 }

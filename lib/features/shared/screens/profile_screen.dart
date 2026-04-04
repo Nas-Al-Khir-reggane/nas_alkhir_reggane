@@ -10,6 +10,7 @@ import '../../../data/models/user_model.dart';
 import '../../../core/services/theme_service.dart';
 import '../../../core/routes/app_routes.dart';
 import '../widgets/user_avatar.dart';
+import '../widgets/role_switcher_widget.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:animate_do/animate_do.dart';
@@ -194,6 +195,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           
+          if (ownProfile) 
+            FadeInUp(
+              delay: const Duration(milliseconds: 150),
+              child: const RoleSwitcherWidget()
+            ),
           if (user.lastDonatedAt != null) 
             FadeInUp(child: _buildRestPeriodCard(user)),
 

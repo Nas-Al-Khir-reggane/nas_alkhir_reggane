@@ -9,11 +9,13 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_theme.dart';
 
 class AuthController extends GetxController with WidgetsBindingObserver {
   final AuthService _authService = AuthService();
 
   Rx<UserModel?> currentUser = Rx<UserModel?>(null);
+  Rx<UserRole?> activeRoleOverride = Rx<UserRole?>(null); // الدور النشط المختار يدوياً
   RxBool isLoading = false.obs;
   Timer? _heartbeatTimer;
   StreamSubscription<DocumentSnapshot>? _userSubscription;
@@ -318,8 +320,47 @@ class AuthController extends GetxController with WidgetsBindingObserver {
 
     await _authService.signOut();
     currentUser.value = null;
+    activeRoleOverride.value = null; // إعادة تعيين الدور عند تسجيل الخروج
     Get.offAllNamed(AppRoutes.login);
   }
+
+  /// 🔄 تبديل الدور النشط للمستخدم
+  void switchActiveRole(UserRole targetRole) {
+    if (currentUser.value == null) return;
+
+    // التأكد من أن المستخدم يملك هذا الدور كدور أساسي أو إضافي
+    bool hasPermission = currentUser.value!.role == targetRole;
+    if (!hasPermission) {
+      final additional = currentUser.value!.additionalRoles;
+      if (targetRole == UserRole.donor && additional.contains('canDonate')) hasPermission = true;
+      if (targetRole == UserRole.beneficiary && additional.contains('canRequestService')) hasPermission = true;
+      // يمكنك إضافة مزيد من التحققات هنا للأدوار الأخرى
+    }
+
+    if (hasPermission) {
+      activeRoleOverride.value = targetRole;
+      _navigateBasedOnRole(currentUser.value!);
+      
+      Get.snackbar(
+        '🔄 تم تبديل الوضع',
+        'أنت الآن في وضع ${targetRole.displayName}',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
+        colorText: AppTheme.primaryGreen,
+        duration: const Duration(seconds: 2),
+      );
+    } else {
+      Get.snackbar(
+        '⚠️ عذراً',
+        'لا تملك صلاحية الوصول لوضع ${targetRole.displayName}',
+        backgroundColor: Colors.orange.withValues(alpha: 0.15),
+      );
+    }
+  }
+
+  /// 🛡️ الحصول على الدور الفعال حالياً (الأساسي أو المختار)
+  UserRole get currentActiveRole => activeRoleOverride.value ?? currentUser.value?.role ?? UserRole.beneficiary;
+
 
   // تم حذف signInAnonymously — لا وجود لميزة الزائر
 
@@ -400,7 +441,9 @@ class AuthController extends GetxController with WidgetsBindingObserver {
         return;
       }
 
-      switch (user.role) {
+      final roleToUse = activeRoleOverride.value ?? user.role;
+
+      switch (roleToUse) {
         case UserRole.superAdmin:
         case UserRole.admin:
           Get.offAllNamed(AppRoutes.adminDashboard);

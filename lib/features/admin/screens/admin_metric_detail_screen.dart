@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../controllers/admin_controller.dart';
 
@@ -330,6 +331,9 @@ class _AdminMetricDetailScreenState extends State<AdminMetricDetailScreen> {
             trailing: '${d.amount.toInt()} دج',
             icon: Icons.favorite_rounded,
             iconColor: Colors.redAccent,
+            onProofTap: (d.proofImageUrl != null && d.proofImageUrl!.isNotEmpty)
+                ? () => _showProofImage(context, d.id, d.proofImageUrl!)
+                : null,
           ),
         );
       },
@@ -365,6 +369,7 @@ class _AdminMetricDetailScreenState extends State<AdminMetricDetailScreen> {
     required String trailing,
     required IconData icon,
     required Color iconColor,
+    VoidCallback? onProofTap,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -391,8 +396,76 @@ class _AdminMetricDetailScreenState extends State<AdminMetricDetailScreen> {
               ],
             ),
           ),
+          if (onProofTap != null)
+            IconButton(
+              icon: Icon(Icons.receipt_long, color: AppTheme.goldAccent, size: 20),
+              onPressed: onProofTap,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              constraints: const BoxConstraints(),
+            ),
           Text(trailing, style: TextStyle(color: iconColor, fontWeight: FontWeight.bold, fontSize: 12, fontFamily: 'Tajawal')),
         ],
+      ),
+    );
+  }
+
+  void _showProofImage(BuildContext context, String donationId, String url) {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        contentPadding: EdgeInsets.zero,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              child: CachedNetworkImage(
+                imageUrl: url,
+                placeholder: (context, url) => const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+                errorWidget: (context, url, error) => const Icon(Icons.error),
+                fit: BoxFit.contain,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => Get.back(),
+                    icon: const Icon(Icons.close),
+                    label: const Text('إغلاق', style: TextStyle(fontFamily: 'Tajawal')),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Get.back();
+                      Get.dialog(
+                        AlertDialog(
+                          title: const Text('حذف الإثبات؟', style: TextStyle(fontFamily: 'Tajawal')),
+                          content: const Text('سيتم حذف الصورة نهائياً لتوفير المساحة. هل أنت متأكد؟', style: TextStyle(fontFamily: 'Tajawal')),
+                          actions: [
+                            TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
+                            TextButton(
+                              onPressed: () {
+                                Get.back();
+                                controller.clearDonationProof(donationId);
+                              },
+                              child: const Text('حذف الإثبات', style: TextStyle(color: Colors.red, fontFamily: 'Tajawal')),
+                            ),
+                          ],
+                        )
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red.withValues(alpha: 0.1), foregroundColor: Colors.red, elevation: 0),
+                    icon: const Icon(Icons.delete_sweep_rounded),
+                    label: const Text('مسح الإثبات', style: TextStyle(fontFamily: 'Tajawal')),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

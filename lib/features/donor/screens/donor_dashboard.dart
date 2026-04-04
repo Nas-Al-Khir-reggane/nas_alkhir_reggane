@@ -24,6 +24,7 @@ import '../../admin/controllers/project_controller.dart';
 import '../../../data/services/notification_service.dart';
 import '../../admin/controllers/admin_controller.dart';
 import '../../shared/widgets/strategic_goal_card.dart';
+import '../../shared/widgets/app_drawer.dart';
 
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/shimmer_loader.dart';
@@ -149,8 +150,9 @@ class _DonorDashboardState extends State<DonorDashboard> {
         }
       },
       child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: IndexedStack(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          drawer: const AppDrawer(),
+          body: IndexedStack(
           index: _currentIndex,
           children: [
             _buildHomeTab(),
@@ -229,9 +231,17 @@ class _DonorDashboardState extends State<DonorDashboard> {
           const SizedBox(height: 20),
           Row(
             children: [
+              Builder(
+                builder: (context) => IconButton(
+                  icon: Icon(Icons.menu_rounded, color: Theme.of(context).colorScheme.primary, size: 28),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                ),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('أهلاً بطلنا،', 
                         style: GoogleFonts.tajawal(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w500)),
@@ -239,13 +249,16 @@ class _DonorDashboardState extends State<DonorDashboard> {
                           donorController.donorName,
                           style: GoogleFonts.tajawal(
                               color: Theme.of(context).colorScheme.onSurface,
-                              fontSize: 22,
+                              fontSize: 16,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.5),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         )),
                   ],
                 ),
               ),
+              const SizedBox(width: 4),
               _buildDonorBadge(),
               const SizedBox(width: 8),
               _buildProfileIcon(),
@@ -545,6 +558,82 @@ class _DonorDashboardState extends State<DonorDashboard> {
                     );
                   }).toList(),
                 )),
+
+          // ======== 🆕 قسم الخدمات الإضافية للمتبرعين ========
+          Obx(() {
+            final user = authController.currentUser.value;
+            if (user == null || !user.additionalRoles.contains('canRequestService')) {
+              return const SizedBox.shrink();
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Icon(Icons.more_horiz_rounded, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text('خدمات إضافية لك',
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => Get.toNamed(AppRoutes.beneficiaryDashboard),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(Icons.handshake_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('طلب خدمة / مساعدة',
+                                    style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15)),
+                                const SizedBox(height: 4),
+                                Text('ارفع طلباً جديداً للإدارة للتدخل',
+                                    style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                        fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward_ios_rounded,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant, size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
+          // ====================================================
+
           const SizedBox(height: 80),
         ],
       ),
@@ -632,30 +721,31 @@ class _DonorDashboardState extends State<DonorDashboard> {
         child: GestureDetector(
           onTap: () => Get.toNamed(AppRoutes.bloodDonorProfile),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: AppTheme.errorColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.15)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
                   decoration: const BoxDecoration(color: AppTheme.errorColor, shape: BoxShape.circle),
                   child: Text(bloodType, 
-                    style: GoogleFonts.tajawal(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900)),
+                    style: GoogleFonts.tajawal(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 6),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(isReady ? 'جاهز للتبرع' : 'فترة استراحة', 
-                      style: GoogleFonts.tajawal(color: isReady ? Colors.green : Colors.orange, fontSize: 10, fontWeight: FontWeight.w800)),
-                    Text('الملف الطبي ➔', 
-                      style: GoogleFonts.tajawal(color: Theme.of(context).colorScheme.primary, fontSize: 9, fontWeight: FontWeight.bold)),
+                      style: GoogleFonts.tajawal(color: isReady ? Colors.green : Colors.orange, fontSize: 9, fontWeight: FontWeight.w800, height: 1)),
+                    const SizedBox(height: 2),
+                    Text('الملف الطبي ➔',
+                      style: GoogleFonts.tajawal(color: Theme.of(context).colorScheme.primary, fontSize: 8, fontWeight: FontWeight.bold, height: 1)),
                   ],
                 ),
               ],

@@ -7,16 +7,37 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function getRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return getUserData().role;
+    }
+
+    function hasAdditionalRole(roleName) {
+      let data = getUserData();
+      return 'additionalRoles' in data && data.additionalRoles is list && roleName in data.additionalRoles;
+    }
+
+    function isDonor() {
+      return getRole() == 'donor' || hasAdditionalRole('canDonate');
+    }
+
+    function isBeneficiary() {
+      return getRole() == 'beneficiary' || hasAdditionalRole('canRequestService');
+    }
+
+    function isWorker() {
+      return getRole() == 'worker';
     }
 
     function isAdmin() {
-      return isLoggedIn() && getRole() in ['admin', 'superAdmin', 'superadmin'];
+      return isLoggedIn() && (getRole() in ['admin', 'superAdmin', 'superadmin']);
     }
 
     function isSuperAdmin() {
-      return isLoggedIn() && getRole() in ['superAdmin', 'superadmin'];
+      return isLoggedIn() && (getRole() in ['superAdmin', 'superadmin']);
     }
 
     function isOwner(uid) {
@@ -111,7 +132,7 @@ service cloud.firestore {
         data.participants is list &&
         request.auth.uid in data.participants &&
         (
-          (chatId == 'group_team' && getRole() in ['worker', 'chatModerator', 'admin', 'superAdmin']) ||
+          (chatId == 'group_team' && (isWorker() || getRole() == 'chatModerator' || isAdmin())) ||
           (chatId == 'group_management' && isAdmin())
         );
     }
@@ -123,7 +144,7 @@ service cloud.firestore {
         (
           isAdmin() ||
           (
-            getRole() in ['worker', 'chatModerator', 'donor', 'beneficiary'] &&
+            (isWorker() || getRole() == 'chatModerator' || isDonor() || isBeneficiary()) &&
             privateCounterpartyIsAdmin(data)
           )
         );
@@ -207,6 +228,8 @@ service cloud.firestore {
         resource.data.targetUserId == request.auth.uid ||
         resource.data.targetRole   == 'all' ||
         resource.data.targetRole   == getRole() ||
+        (resource.data.targetRole == 'donor' && isDonor()) ||
+        (resource.data.targetRole == 'beneficiary' && isBeneficiary()) ||
         isAdmin()
       );
       allow create: if isLoggedIn();

@@ -108,19 +108,44 @@ class ActivityPulse extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(update.workerName, 
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface, 
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                        fontFamily: 'Tajawal'
-                      )
+                    Expanded(
+                      child: Text(update.workerName, 
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface, 
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          fontFamily: 'Tajawal'
+                        )
+                      ),
                     ),
                     Text(timeago.format(update.createdAt, locale: 'ar'), 
                       style: TextStyle(color: AppTheme.textSecondary, fontSize: 10, fontFamily: 'Tajawal')
                     ),
+                    if (controller.isAnyAdmin)
+                      IconButton(
+                        icon: Icon(Icons.delete_outline, size: 16, color: Colors.grey[400]),
+                        onPressed: () {
+                          Get.dialog(
+                            AlertDialog(
+                              title: const Text('حذف التحديث', style: TextStyle(fontFamily: 'Tajawal')),
+                              content: const Text('هل أنت متأكد من حذف هذا التحديث من نبض الميدان؟', style: TextStyle(fontFamily: 'Tajawal')),
+                              actions: [
+                                TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
+                                TextButton(
+                                  onPressed: () {
+                                    Get.back();
+                                    controller.deleteFieldUpdate(update.id);
+                                  }, 
+                                  child: const Text('حذف', style: TextStyle(color: Colors.red))
+                                ),
+                              ],
+                            )
+                          );
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 4),

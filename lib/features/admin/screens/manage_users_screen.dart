@@ -7,7 +7,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../data/models/user_model.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../shared/widgets/user_avatar.dart';
 import '../../../core/animations/scroll_animations.dart';
 
 class ManageUsersScreen extends StatefulWidget {
@@ -49,19 +49,29 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildUserCounter(),
-            _buildCustomToggle(),
-            if (_currentIndex == 1) ...[
-              _buildSearchBar(),
-              _buildBloodTypeFilters(),
-              _buildWorkerFilters(), // 🆕 فلاتر التخصص والجنس
-            ],
-            Expanded(
-              child: _currentIndex == 0 ? _buildPendingTab() : _buildAllUsersTab(),
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // Header Section - Scrolls away to give more space
+            SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  _buildUserCounter(),
+                  _buildCustomToggle(),
+                  if (_currentIndex == 1) ...[
+                    _buildSearchBar(),
+                    _buildBloodTypeFilters(),
+                    _buildWorkerFilters(),
+                  ],
+                ],
+              ),
             ),
+            
+            // List Section - Takes the remaining space
+            _currentIndex == 0 ? _buildPendingSliver() : _buildAllUsersSliver(),
+            
+            const SliverToBoxAdapter(child: SizedBox(height: 40)),
           ],
         ),
       ),
@@ -106,73 +116,43 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
 
   Widget _buildUserCounter() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: FadeInDown(
         duration: const Duration(milliseconds: 600),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: AppTheme.surfaceColor.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppTheme.glassBorder),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primaryGreen.withValues(alpha: 0.05),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
-              )
-            ],
           ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.person_add_alt_1_rounded, color: AppTheme.primaryGreen, size: 24),
+                child: const Icon(Icons.person_pin_rounded, color: AppTheme.primaryGreen, size: 20),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('إجمالي المشتركين في التطبيق حالياً', 
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontFamily: 'Tajawal')),
-                    const SizedBox(height: 4),
-                    Obx(() => ScrollAnimations.numberCounter(
-                      value: _adminCtl.totalRegisteredUsers.value,
-                      suffix: ' مسجل',
-                      style: TextStyle(
-                        color: AppTheme.textPrimary, 
-                        fontSize: 24, 
-                        fontWeight: FontWeight.w900,
-                        fontFamily: 'Outfit',
-                      ),
-                    )),
-                  ],
+              const SizedBox(width: 12),
+              Text('إجمالي المشتركين المسجلين:', 
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontFamily: 'Tajawal')),
+              const Spacer(),
+              Obx(() => ScrollAnimations.numberCounter(
+                value: _adminCtl.totalRegisteredUsers.value,
+                style: TextStyle(
+                  color: AppTheme.textPrimary, 
+                  fontSize: 20, 
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Outfit',
                 ),
-              ),
+              )),
+              const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(color: AppTheme.primaryGreen, shape: BoxShape.circle),
-                    ),
-                    const SizedBox(width: 6),
-                    const Text('مباشر', 
-                      style: TextStyle(color: AppTheme.primaryGreen, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
-                  ],
-                ),
+                width: 6, height: 6,
+                decoration: const BoxDecoration(color: AppTheme.primaryGreen, shape: BoxShape.circle),
               ),
             ],
           ),
@@ -255,7 +235,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     return FadeInDown(
       delay: const Duration(milliseconds: 100),
       child: Container(
-        height: 60,
+        height: 45,
         margin: const EdgeInsets.only(bottom: 10),
         child: ListView(
           scrollDirection: Axis.horizontal,
@@ -283,7 +263,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       child: Column(
         children: [
           Container(
-            height: 45,
+            height: 38,
             margin: const EdgeInsets.only(bottom: 8),
             child: ListView(
               scrollDirection: Axis.horizontal,
@@ -296,7 +276,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
             ),
           ),
           Container(
-            height: 50,
+            height: 42,
             margin: const EdgeInsets.only(bottom: 10),
             child: ListView(
               scrollDirection: Axis.horizontal,
@@ -310,7 +290,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           if (_selectedService == 'funeral_ghusl')
             FadeInLeft(
               child: Container(
-                height: 40,
+                height: 38,
                 margin: const EdgeInsets.only(bottom: 10),
                 child: ListView(
                   scrollDirection: Axis.horizontal,
@@ -396,11 +376,16 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     );
   }
 
-  Widget _buildPendingTab() {
+  Widget _buildPendingSliver() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance.collection(AppConstants.usersCollection).where('isApproved', isEqualTo: false).snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen));
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SliverToBoxAdapter(child: Center(child: Padding(
+            padding: EdgeInsets.all(40.0),
+            child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+          )));
+        }
         
         var docs = snapshot.data?.docs.where((doc) {
           var data = doc.data() as Map<String, dynamic>;
@@ -408,118 +393,128 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           return true;
         }).toList() ?? [];
 
-        if (docs.isEmpty) return _buildEmptyState('لا توجد حسابات معلقة حالياً');
+        if (docs.isEmpty) return SliverFillRemaining(child: _buildEmptyState('لا توجد حسابات معلقة حالياً'));
 
-        return ListView.builder(
+        return SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          itemCount: docs.length,
-          itemBuilder: (context, index) {
-            var data = docs[index].data() as Map<String, dynamic>;
-            UserModel user = UserModel.fromMap(data, docs[index].id);
-            UserRole selectedRole = user.role;
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                var data = docs[index].data() as Map<String, dynamic>;
+                UserModel user = UserModel.fromMap(data, docs[index].id);
+                UserRole selectedRole = user.role;
 
-            return FadeInUp(
-              delay: Duration(milliseconds: 100 * (index % 5)),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(16),
-                decoration: AppTheme.glassDecoration,
-                child: StatefulBuilder(
-                  builder: (context, setStateLocal) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                return FadeInUp(
+                  duration: const Duration(milliseconds: 400),
+                  delay: Duration(milliseconds: 50 * (index % 10)),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: AppTheme.glassDecoration,
+                    child: StatefulBuilder(
+                      builder: (context, setStateLocal) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildAvatar(user),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(user.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary)),
-                                Text(DateFormat('yyyy-MM-dd').format(user.createdAt), style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
-                              ],
-                            ),
-                          ),
-                          _buildStatusBadge('معلق', AppTheme.warningColor),
-                        ],
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        child: Divider(color: AppTheme.glassBorder, height: 1),
-                      ),
-                      if (_adminCtl.currentUser?.role == UserRole.superAdmin) ...[
-                        _buildUserInfoRow(Icons.phone_outlined, "الهاتف", user.phone),
-                        const SizedBox(height: 8),
-                        _buildUserInfoRow(Icons.location_on_outlined, "الولاية", user.wilaya),
-                        const SizedBox(height: 8),
-                        _buildUserInfoRow(Icons.map_outlined, "البلدية", user.commune),
-                      ],
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: AppTheme.backgroundColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppTheme.glassBorder),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<UserRole>(
-                            isExpanded: true,
-                            dropdownColor: AppTheme.surfaceColor,
-                            icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.primaryGreen),
-                            value: selectedRole,
-                            items: [
-                              DropdownMenuItem(value: UserRole.worker, child: Text(UserRole.worker.displayName, style: TextStyle(color: AppTheme.textPrimary))),
-                              DropdownMenuItem(value: UserRole.donor, child: Text(UserRole.donor.displayName, style: TextStyle(color: AppTheme.textPrimary))),
-                              DropdownMenuItem(value: UserRole.beneficiary, child: Text(UserRole.beneficiary.displayName, style: TextStyle(color: AppTheme.textPrimary))),
-                              DropdownMenuItem(value: UserRole.admin, child: Text(UserRole.admin.displayName, style: TextStyle(color: AppTheme.textPrimary))),
-                              if (_adminCtl.currentUser?.role == UserRole.superAdmin)
-                                DropdownMenuItem(value: UserRole.superAdmin, child: Text(UserRole.superAdmin.displayName, style: TextStyle(color: AppTheme.textPrimary))),
+                          Row(
+                            children: [
+                              _buildAvatar(user),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(user.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary)),
+                                    Text(DateFormat('yyyy-MM-dd').format(user.createdAt), style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                                  ],
+                                ),
+                              ),
+                              _buildStatusBadge('معلق', AppTheme.warningColor),
                             ],
-                            onChanged: (val) => setStateLocal(() => selectedRole = val!),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: AppTheme.gradientButton(
-                              text: "قبول وتفعيل",
-                              icon: Icons.check_circle_outline,
-                              onPressed: () => _adminCtl.approveUser(user.id, selectedRole),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: Divider(color: AppTheme.glassBorder, height: 1),
+                          ),
+                          if (_adminCtl.currentUser?.role == UserRole.superAdmin) ...[
+                            _buildUserInfoRow(Icons.phone_outlined, "الهاتف", user.phone),
+                            const SizedBox(height: 8),
+                            _buildUserInfoRow(Icons.location_on_outlined, "الولاية", user.wilaya),
+                            const SizedBox(height: 8),
+                            _buildUserInfoRow(Icons.map_outlined, "البلدية", user.commune),
+                          ],
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.backgroundColor,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.glassBorder),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<UserRole>(
+                                isExpanded: true,
+                                dropdownColor: AppTheme.surfaceColor,
+                                icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.primaryGreen),
+                                value: selectedRole,
+                                items: [
+                                  DropdownMenuItem(value: UserRole.worker, child: Text(UserRole.worker.displayName, style: TextStyle(color: AppTheme.textPrimary))),
+                                  DropdownMenuItem(value: UserRole.donor, child: Text(UserRole.donor.displayName, style: TextStyle(color: AppTheme.textPrimary))),
+                                  DropdownMenuItem(value: UserRole.beneficiary, child: Text(UserRole.beneficiary.displayName, style: TextStyle(color: AppTheme.textPrimary))),
+                                  DropdownMenuItem(value: UserRole.admin, child: Text(UserRole.admin.displayName, style: TextStyle(color: AppTheme.textPrimary))),
+                                  if (_adminCtl.currentUser?.role == UserRole.superAdmin)
+                                    DropdownMenuItem(value: UserRole.superAdmin, child: Text(UserRole.superAdmin.displayName, style: TextStyle(color: AppTheme.textPrimary))),
+                                ],
+                                onChanged: (val) => setStateLocal(() => selectedRole = val!),
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                              side: const BorderSide(color: AppTheme.errorColor),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            ),
-                            onPressed: () => _adminCtl.rejectUser(user.id),
-                            icon: const Icon(Icons.close, color: AppTheme.errorColor, size: 20),
-                            label: const Text("رفض", style: TextStyle(fontFamily: 'Tajawal', color: AppTheme.errorColor, fontWeight: FontWeight.bold)),
-                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: AppTheme.gradientButton(
+                                  text: "قبول وتفعيل",
+                                  icon: Icons.check_circle_outline,
+                                  onPressed: () => _adminCtl.approveUser(user.id, selectedRole),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                  side: const BorderSide(color: AppTheme.errorColor),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                ),
+                                onPressed: () => _adminCtl.rejectUser(user.id),
+                                icon: const Icon(Icons.close, color: AppTheme.errorColor, size: 20),
+                                label: const Text("رفض", style: TextStyle(fontFamily: 'Tajawal', color: AppTheme.errorColor, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          )
                         ],
-                      )
-                    ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            );
-          },
+                );
+              },
+              childCount: docs.length,
+            ),
+          ),
         );
       },
     );
   }
 
-  Widget _buildAllUsersTab() {
+  Widget _buildAllUsersSliver() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance.collection(AppConstants.usersCollection).where('isApproved', isEqualTo: true).snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen));
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SliverToBoxAdapter(child: Center(child: Padding(
+            padding: EdgeInsets.all(40.0),
+            child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+          )));
+        }
         
         var docs = snapshot.data?.docs.where((doc) {
           var data = doc.data() as Map<String, dynamic>;
@@ -540,72 +535,77 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           return matchesSearch && matchesBlood && matchesGender && matchesService && matchesExpertise;
         }).toList() ?? [];
 
-        if (docs.isEmpty) return _buildEmptyState('لا توجد مستخدمين يطابقون البحث');
+        if (docs.isEmpty) return SliverFillRemaining(child: _buildEmptyState('لا توجد مستخدمين يطابقون البحث'));
 
-        return ListView.builder(
+        return SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          itemCount: docs.length,
-          itemBuilder: (context, index) {
-            UserModel user = UserModel.fromMap(docs[index].data() as Map<String, dynamic>, docs[index].id);
-            bool isSuperAdmin = _adminCtl.currentUser?.role == UserRole.superAdmin;
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                UserModel user = UserModel.fromMap(docs[index].data() as Map<String, dynamic>, docs[index].id);
+                bool isSuperAdmin = _adminCtl.currentUser?.role == UserRole.superAdmin;
 
-            return FadeInUp(
-              delay: Duration(milliseconds: 50 * (index % 10)),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: AppTheme.glassDecoration,
-                child: Row(
-                  children: [
-                    _buildAvatar(user),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(user.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textPrimary)),
-                          const SizedBox(height: 4),
-                          Row(
+                return FadeInUp(
+                  duration: const Duration(milliseconds: 300),
+                  delay: Duration(milliseconds: 30 * (index % 15)),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: AppTheme.glassDecoration,
+                    child: Row(
+                      children: [
+                        _buildAvatar(user),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.badge_outlined, color: AppTheme.primaryGreen, size: 14),
-                              const SizedBox(width: 4),
-                              Text(user.role.displayName, style: TextStyle(color: AppTheme.primaryGreen, fontSize: 11, fontWeight: FontWeight.bold)),
-                              if (isSuperAdmin && user.bloodType != null) ...[
-                                const SizedBox(width: 8),
-                                _buildBloodTypeBadge(user),
-                              ],
-                              if (isSuperAdmin) ...[
-                                const SizedBox(width: 8),
-                                Icon(Icons.phone_outlined, color: AppTheme.textHint, size: 14),
-                                const SizedBox(width: 4),
-                                Text(user.phone, style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
-                              ],
+                              Text(user.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textPrimary)),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(Icons.badge_outlined, color: AppTheme.primaryGreen, size: 14),
+                                  const SizedBox(width: 4),
+                                  Text(user.role.displayName, style: TextStyle(color: AppTheme.primaryGreen, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  if (isSuperAdmin && user.bloodType != null) ...[
+                                    const SizedBox(width: 8),
+                                    _buildBloodTypeBadge(user),
+                                  ],
+                                  if (isSuperAdmin) ...[
+                                    const SizedBox(width: 8),
+                                    Icon(Icons.phone_outlined, color: AppTheme.textHint, size: 14),
+                                    const SizedBox(width: 4),
+                                    Text(user.phone, style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                                  ],
+                                ],
+                              )
                             ],
-                          )
-                        ],
-                      ),
-                    ),
-                    PopupMenuButton<String>(
-                      color: AppTheme.surfaceColor,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: AppTheme.glassBorder)),
-                      icon: Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary),
-                      onSelected: (val) {
-                        if (val == 'disable') _adminCtl.rejectUser(user.id);
-                        if (val == 'change_role') _showChangeRoleDialog(user);
-                        if (val == 'view_details') _showUserDetails(user);
-                      },
-                      itemBuilder: (context) => [
-                        PopupMenuItem(value: 'view_details', child: Row(children: [Icon(Icons.info_outline, color: AppTheme.goldAccent, size: 18), const SizedBox(width: 8), Text("تفاصيل العضو", style: TextStyle(color: AppTheme.textPrimary))])),
-                        if (isSuperAdmin)
-                          PopupMenuItem(value: 'change_role', child: Row(children: [Icon(Icons.edit_outlined, color: AppTheme.primaryGreen, size: 18), const SizedBox(width: 8), Text("تغيير الصلاحية", style: TextStyle(color: AppTheme.textPrimary))])),
-                        PopupMenuItem(value: 'disable', child: Row(children: [Icon(Icons.block_flipped, color: AppTheme.errorColor, size: 18), const SizedBox(width: 8), Text("إيقاف الحساب", style: TextStyle(color: AppTheme.errorColor))])),
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          color: AppTheme.surfaceColor,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: AppTheme.glassBorder)),
+                          icon: Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary),
+                          onSelected: (val) {
+                            if (val == 'disable') _adminCtl.rejectUser(user.id);
+                            if (val == 'change_role') _showChangeRoleDialog(user);
+                            if (val == 'view_details') _showUserDetails(user);
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(value: 'view_details', child: Row(children: [Icon(Icons.info_outline, color: AppTheme.goldAccent, size: 18), const SizedBox(width: 8), Text("تفاصيل العضو", style: TextStyle(color: AppTheme.textPrimary))])),
+                            if (isSuperAdmin)
+                              PopupMenuItem(value: 'change_role', child: Row(children: [Icon(Icons.edit_outlined, color: AppTheme.primaryGreen, size: 18), const SizedBox(width: 8), Text("تغيير الصلاحية", style: TextStyle(color: AppTheme.textPrimary))])),
+                            PopupMenuItem(value: 'disable', child: Row(children: [Icon(Icons.block_flipped, color: AppTheme.errorColor, size: 18), const SizedBox(width: 8), Text("إيقاف الحساب", style: TextStyle(color: AppTheme.errorColor))])),
+                          ],
+                        ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-            );
-          },
+                  ),
+                );
+              },
+              childCount: docs.length,
+            ),
+          ),
         );
       },
     );
@@ -627,21 +627,13 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   }
 
   Widget _buildAvatar(UserModel user) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.15), width: 2),
-      ),
-      child: CircleAvatar(
-        radius: 22,
-        backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
-        backgroundImage: (user.profileImage != null && user.profileImage!.isNotEmpty) ? CachedNetworkImageProvider(user.profileImage!) as ImageProvider : null,
-        child: (user.profileImage == null || user.profileImage!.isEmpty)
-            ? Text(user.name.isNotEmpty ? user.name[0] : '?', style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 18))
-            : null,
-      ),
+    return UserAvatar(
+      user: user,
+      size: 44,
+      showBadge: true,
     );
   }
+
   Widget _buildStatusBadge(String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -655,14 +647,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   }
 
   Widget _buildBloodTypeBadge(UserModel user) {
-    // التحقق من فترة الـ 30 يوماً
-    bool isResting = false;
-    if (user.lastDonatedAt != null) {
-      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
-      isResting = user.lastDonatedAt!.isAfter(thirtyDaysAgo);
-    }
-    
-    // اللون بناءً على الجاهزية
+    bool isResting = !user.canDonateBloodSmart;
     Color color = (user.isDonorAvailable && !isResting) ? AppTheme.errorColor : AppTheme.textHint;
     
     return Container(
@@ -677,7 +662,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         children: [
           Icon(Icons.bloodtype, size: 12, color: color),
           const SizedBox(width: 2),
-          Text(user.bloodType!, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+          Text(user.bloodType ?? '?', style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
           if (isResting) ...[
             const SizedBox(width: 4),
             Icon(Icons.timer_outlined, size: 12, color: color),
@@ -693,78 +678,128 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         Icon(icon, color: AppTheme.textHint, size: 18),
         const SizedBox(width: 8),
         Text('$label: ', style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
-        Text(value, style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+        Expanded(
+          child: Text(
+            value, 
+            style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
       ],
     );
   }
 
   void _showChangeRoleDialog(UserModel user) {
     UserRole selectedRole = user.role;
+    List<String> selectedAdditionalRoles = List.from(user.additionalRoles);
+
     Get.bottomSheet(
       StatefulBuilder(builder: (context, setSheetState) {
         return Container(
-          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: AppTheme.surfaceColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
             border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.15), width: 1.5),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 20)],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("تغيير صلاحيات '${user.name}'", style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: AppTheme.backgroundColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.glassBorder),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<UserRole>(
-                    isExpanded: true,
-                    dropdownColor: AppTheme.surfaceColor,
-                    value: selectedRole,
-                    style: TextStyle(color: AppTheme.textPrimary),
-                    items: UserRole.values.map((role) {
-                      if (role == UserRole.superAdmin && _adminCtl.currentUser?.role != UserRole.superAdmin) return null;
-                      return DropdownMenuItem(value: role, child: Text(role.displayName));
-                    }).whereType<DropdownMenuItem<UserRole>>().toList(),
-                    onChanged: (val) => setSheetState(() => selectedRole = val!),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-              Row(
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: AppTheme.glassBorder),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  Text("تغيير صلاحيات '${user.name}'", style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.backgroundColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.glassBorder),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<UserRole>(
+                        isExpanded: true,
+                        dropdownColor: AppTheme.surfaceColor,
+                        value: selectedRole,
+                        style: TextStyle(color: AppTheme.textPrimary),
+                        items: UserRole.values.map((role) {
+                          if (role == UserRole.superAdmin && _adminCtl.currentUser?.role != UserRole.superAdmin) return null;
+                          return DropdownMenuItem(value: role, child: Text(role.displayName));
+                        }).whereType<DropdownMenuItem<UserRole>>().toList(),
+                        onChanged: (val) => setSheetState(() => selectedRole = val!),
                       ),
-                      onPressed: () => Get.back(),
-                      child: Text("إلغاء", style: TextStyle(color: AppTheme.textPrimary)),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppTheme.gradientButton(
-                      text: "حفظ التغييرات",
-                      icon: Icons.save_rounded,
-                      onPressed: () {
-                        _adminCtl.approveUser(user.id, selectedRole);
-                        Get.back();
-                      },
-                    ),
+                  const SizedBox(height: 20),
+                  Text("صلاحيات إضافية (اختياري)", style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  CheckboxListTile(
+                    title: Text("صلاحية التبرع (دم / مال)", style: TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
+                    value: selectedAdditionalRoles.contains('canDonate'),
+                    activeColor: AppTheme.primaryGreen,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (val) {
+                      setSheetState(() {
+                        if (val == true) {
+                          selectedAdditionalRoles.add('canDonate');
+                        } else {
+                          selectedAdditionalRoles.remove('canDonate');
+                        }
+                      });
+                    },
                   ),
+                  CheckboxListTile(
+                    title: Text("صلاحية طلب خدمة (مستفيد)", style: TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
+                    value: selectedAdditionalRoles.contains('canRequestService'),
+                    activeColor: AppTheme.primaryGreen,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (val) {
+                      setSheetState(() {
+                        if (val == true) {
+                          selectedAdditionalRoles.add('canRequestService');
+                        } else {
+                          selectedAdditionalRoles.remove('canRequestService');
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                            side: const BorderSide(color: AppTheme.glassBorder),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          onPressed: () => Get.back(),
+                          child: Text("إلغاء", style: TextStyle(color: AppTheme.textPrimary)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: AppTheme.gradientButton(
+                          text: "حفظ التغييرات",
+                          icon: Icons.save_rounded,
+                          onPressed: () {
+                            _adminCtl.approveUser(
+                              user.id, 
+                              selectedRole, 
+                              additionalRoles: selectedAdditionalRoles,
+                            );
+                            Get.back();
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
                 ],
-              )
-            ],
+              ),
+            ),
           ),
         );
       }),
@@ -799,7 +834,15 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                 _buildUserInfoRow(Icons.home_outlined, "العنوان", user.address),
                 const SizedBox(height: 12),
               ],
-              _buildUserInfoRow(Icons.badge_outlined, "الرتبة", user.role.displayName),
+              _buildUserInfoRow(Icons.badge_outlined, "الرتبة الأساسية", user.role.displayName),
+              if (user.additionalRoles.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildUserInfoRow(
+                  Icons.playlist_add_check_circle_rounded, 
+                  "صلاحيات إضافية", 
+                  user.additionalRoles.map((r) => r == 'canDonate' ? 'التبرع' : r == 'canRequestService' ? 'الاستفادة' : r).join('، ')
+                ),
+              ],
               const SizedBox(height: 12),
               _buildUserInfoRow(Icons.male_rounded, "الجنس", user.gender),
               if (_adminCtl.currentUser?.role == UserRole.superAdmin) ...[
@@ -838,3 +881,4 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     );
   }
 }
+

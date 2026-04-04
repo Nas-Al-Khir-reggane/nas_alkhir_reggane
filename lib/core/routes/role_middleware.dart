@@ -17,7 +17,22 @@ class RoleMiddleware extends GetMiddleware {
       return const RouteSettings(name: '/login');
     }
 
-    if (allowedRoles.contains(user.role)) {
+    final userRoleAttribute = authController.activeRoleOverride.value ?? user.role;
+    final additionalRoles = user.additionalRoles;
+
+    // التحقق من الرتبة الأساسية أو الرتب الإضافية
+    bool hasAccess = allowedRoles.contains(userRoleAttribute);
+    
+    // إذا لم يكن لديه وصول مباشر بالرتبة الحالية، نفحص الصلاحيات الإضافية
+    if (!hasAccess && additionalRoles.isNotEmpty) {
+      if (allowedRoles.contains(UserRole.donor) && additionalRoles.contains('canDonate')) {
+        hasAccess = true;
+      } else if (allowedRoles.contains(UserRole.beneficiary) && additionalRoles.contains('canRequestService')) {
+        hasAccess = true;
+      }
+    }
+
+    if (hasAccess) {
       return null;
     }
 

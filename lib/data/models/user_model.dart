@@ -58,6 +58,8 @@ class UserModel {
   final DateTime? lastActivity;
   final int currentTasksCount;
   final String? notes;
+  // الأدوار الإضافية التي يمنحها المدير: 'canDonate', 'canRequestService'
+  final List<String> additionalRoles;
 
   UserModel({
     required this.id,
@@ -94,6 +96,7 @@ class UserModel {
     this.gender = 'غير محدد',
     this.avatarSeed,
     this.avatarType = 'avataaars',
+    this.additionalRoles = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -132,6 +135,7 @@ class UserModel {
       'gender': gender,
       'avatarSeed': avatarSeed,
       'avatarType': avatarType,
+      'additionalRoles': additionalRoles,
     };
   }
 
@@ -183,6 +187,7 @@ class UserModel {
       gender: map['gender'] ?? 'غير محدد',
       avatarSeed: map['avatarSeed'],
       avatarType: map['avatarType'] ?? 'avataaars',
+      additionalRoles: List<String>.from(map['additionalRoles'] ?? []),
     );
   }
 
@@ -221,6 +226,7 @@ class UserModel {
     String? gender,
     String? avatarSeed,
     String? avatarType,
+    List<String>? additionalRoles,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -257,6 +263,7 @@ class UserModel {
       gender: gender ?? this.gender,
       avatarSeed: avatarSeed ?? this.avatarSeed,
       avatarType: avatarType ?? this.avatarType,
+      additionalRoles: additionalRoles ?? this.additionalRoles,
     );
   }
 

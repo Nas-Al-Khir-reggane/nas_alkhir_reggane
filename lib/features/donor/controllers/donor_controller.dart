@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:screenshot/screenshot.dart';
@@ -14,6 +16,7 @@ import '../../../data/models/user_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../widgets/donation_certificate_widget.dart';
 import '../screens/donate_screen.dart';
+import '../../../data/services/cloudinary_service.dart';
 import '../../../data/services/notification_service.dart';
 
 class DonorController extends GetxController {
@@ -28,6 +31,11 @@ class DonorController extends GetxController {
   RxDouble totalDonated = 0.0.obs;
   RxInt donationsCount = 0.obs;
   RxList<Map<String, dynamic>> donationsByProject = <Map<String, dynamic>>[].obs;
+
+  // إثبات التبرع
+  Rx<File?> selectedProofImage = Rx<File?>(null);
+  final ImagePicker _picker = ImagePicker();
+
 
   // اختيار مسبق للمشروع
   RxString preSelectedProjectId = 'general'.obs;
@@ -52,6 +60,27 @@ class DonorController extends GetxController {
 
   // دالة لجلب اسم المتبرع الحالي
   String get donorName => currentDonor.value?.name ?? "متبرع فاعل خير";
+
+  // اختيار صورة الإثبات
+  Future<void> pickProofImage(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: source,
+        imageQuality: 70,
+        maxWidth: 1200,
+      );
+      if (pickedFile != null) {
+        selectedProofImage.value = File(pickedFile.path);
+      }
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل في اختيار الصورة: $e');
+    }
+  }
+
+  void clearProofImage() {
+    selectedProofImage.value = null;
+  }
+
 
   // دالة لعرض الشهادة وتنزيلها
   void showCertificate() {
@@ -211,6 +240,18 @@ class DonorController extends GetxController {
         'notes': notes,
         'date': FieldValue.serverTimestamp(),
       };
+
+      String? proofUrl;
+
+      // رفع الصورة إلى Cloudinary إذا وجدت
+      if (selectedProofImage.value != null) {
+        proofUrl = await CloudinaryService.uploadMedia(selectedProofImage.value!);
+        
+        if (proofUrl != null) {
+          donationData['proofImageUrl'] = proofUrl;
+        }
+      }
+
       final donationsRef = FirebaseFirestore.instance.collection('donations');
       final docRef = donationsRef.doc();
 
@@ -266,6 +307,9 @@ class DonorController extends GetxController {
       Get.dialog(
         ThankYouDialog(name: dName, amount: amount, projectName: projectName),
       );
+      
+      // مسح الصورة المختارة بعد النجاح
+      clearProofImage();
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
       Get.snackbar('خطأ', 'فشل في عملية التبرع: $message');

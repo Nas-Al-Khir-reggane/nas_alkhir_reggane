@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../controllers/donor_controller.dart';
 import '../../admin/controllers/project_controller.dart';
@@ -249,6 +250,64 @@ class _DonateScreenState extends State<DonateScreen> {
             ),
 
             const SizedBox(height: 16),
+            Text('إثبات التبرع (اختياري)', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            const SizedBox(height: 8),
+            Obx(() => Container(
+              decoration: AppTheme.glassDecoration,
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  if (donorController.selectedProofImage.value != null)
+                    Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            donorController.selectedProofImage.value!,
+                            height: 150,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: GestureDetector(
+                            onTap: () => donorController.clearProofImage(),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                              child: const Icon(Icons.close, color: Colors.white, size: 16),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildImageSourceButton(
+                            label: 'الكاميرا',
+                            icon: Icons.camera_alt_outlined,
+                            onTap: () => donorController.pickProofImage(ImageSource.camera),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildImageSourceButton(
+                            label: 'المعرض',
+                            icon: Icons.image_outlined,
+                            onTap: () => donorController.pickProofImage(ImageSource.gallery),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            )),
+
+            const SizedBox(height: 16),
             TextField(
               controller: notesController,
               maxLines: 2,
@@ -327,6 +386,31 @@ class _DonateScreenState extends State<DonateScreen> {
               ),
             ),
             if (isSelected) const Icon(Icons.check_circle, color: AppTheme.primaryGreen, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageSourceButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.glassBorder),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: AppTheme.primaryGreen, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
           ],
         ),
       ),

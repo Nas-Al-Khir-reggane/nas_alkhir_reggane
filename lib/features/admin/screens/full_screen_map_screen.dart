@@ -8,8 +8,31 @@ import '../controllers/admin_controller.dart';
 import '../../../data/models/service_request_model.dart';
 import 'dart:math' as math;
 
-class FullScreenMapScreen extends StatelessWidget {
-  const FullScreenMapScreen({super.key});
+class FullScreenMapScreen extends StatefulWidget {
+  final LatLng? targetLocation;
+  final double initialZoom;
+  final String? title;
+
+  const FullScreenMapScreen({
+    super.key, 
+    this.targetLocation, 
+    this.initialZoom = 12.0,
+    this.title,
+  });
+
+  @override
+  State<FullScreenMapScreen> createState() => _FullScreenMapScreenState();
+}
+
+class _FullScreenMapScreenState extends State<FullScreenMapScreen> {
+  final MapController _mapController = MapController();
+  
+  void _recenter() {
+    _mapController.move(
+      widget.targetLocation ?? const LatLng(26.7119, 0.1706), 
+      widget.initialZoom
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +49,6 @@ class FullScreenMapScreen extends StatelessWidget {
             child: Obx(() {
               final requests = controller.recentRequests;
               final List<Marker> markers = [];
-              final List<LatLng> points = [];
 
               for (var request in requests) {
                 LatLng pos;
@@ -39,7 +61,6 @@ class FullScreenMapScreen extends StatelessWidget {
                     0.1706 + (random.nextDouble() - 0.5) * 0.08
                   );
                 }
-                points.add(pos);
                 markers.add(
                   Marker(
                     point: pos,
@@ -51,9 +72,10 @@ class FullScreenMapScreen extends StatelessWidget {
               }
 
               return FlutterMap(
+                mapController: _mapController,
                 options: MapOptions(
-                  initialCenter: const LatLng(26.7119, 0.1706),
-                  initialZoom: 12,
+                  initialCenter: widget.targetLocation ?? const LatLng(26.7119, 0.1706),
+                  initialZoom: widget.initialZoom,
                   interactionOptions: const InteractionOptions(
                     flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                   ),
@@ -94,6 +116,17 @@ class FullScreenMapScreen extends StatelessWidget {
             ),
           ).animate().fadeIn(duration: 400.ms).scale(delay: 200.ms),
 
+          // زر إعادة التمركز
+          Positioned(
+            bottom: 30,
+            right: 20,
+            child: FloatingActionButton(
+              onPressed: _recenter,
+              backgroundColor: AppTheme.primaryGreen,
+              child: const Icon(Icons.my_location_rounded, color: Colors.black),
+            ),
+          ),
+
           // لوحة معلومات علوية
           Positioned(
             top: 50,
@@ -112,9 +145,9 @@ class FullScreenMapScreen extends StatelessWidget {
                     decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
                   ).animate(onPlay: (c) => c.repeat()).scale(begin: const Offset(1, 1), end: const Offset(1.5, 1.5)).fadeOut(),
                   const SizedBox(width: 10),
-                  const Text(
-                    'الرقابة الميدانية الشاملة',
-                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
+                  Text(
+                    widget.title ?? 'الرقابة الميدانية الشاملة',
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
                   ),
                 ],
               ),

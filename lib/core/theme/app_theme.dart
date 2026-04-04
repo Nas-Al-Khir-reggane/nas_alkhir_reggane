@@ -210,6 +210,7 @@ class AppTheme {
     IconData? icon,
     Color? textColor,
     bool isLoading = false,
+    double horizontalPadding = 24,
   }) {
     final onPrimaryColor = Get.theme.colorScheme.onPrimary;
     
@@ -226,7 +227,7 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusMedium)),
         ),
         child: isLoading
@@ -246,13 +247,19 @@ class AppTheme {
                     Icon(icon, color: textColor ?? onPrimaryColor, size: 20),
                     const SizedBox(width: 8),
                   ],
-                  Text(
-                    text,
-                    style: TextStyle(
-                      fontFamily: 'Tajawal',
-                      fontWeight: FontWeight.w700,
-                      color: textColor ?? onPrimaryColor,
-                      fontSize: 14,
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        text,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontFamily: 'Tajawal',
+                          fontWeight: FontWeight.w700,
+                          color: textColor ?? onPrimaryColor,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
                   ),
                 ],

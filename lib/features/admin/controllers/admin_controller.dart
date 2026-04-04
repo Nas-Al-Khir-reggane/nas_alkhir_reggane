@@ -220,24 +220,41 @@ class AdminController extends GetxController {
     // --- 1. إحصائيات مالية (للمدير العام فقط من وثيقة الإحصائيات المركزية) ---
     if (isSuperAdmin) {
       _statsSubs.add(
-        _firestore.collection('stats').doc('global').snapshots().listen((doc) async {
-          debugPrint('📊 AdminController: Global stats snapshot received. Docs exists: ${doc.exists}');
-          if (doc.exists) {
-            final data = doc.data() as Map<String, dynamic>;
-            final val = double.tryParse((data['totalDonations'] ?? 0).toString())?.toInt() ?? 0;
-            totalDonations.value = val;
-            
-            // تحذير في حال وجدنا صفراً وهناك تبرعات مسجلة حديثاً — مع حارس لمنع التكرار
-            if (val == 0 && recentDonations.isNotEmpty && !_isRecalculating) {
-              debugPrint('⚠️ AdminController: Detected 0 in stats/global but recentDonations is active. Auto-recalculating...');
-              await recalculateGlobalDonations();
+        _firestore.collection(AppConstants.donationsCollection).snapshots().listen((snap) {
+          debugPrint('📊 AdminController: Donations snapshot received. Docs count: ${snap.docs.length}');
+          if (snap.docs.isEmpty) {
+            debugPrint('⚠️ AdminController: No donation documents found in the collection.');
+          }
+          double total = 0;
+          for (var d in snap.docs) {
+            final data = d.data();
+            if (data == null) {
+              debugPrint('⚠️ AdminController: Document ${d.id} has null data.');
+              continue;
             }
-          } else {
-            if (!_isRecalculating) {
-              debugPrint('⚠️ AdminController: Global stats doc NOT found. Initializing calculation...');
-              await recalculateGlobalDonations();
+
+            final status = (data['status'] ?? 'missing').toString().toLowerCase();
+            final amountRaw = data['amount'] ?? 0;
+            final isAdminRegistered = data['registeredByAdmin'] == true;
+
+            double amount = 0;
+            if (amountRaw is num) {
+              amount = amountRaw.toDouble();
+            } else {
+              amount = double.tryParse(amountRaw.toString()) ?? 0;
+            }
+
+            final bool isCountable = status == 'confirmed' || status == 'completed' || isAdminRegistered;
+
+            debugPrint('  - Doc ID: ${d.id}, Amount: $amount, Status: $status, IsAdmin: $isAdminRegistered, IsCountable: $isCountable');
+
+            if (isCountable) {
+              total += amount;
             }
           }
+          debugPrint('✅ AdminController: Calculated Total Donations: $total');
+          totalDonations.value = total.toInt();
+          totalDonations.refresh();
         }, onError: (e) => debugPrint('❌ AdminController: Live global stats error: $e')),
       );
     }
@@ -611,6 +628,22 @@ class AdminController extends GetxController {
 
 
 
+  Future<void> deleteFieldUpdate(String updateId) async {
+    if (!isAnyAdmin) return;
+    try {
+      isLoading.value = true;
+      await _firestore.collection('worker_updates').doc(updateId).delete();
+      
+      Get.snackbar('✅ تم الحذف', 'تم حذف التحديث من نبض الميدان بنجاح.',
+          backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
+          colorText: AppTheme.successColor);
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل في حذف التحديث: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   Future<void> deleteDonation(DonationModel donation) async {
     if (!isSuperAdmin) {
       Get.snackbar('❌ وصول مرفوض', 'عذراً، هذه الصلاحية محصورة للمدير العام فقط لتفادي التلاعب بالبيانات المالية.',
@@ -656,6 +689,33 @@ class AdminController extends GetxController {
       await loadDashboardData();
     } catch (e) {
       Get.snackbar('خطأ', 'فشل في حذف التبرع: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> clearDonationProof(String donationId) async {
+    try {
+      isLoading.value = true;
+      await _firestore
+          .collection(AppConstants.donationsCollection)
+          .doc(donationId)
+          .update({
+            'proofImageUrl': FieldValue.delete(),
+            'proofImageId': FieldValue.delete(),
+          });
+      
+      // التحديث المحلي للقائمة إذا كانت موجودة
+      final index = recentDonations.indexWhere((d) => d.id == donationId);
+      if (index != -1) {
+        recentDonations[index] = recentDonations[index].copyWith(proofImageUrl: null, proofImageId: null);
+      }
+      
+      Get.snackbar('✅ نجاح', 'تم مسح إثبات التبرع وتوفير المساحة بنجاح.',
+        backgroundColor: AppTheme.successColor.withValues(alpha: 0.1),
+        colorText: AppTheme.successColor);
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'فشل مسح الإثبات: $e');
     } finally {
       isLoading.value = false;
     }
@@ -726,7 +786,7 @@ class AdminController extends GetxController {
     });
   }
 
-  Future<void> recalculateGlobalDonations() async {
+    Future<void> recalculateGlobalDonations() async {
     if (_isRecalculating) return; // منع التنفيذ المتزامن
     _isRecalculating = true;
     try {
@@ -737,10 +797,10 @@ class AdminController extends GetxController {
       double total = 0;
       for (var d in snap.docs) {
         final data = d.data();
-        // نقبل كلاً من الحالات المؤكدة والمكتملة والتبرعات المسجلة إدارياً
+        // نقبل كلاً من الحالات المؤكدة والمكتملة والتبرعات المسجلة إدارياً وأيضاً المعلقة
         final status = (data['status'] ?? '').toString().toLowerCase();
         final amountRaw = data['amount'] ?? 0;
-        
+
         // تحويل القيمة بصورة آمنة مهما كان نوعها (double, int, String)
         double amount = 0;
         if (amountRaw is num) {
@@ -749,7 +809,7 @@ class AdminController extends GetxController {
           amount = double.tryParse(amountRaw.toString()) ?? 0;
         }
 
-        if (status == 'confirmed' || status == 'completed' || data['registeredByAdmin'] == true) {
+        if (status == 'confirmed' || status == 'completed' || data['registeredByAdmin'] == true || status == 'pending') {
           total += amount;
         }
       }
@@ -770,7 +830,7 @@ class AdminController extends GetxController {
     } finally {
       _isRecalculating = false;
     }
-  }
+    }
 
   Future<void> loadRecentDonations() async {
     try {
@@ -992,7 +1052,7 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> approveUser(String userId, dynamic role) async {
+  Future<void> approveUser(String userId, dynamic role, {List<String>? additionalRoles}) async {
     if (!_requireSuperAdmin('الموافقة على المستخدمين')) return;
     try {
       String roleStr = role is UserRole ? role.name : role.toString();
@@ -1000,15 +1060,37 @@ class AdminController extends GetxController {
         Get.snackbar('❌ خطأ', 'رتبة غير صالحة: $roleStr');
         return;
       }
-      await _firestore.collection(AppConstants.usersCollection).doc(userId).update({
+      
+      Map<String, dynamic> updateData = {
         'isApproved': true,
         'role': roleStr,
-      });
+      };
+      
+      if (additionalRoles != null) {
+        updateData['additionalRoles'] = additionalRoles;
+      }
+
+      await _firestore.collection(AppConstants.usersCollection).doc(userId).update(updateData);
+      
       Get.snackbar('✅ تمت الموافقة', 'تم تفعيل الحساب بنجاح',
           backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
           colorText: AppTheme.successColor);
     } catch (e) {
       Get.snackbar('خطأ', 'حدث خطأ أثناء الموافقة: $e');
+    }
+  }
+
+  Future<void> updateAdditionalRoles(String userId, List<String> additionalRoles) async {
+    if (!_requireSuperAdmin('تعديل الصلاحيات الإضافية')) return;
+    try {
+      await _firestore.collection(AppConstants.usersCollection).doc(userId).update({
+        'additionalRoles': additionalRoles,
+      });
+      Get.snackbar('✅ تم التحديث', 'تم تحديث الصلاحيات الإضافية بنجاح',
+          backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
+          colorText: AppTheme.successColor);
+    } catch (e) {
+      Get.snackbar('خطأ', 'تعذر تحديث الصلاحيات: $e');
     }
   }
 

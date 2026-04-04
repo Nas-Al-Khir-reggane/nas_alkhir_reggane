@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:share_plus/share_plus.dart';
@@ -13,8 +14,10 @@ import '../../../data/models/service_request_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/notification_service.dart';
 import '../../shared/widgets/community_pulse_card.dart';
+import '../../shared/widgets/app_drawer.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/animations/sound_manager.dart';
+import '../../../core/routes/app_routes.dart';
 
 
 class BeneficiaryDashboard extends StatefulWidget {
@@ -110,8 +113,9 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
         }
       },
       child: Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        body: IndexedStack(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          drawer: const AppDrawer(),
+          body: IndexedStack(
           index: _currentIndex,
           children: [
             _buildHomeTab(),
@@ -185,35 +189,49 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
           const SizedBox(height: 10),
           Row(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('أهلاً,',
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w500)),
-                  Obx(() => Text(
-                        controller.currentBeneficiary.value?.name ?? 'المستفيد',
-                        style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700),
-                      )),
-                ],
+              Builder(
+                builder: (context) => IconButton(
+                  icon: Icon(Icons.menu_rounded, color: Theme.of(context).colorScheme.primary, size: 28),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('أهلاً,',
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w500)),
+                    Obx(() => Text(
+                          controller.currentBeneficiary.value?.name ?? 'المستفيد',
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )),
+                  ],
+                ),
+              ),
               IconButton(
-                icon: Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
+                icon: Icon(Icons.person, color: Theme.of(context).colorScheme.primary, size: 24),
                 onPressed: () => Get.toNamed('/profile'),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
               Obx(() => Stack(
                 children: [
                    IconButton(
-                    icon: Icon(Icons.notifications_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    icon: Icon(Icons.notifications_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 24),
                     onPressed: () => Get.toNamed('/notifications'),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
                   if (notificationService.unreadCount.value > 0)
                     Positioned(
-                      right: 8,
-                      top: 8,
+                      right: 0,
+                      top: 0,
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
@@ -228,26 +246,34 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                 ],
               )),
               const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () => setState(() => _currentIndex = 1),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: AppTheme.greenGlow,
-                  ),
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary, size: 20),
-                      const SizedBox(width: 6),
-                      Text('طلب جديد',
-                          style: TextStyle(
-                              color: Theme.of(context).colorScheme.onPrimary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13)),
-                    ],
+              Flexible(
+                child: GestureDetector(
+                  onTap: () => setState(() => _currentIndex = 1),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: AppTheme.greenGlow,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add, color: Colors.white, size: 18),
+                          const SizedBox(width: 4),
+                          Text(
+                            'طلب جديد',
+                            style: GoogleFonts.tajawal(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -381,6 +407,82 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                     );
                   }).toList(),
                 )),
+
+          // ======== 🆕 قسم الخدمات الإضافية للمستفيد ========
+          Obx(() {
+            final user = authController.currentUser.value;
+            if (user == null || !user.additionalRoles.contains('canDonate')) {
+              return const SizedBox.shrink();
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Icon(Icons.more_horiz_rounded, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text('خدمات إضافية لك',
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => Get.toNamed(AppRoutes.donorDashboard),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.pinkAccent.withValues(alpha: 0.2)),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.pinkAccent.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.volunteer_activism_rounded, color: Colors.pinkAccent, size: 24),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('كن متبرعاً وصانع أمل',
+                                    style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15)),
+                                const SizedBox(height: 4),
+                                Text('ساهم بالتبرع المالي والمشاريع الخيرية',
+                                    style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                        fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward_ios_rounded,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant, size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
+          // ====================================================
+
           const SizedBox(height: 80),
         ],
       ),

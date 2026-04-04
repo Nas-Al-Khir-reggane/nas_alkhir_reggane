@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:get/get.dart';
 import '../../../core/theme/app_theme.dart';
 import '../controllers/admin_controller.dart';
@@ -43,7 +44,7 @@ class DonationsDetailsScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              _buildDonationsList(),
+              _buildDonationsList(controller),
             ],
           ),
         ),
@@ -209,7 +210,7 @@ class DonationsDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDonationsList() {
+    Widget _buildDonationsList(AdminController controller) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('donations')
@@ -233,7 +234,7 @@ class DonationsDetailsScreen extends StatelessWidget {
         }
 
         final formatCurrency = intl.NumberFormat.currency(symbol: 'دج', decimalDigits: 0, customPattern: '#,##0 \u00A4');
-        
+
         return SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           sliver: SliverList(
@@ -241,13 +242,13 @@ class DonationsDetailsScreen extends StatelessWidget {
               (context, index) {
                 final doc = snapshot.data!.docs[index];
                 final data = doc.data() as Map<String, dynamic>;
-                
+
                 final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
                 final donorName = data['donorName'] ?? 'متبرع';
                 final isAnonymous = data['isAnonymous'] ?? false;
                 final projectName = data['projectName'] ?? 'عام';
                 final methodRaw = (data['method'] ?? data['paymentMethod'])?.toString();
-                
+
                 final displayName = isAnonymous ? 'فاعل خير (مجهول)' : donorName;
 
                 return FadeInUp(
@@ -279,16 +280,27 @@ class DonationsDetailsScreen extends StatelessWidget {
                           Text(DonationModel.methodLabel(methodRaw), style: TextStyle(color: AppTheme.textHint, fontSize: 10)),
                         ],
                       ),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.successColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          formatCurrency.format(amount),
-                          style: const TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
-                        ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (data['proofImageUrl'] != null && data['proofImageUrl'].toString().isNotEmpty)
+                            IconButton(
+                              icon: const Icon(Icons.receipt_long, color: AppTheme.goldAccent, size: 22),
+                              onPressed: () => _showProofImage(context, controller, doc.id, data['proofImageUrl']),
+                              tooltip: 'عرض الإثبات',
+                            ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.successColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              formatCurrency.format(amount),
+                              style: const TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -299,6 +311,67 @@ class DonationsDetailsScreen extends StatelessWidget {
           ),
         );
       },
+    );
+    }
+
+  void _showProofImage(BuildContext context, AdminController controller, String donationId, String url) {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        contentPadding: EdgeInsets.zero,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              child: CachedNetworkImage(
+                imageUrl: url,
+                placeholder: (context, url) => const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+                errorWidget: (context, url, error) => const Icon(Icons.error),
+                fit: BoxFit.contain,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => Get.back(),
+                    icon: const Icon(Icons.close),
+                    label: const Text('إغلاق', style: TextStyle(fontFamily: 'Tajawal')),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Get.back();
+                      Get.dialog(
+                        AlertDialog(
+                          title: const Text('حذف الإثبات؟', style: TextStyle(fontFamily: 'Tajawal')),
+                          content: const Text('سيتم حذف الصورة نهائياً لتوفير المساحة. هل أنت متأكد؟', style: TextStyle(fontFamily: 'Tajawal')),
+                          actions: [
+                            TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
+                            TextButton(
+                              onPressed: () {
+                                Get.back();
+                                controller.clearDonationProof(donationId);
+                              },
+                              child: const Text('حذف الإثبات', style: TextStyle(color: Colors.red, fontFamily: 'Tajawal')),
+                            ),
+                          ],
+                        )
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red.withValues(alpha: 0.1), foregroundColor: Colors.red, elevation: 0),
+                    icon: const Icon(Icons.delete_sweep_rounded),
+                    label: const Text('مسح الإثبات', style: TextStyle(fontFamily: 'Tajawal')),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
