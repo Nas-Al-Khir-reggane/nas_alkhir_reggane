@@ -90,22 +90,6 @@ class AppDrawer extends StatelessWidget {
                   },
                 ),
                 _buildDrawerItem(
-                  icon: Icons.person_outline_rounded,
-                  title: 'الملف الشخصي',
-                  onTap: () {
-                    Get.back();
-                    Get.toNamed(AppRoutes.profile);
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.notifications_none_rounded,
-                  title: 'الإشعارات',
-                  onTap: () {
-                    Get.back();
-                    Get.toNamed(AppRoutes.notifications);
-                  },
-                ),
-                _buildDrawerItem(
                   icon: Icons.settings_outlined,
                   title: 'إعدادات الحساب',
                   onTap: () {
