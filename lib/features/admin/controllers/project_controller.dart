@@ -226,6 +226,8 @@ ${project.description}
 💰 تم جمع: ${formatNumber(project.collected)} دج من ${formatNumber(project.budget)} دج
 📊 نسبة الإنجاز: $progress%
 تبرع الآن وساهم في هذا المشروع الخيري
+
+لتحميل التطبيق: https://nas-al-khir-reggane.github.io/nas_alkhir_reggane/
     ''';
     await Share.share(text);
   }
@@ -266,7 +268,7 @@ ${project.description}
 
     await Share.shareXFiles(
       [XFile(imagePath.path)],
-      text: 'ساهم معنا في هذا المشروع الخيري 🌿 #ناس_الخير',
+      text: 'ساهم معنا في هذا المشروع الخيري 🌿 #ناس_الخير\n\nلتحميل التطبيق: https://nas-al-khir-reggane.github.io/nas_alkhir_reggane/',
     );
   }
 

@@ -566,7 +566,8 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                             'التقدم: $progressPercent%\n'
                             'جُمع: ${collected.toInt()} دج\n'
                             'الهدف: ${goal.toInt()} دج\n'
-                            'ادعمنا في جمعية ناس الخير.';
+                            'ادعمنا في جمعية ناس الخير.\n\n'
+                            'لتحميل التطبيق: https://nas-al-khir-reggane.github.io/nas_alkhir_reggane/';
                         Share.share(shareText, subject: 'مشروع $name - ناس الخير');
                       },
                       child: Container(

@@ -210,7 +210,7 @@ class ShareEmergencyGenerator {
 
       await Share.shareXFiles(
         [XFile(imagePath.path)],
-        text: '🚨 نداء استغاثة عاجل لتبرع بالدم 🩸\nالفصيلة: $bloodType\nالمستشفى: $hospital\nالموقع: $location\nلمزيد من التفاصيل: $deepLink',
+        text: '🚨 نداء استغاثة عاجل لتبرع بالدم 🩸\nالفصيلة: $bloodType\nالمستشفى: $hospital\nالموقع: $location\nلمزيد من التفاصيل: $deepLink\n\nلتحميل التطبيق: https://nas-al-khir-reggane.github.io/nas_alkhir_reggane/',
       );
 
     } catch (e) {
