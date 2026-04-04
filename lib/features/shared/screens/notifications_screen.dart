@@ -5,11 +5,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:animate_do/animate_do.dart';
 import 'dart:ui' as ui;
+import '../../../core/theme/app_theme.dart';
 import '../../../core/animations/visual_effects.dart';
 import '../../../core/animations/micro_interactions.dart';
 import '../../../data/services/notification_service.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/models/service_request_model.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -43,7 +45,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       _tabs = ['الكل', 'الطلبات', 'النظام'];
       _tabFilters = [
         null, // All
-        ['new_request', 'request_update'], // Requests
+        ['new_request', 'request_update', 'donor_responding', 'service_rating', 'status_change'], // Requests
         ['announcement', 'system'], // System
       ];
     } else if (role == UserRole.worker) {
@@ -52,6 +54,14 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         null,
         ['new_task', 'task_update', 'chat'],
         ['announcement', 'system'],
+      ];
+    } else if (role == UserRole.donor) {
+      _tabs = ['الكل', 'طلبات الدم', 'تحديثات الطلب', 'عام'];
+      _tabFilters = [
+        null,
+        ['blood_emergency', 'blood_encouragement', 'donor_confirmed', 'blood_donation_completed', 'blood_donation_complete'],
+        ['request_update', 'request_approved', 'request_rejected'],
+        ['announcement', 'system', 'new_project'],
       ];
     } else {
       // Beneficiary / Guest / Others
@@ -91,13 +101,13 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             // ─── Header ───
             SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                padding: const EdgeInsetsDirectional.fromSTEB(16, 20, 16, 12),
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(Icons.notifications_active_outlined, color: Theme.of(context).colorScheme.primary),
@@ -141,11 +151,11 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: Theme.of(context).cardColor.withValues(alpha: 0.75),
+                color: Theme.of(context).cardColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
                 boxShadow: [
-                  BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4)),
+                  BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 4)),
                 ],
               ),
               child: ClipRRect(
@@ -196,35 +206,39 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   }
 
   Widget _buildHeaderActions() {
+    final role = authController.currentUser.value?.role;
+    final isAdmin = role == UserRole.admin || role == UserRole.superAdmin;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        MicroInteractions.hoverScale(
-          child: IconButton(
-            onPressed: () {
-              Get.dialog(
-                AlertDialog(
-                  title: const Text('حذف التنبيهات', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Tajawal')),
-                  content: const Text('هل تريد حذف جميع الإشعارات المقروءة؟', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Tajawal')),
-                  actions: [
-                    TextButton(onPressed: () => Get.back(), child: const Text('إلغاء', style: TextStyle(fontFamily: 'Tajawal'))),
-                    TextButton(
-                      onPressed: () {
-                        notificationService.deleteAllRead();
-                        Get.back();
-                        Get.snackbar('تم', 'تم حذف الإشعارات المقروءة', backgroundColor: Colors.green.withValues(alpha: 0.15));
-                      },
-                      child: Text('حذف الكل', style: TextStyle(color: Theme.of(context).colorScheme.error, fontFamily: 'Tajawal')),
-                    ),
-                  ],
-                ),
-              );
-            },
-            icon: Icon(Icons.delete_sweep_outlined, color: Theme.of(context).colorScheme.error),
-            tooltip: 'حذف المقروءة',
+        if (isAdmin) ...[
+          MicroInteractions.hoverScale(
+            child: IconButton(
+              onPressed: () {
+                Get.dialog(
+                  AlertDialog(
+                    title: const Text('حذف التنبيهات', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Tajawal')),
+                    content: const Text('هل تريد حذف جميع الإشعارات المقروءة؟', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Tajawal')),
+                    actions: [
+                      TextButton(onPressed: () => Get.back(), child: const Text('إلغاء', style: TextStyle(fontFamily: 'Tajawal'))),
+                      TextButton(
+                        onPressed: () {
+                          notificationService.deleteAllRead();
+                          Get.back();
+                          Get.snackbar('تم', 'تم حذف الإشعارات المقروءة', backgroundColor: Colors.green.withValues(alpha: 0.15));
+                        },
+                        child: Text('حذف الكل', style: TextStyle(color: Theme.of(context).colorScheme.error, fontFamily: 'Tajawal')),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              icon: Icon(Icons.delete_sweep_outlined, color: Theme.of(context).colorScheme.error),
+              tooltip: 'حذف المقروءة',
+            ),
           ),
-        ),
-        const SizedBox(width: 4),
+          const SizedBox(width: 4),
+        ],
         _buildMarkAllReadButton(),
       ],
     );
@@ -246,9 +260,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+            border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
             boxShadow: [
-              BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4))
+              BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 4))
             ],
           ),
           child: Row(
@@ -272,39 +286,68 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
 // ─── Individual Notification List ───────────────────────────────────────────
 
-class _NotificationList extends StatelessWidget {
+class _NotificationList extends StatefulWidget {
   final String userId;
   final List<String>? allowedTypes;
 
   const _NotificationList({required this.userId, this.allowedTypes});
 
   @override
-  Widget build(BuildContext context) {
+  State<_NotificationList> createState() => _NotificationListState();
+}
+
+class _NotificationListState extends State<_NotificationList> {
+  late final bool _isAdmin;
+  late final Stream<QuerySnapshot> _notificationsStream;
+
+  @override
+  void initState() {
+    super.initState();
     final authController = Get.find<AuthController>();
     final role = authController.currentUser.value?.role;
-    final isAdmin = role == UserRole.admin || role == UserRole.superAdmin;
+    _isAdmin = role == UserRole.admin || role == UserRole.superAdmin;
+    final roleTarget = role?.name;
 
-    // We fetch notifications for the user, and if they are an admin, we also fetch broadcast notifications
     Query query = FirebaseFirestore.instance.collection('notifications');
-    if (isAdmin) {
+    final List<Filter> audienceFilters = <Filter>[
+      Filter('userId', isEqualTo: widget.userId),
+      Filter('targetUserId', isEqualTo: widget.userId),
+      Filter('targetRole', isEqualTo: 'all'),
+    ];
+
+    if (role == UserRole.superAdmin) {
+      audienceFilters.add(Filter('targetRole', isEqualTo: 'superAdmin'));
+      audienceFilters.add(Filter('targetRole', isEqualTo: 'admin'));
+    } else if (roleTarget != null && roleTarget.isNotEmpty) {
+      audienceFilters.add(Filter('targetRole', isEqualTo: roleTarget));
+    }
+
+    if (audienceFilters.length == 3) {
       query = query.where(
-        Filter.or(
-          Filter('userId', isEqualTo: userId),
-          Filter('targetRole', isEqualTo: 'admin'),
-          Filter('targetRole', isEqualTo: 'all'),
-        )
+        Filter.or(audienceFilters[0], audienceFilters[1], audienceFilters[2]),
+      );
+    } else if (audienceFilters.length == 4) {
+      query = query.where(
+        Filter.or(audienceFilters[0], audienceFilters[1], audienceFilters[2], audienceFilters[3]),
       );
     } else {
       query = query.where(
         Filter.or(
-          Filter('userId', isEqualTo: userId),
-          Filter('targetRole', isEqualTo: 'all'),
-        )
+          audienceFilters[0],
+          audienceFilters[1],
+          audienceFilters[2],
+          audienceFilters[3],
+          audienceFilters[4],
+        ),
       );
     }
+    _notificationsStream = query.snapshots();
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: query.snapshots(),
+      stream: _notificationsStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(
@@ -313,7 +356,7 @@ class _NotificationList extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.75), shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.15), shape: BoxShape.circle),
                   child: Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 40),
                 ),
                 const SizedBox(height: 16),
@@ -330,11 +373,11 @@ class _NotificationList extends StatelessWidget {
         List<DocumentSnapshot> docs = snapshot.data?.docs ?? [];
         
         // Client-side filtering & sorting
-        if (allowedTypes != null && allowedTypes!.isNotEmpty) {
+        if (widget.allowedTypes != null && widget.allowedTypes!.isNotEmpty) {
           docs = docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
             final type = data['type'] as String?;
-            return allowedTypes!.contains(type);
+            return widget.allowedTypes!.contains(type);
           }).toList();
         }
 
@@ -354,41 +397,49 @@ class _NotificationList extends StatelessWidget {
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 30),
           physics: const BouncingScrollPhysics(),
           itemCount: docs.length,
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
-            final bool isRead = data['isRead'] ?? false;
+            final String currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+            final List<dynamic> readBy = data['readBy'] ?? [];
+            final bool isRead = (data['userId'] == currentUid && data['isRead'] == true) || readBy.contains(currentUid);
             final DateTime date = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
             final docRef = docs[index].reference;
+
+            final card = _NotificationCard(
+              data: data,
+              isRead: isRead,
+              date: date,
+              docRef: docRef,
+              isAdmin: _isAdmin,
+              currentUserId: currentUid,
+            );
 
             return FadeInUp(
               delay: Duration(milliseconds: (index % 10) * 50),
               duration: const Duration(milliseconds: 400),
-              child: Dismissible(
-                key: Key(docs[index].id),
-                direction: DismissDirection.endToStart,
-                onDismissed: (_) {
-                  Get.find<NotificationService>().deleteNotification(docs[index].id);
-                },
-                background: Container(
-                  alignment: Alignment.centerLeft,
-                  padding: const EdgeInsets.only(left: 20),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.error.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: const Icon(Icons.delete_outline, color: Colors.white),
-                ),
-                child: _NotificationCard(
-                  data: data,
-                  isRead: isRead,
-                  date: date,
-                  docRef: docRef,
-                ),
-              ),
+              child: _isAdmin
+                  ? Dismissible(
+                      key: Key(docs[index].id),
+                      direction: DismissDirection.endToStart,
+                      onDismissed: (_) {
+                        Get.find<NotificationService>().deleteNotification(docs[index].id);
+                      },
+                      background: Container(
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsetsDirectional.only(start: 20),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: const Icon(Icons.delete_outline, color: Colors.white),
+                      ),
+                      child: card,
+                    )
+                  : card,
             );
           },
         );
@@ -405,9 +456,9 @@ class _NotificationList extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
-                border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), width: 2),
+                border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), width: 2),
               ),
               child: Icon(Icons.notifications_active_outlined,
                   size: 50, color: Theme.of(context).colorScheme.primary),
@@ -422,7 +473,7 @@ class _NotificationList extends StatelessWidget {
             const SizedBox(height: 8),
             Text('سوف تظهر التنبيهات المخصصة لك هنا',
                 style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), fontSize: 13, fontFamily: 'Tajawal')),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15), fontSize: 13, fontFamily: 'Tajawal')),
           ],
         ),
       ),
@@ -437,12 +488,16 @@ class _NotificationCard extends StatelessWidget {
   final bool isRead;
   final DateTime date;
   final DocumentReference docRef;
+  final bool isAdmin;
+  final String currentUserId;
 
   const _NotificationCard({
     required this.data,
     required this.isRead,
     required this.date,
     required this.docRef,
+    required this.isAdmin,
+    required this.currentUserId,
   });
 
   @override
@@ -456,11 +511,14 @@ class _NotificationCard extends StatelessWidget {
       child: GestureDetector(
         onTap: () async {
         if (!isRead) {
-          await docRef.update({'isRead': true});
+          await docRef.update({
+            'isRead': true,
+            'readBy': FieldValue.arrayUnion([currentUserId])
+          });
         }
         _navigate(data);
       },
-      onLongPress: () {
+      onLongPress: !isAdmin ? null : () {
         Get.dialog(
           AlertDialog(
             title: const Text('حذف الإشعار', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Tajawal')),
@@ -487,12 +545,12 @@ class _NotificationCard extends StatelessWidget {
           border: Border.all(
             color: isRead
                 ? Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)
-                : color.withValues(alpha: 0.75),
+                : color.withValues(alpha: 0.15),
             width: isRead ? 1 : 1.5,
           ),
           boxShadow: isRead ? [] : [
             BoxShadow(
-              color: color.withValues(alpha: 0.75),
+              color: color.withValues(alpha: 0.15),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -507,7 +565,7 @@ class _NotificationCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.75),
+                  color: color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(icon, color: color, size: 22),
@@ -525,7 +583,7 @@ class _NotificationCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.75),
+                            color: color.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -547,7 +605,7 @@ class _NotificationCard extends StatelessWidget {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                                     blurRadius: 4)
                               ],
                             ),
@@ -631,6 +689,7 @@ class _NotificationCard extends StatelessWidget {
         type == 'blood_emergency' ||
         type == 'blood_encouragement' ||
         type == 'blood_donation_complete' ||
+        type == 'blood_donation_completed' ||
         type == 'donor_confirmed' ||
         type == 'donor_responding' ||
         type == 'chat' ||
@@ -641,6 +700,7 @@ class _NotificationCard extends StatelessWidget {
   void _navigate(Map<String, dynamic> data) {
     final type = data['type'] as String?;
     final requestId = data['requestId'] as String?;
+    final role = Get.find<AuthController>().currentUser.value?.role;
     
     switch (type) {
       case 'new_request':
@@ -667,7 +727,36 @@ class _NotificationCard extends StatelessWidget {
       case 'request_update':
       case 'request_approved':
       case 'request_rejected':
-        Get.toNamed('/beneficiary/dashboard');
+        if (role == UserRole.admin || role == UserRole.superAdmin) {
+          if (requestId != null) {
+            Get.toNamed('/admin/request-detail', arguments: {'requestId': requestId});
+          } else {
+            Get.toNamed('/admin/requests');
+          }
+        } else if (role == UserRole.worker) {
+          if (requestId != null) {
+            FirebaseFirestore.instance
+                .collection('service_requests')
+                .doc(requestId)
+                .get()
+                .then((doc) {
+              if (doc.exists) {
+                final reqMap = doc.data()!;
+                reqMap['id'] = doc.id;
+                final request = ServiceRequestModel.fromMap(reqMap);
+                Get.toNamed('/worker/task-detail', arguments: request);
+              } else {
+                Get.toNamed('/worker/dashboard');
+              }
+            });
+          } else {
+            Get.toNamed('/worker/dashboard');
+          }
+        } else if (role == UserRole.donor) {
+          Get.toNamed('/donor/dashboard');
+        } else {
+          Get.toNamed('/beneficiary/dashboard');
+        }
         break;
       case 'new_project':
         Get.toNamed('/donor/dashboard');
@@ -695,7 +784,12 @@ class _NotificationCard extends StatelessWidget {
         Get.toNamed('/blood-emergency', arguments: args);
         break;
       case 'blood_donation_complete':
-        Get.toNamed('/blood-donor-profile');
+      case 'blood_donation_completed':
+        if (role == UserRole.donor) {
+          Get.toNamed('/blood-donor-profile');
+        } else {
+          Get.toNamed('/notifications');
+        }
         break;
       case 'donor_confirmed':
         if (data['requestId'] != null) {
@@ -729,13 +823,15 @@ class _NotificationCard extends StatelessWidget {
       case 'request_update': return Colors.blue;
       case 'new_donation': return Theme.of(context).colorScheme.primary;
       case 'new_project': return Colors.purple;
-      case 'chat': return Colors.teal;
-      case 'new_message': return Colors.teal;
-      case 'guest_message': return Colors.teal;
+      case 'chat': return AppTheme.primaryGreen;
+      case 'new_message': return AppTheme.primaryGreen;
+      case 'guest_message': return AppTheme.primaryGreen;
       case 'announcement': return Colors.orange;
       case 'blood_emergency': return Theme.of(context).colorScheme.error;
       case 'blood_encouragement': return Colors.green;
-      case 'blood_donation_complete': return Colors.green;
+      case 'blood_donation_complete':
+      case 'blood_donation_completed':
+        return Colors.green;
       case 'donor_confirmed': return Colors.green;
       case 'donor_responding': return Colors.orange;
       default: return Theme.of(context).colorScheme.primary;
@@ -756,7 +852,9 @@ class _NotificationCard extends StatelessWidget {
       case 'announcement': return Icons.campaign_rounded;
       case 'blood_emergency': return Icons.volunteer_activism;
       case 'blood_encouragement': return Icons.diversity_1_rounded;
-      case 'blood_donation_complete': return Icons.military_tech_rounded;
+      case 'blood_donation_complete':
+      case 'blood_donation_completed':
+        return Icons.military_tech_rounded;
       case 'donor_confirmed': return Icons.verified_rounded;
       case 'donor_responding': return Icons.directions_run_rounded;
       default: return Icons.notifications_rounded;
@@ -777,7 +875,9 @@ class _NotificationCard extends StatelessWidget {
       case 'announcement': return 'إعلان';
       case 'blood_emergency': return 'نداء استغاثة';
       case 'blood_encouragement': return 'فرصة تبرع';
-      case 'blood_donation_complete': return 'إتمام تبرع';
+      case 'blood_donation_complete':
+      case 'blood_donation_completed':
+        return 'إتمام تبرع';
       case 'donor_confirmed': return 'تأكيد متبرع';
       case 'donor_responding': return 'متبرع مستجيب';
       default: return 'إشعار';

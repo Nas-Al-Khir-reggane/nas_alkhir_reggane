@@ -14,28 +14,33 @@ class PendingApprovalScreen extends StatelessWidget {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          // خلفية زخرفية
+          // خلفية زخرفية موحدة (Unified Background)
           Positioned(
-            top: -50,
-            right: -50,
+            top: -100,
+            right: -80,
             child: Container(
-              width: 300,
-              height: 300,
+              width: 350,
+              height: 350,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                gradient: RadialGradient(
+                  colors: [
+                    AppTheme.primaryGreen.withValues(alpha: 0.05),
+                    Colors.transparent,
+                  ],
+                ),
               ),
             ),
           ),
           Positioned(
-            bottom: -100,
-            left: -50,
+            bottom: -120,
+            left: -60,
             child: Container(
-              width: 200,
-              height: 200,
+              width: 250,
+              height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                color: AppTheme.primaryGreen.withValues(alpha: 0.03),
               ),
             ),
           ),
@@ -47,57 +52,77 @@ class PendingApprovalScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   FadeInDown(
-                    child: Icon(
-                      Icons.hourglass_top_rounded,
-                      size: 80,
-                      color: Colors.orange,
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.hourglass_top_rounded,
+                        size: 80,
+                        color: Colors.orange.withValues(alpha: 0.15),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
                   FadeInDown(
                     delay: const Duration(milliseconds: 200),
                     child: Text(
                       'جارٍ مراجعة طلبك',
                       style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
                         color: Theme.of(context).colorScheme.onSurface,
                         fontFamily: 'Tajawal',
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   FadeInDown(
                     delay: const Duration(milliseconds: 300),
-                    child: Text(
-                      'سيتم إشعارك فور موافقة الإدارة على حسابك',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontFamily: 'Tajawal',
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        'سيتم إشعارك فور موافقة الإدارة على حسابك لنتمكن من تقديم أفضل خدمة لك.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontFamily: 'Tajawal',
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 48),
                   FadeInUp(
                     delay: const Duration(milliseconds: 400),
                     child: Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.05)),
+                        boxShadow: AppTheme.cardShadow,
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline, color: Theme.of(context).colorScheme.primary),
-                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(Icons.info_outline, color: AppTheme.primaryGreen, size: 20),
+                          ),
+                          const SizedBox(width: 16),
                           Expanded(
                             child: Text(
-                              'يمكنك طلب خدمة بدون حساب في الوقت الحالي',
+                              'يمكنك طلب خدمة زائر (بدون حساب) ريثما يتم تفعيل حسابك.',
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 fontSize: 13,
+                                fontWeight: FontWeight.w600,
                                 fontFamily: 'Tajawal',
                               ),
                             ),
@@ -106,30 +131,33 @@ class PendingApprovalScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
                   FadeInUp(
                     delay: const Duration(milliseconds: 500),
                     child: SizedBox(
                       width: double.infinity,
                       child: AppTheme.gradientButton(
-                        text: 'طلب خدمة الآن',
+                        text: 'طلب خدمة زائر الآن',
                         onPressed: () => Get.toNamed('/guest/request'),
-                        icon: Icons.add_circle_outline,
+                        icon: Icons.add_circle_outline_rounded,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   FadeInUp(
                     delay: const Duration(milliseconds: 600),
-                    child: TextButton(
+                    child: TextButton.icon(
                       onPressed: () => Get.find<AuthController>().logout(),
-                      child: Text(
+                      icon: const Icon(Icons.logout_rounded, size: 18),
+                      label: const Text(
                         'تسجيل الخروج',
                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
                           fontWeight: FontWeight.bold,
                           fontFamily: 'Tajawal',
                         ),
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.7),
                       ),
                     ),
                   ),
@@ -147,7 +175,7 @@ class PendingApprovalScreen extends StatelessWidget {
               return Stack(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.notifications_outlined, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(Icons.notifications_none_rounded, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                     onPressed: () => Get.toNamed('/notifications'),
                   ),
                   if (service.unreadCount.value > 0)
@@ -157,10 +185,10 @@ class PendingApprovalScreen extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
-                        constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
+                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
                         child: Text(
                           service.unreadCount.value.toString(),
-                          style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -174,4 +202,3 @@ class PendingApprovalScreen extends StatelessWidget {
     );
   }
 }
-

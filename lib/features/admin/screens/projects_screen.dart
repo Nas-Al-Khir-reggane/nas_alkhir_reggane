@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/animations/mount_animations.dart';
-import '../../../core/animations/visual_effects.dart';
+// تم إزالة الاستيراد غير المستعمل
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/project_model.dart';
+import '../../../data/models/user_model.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/project_controller.dart';
 import 'add_project_screen.dart';
 
 class ProjectsScreen extends StatelessWidget {
   ProjectController get projectController => Get.find<ProjectController>();
+  AuthController get authController => Get.find<AuthController>();
+  bool get canManageProjects => authController.currentUser.value?.role == UserRole.superAdmin;
 
   const ProjectsScreen({super.key});
 
@@ -22,15 +26,21 @@ class ProjectsScreen extends StatelessWidget {
       backgroundColor: AppTheme.backgroundColor,
       body: Stack(
         children: [
+          // خلفية زخرفية موحدة وفاخرة
           Positioned(
-            top: -100,
-            left: -100,
+            top: -120,
+            right: -80,
             child: Container(
-              width: 300,
-              height: 300,
+              width: 350,
+              height: 350,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryGreen.withValues(alpha: 0.75),
+                gradient: RadialGradient(
+                  colors: [
+                    AppTheme.primaryGreen.withValues(alpha: 0.05),
+                    Colors.transparent,
+                  ],
+                ),
               ),
             ),
           ),
@@ -39,48 +49,53 @@ class ProjectsScreen extends StatelessWidget {
             children: [
               SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+                  padding: const EdgeInsetsDirectional.fromSTEB(20, 20, 20, 10),
                   child: Row(
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('📁 إدارة المشاريع',
+                          Text('إدارة المشاريع',
                               style: TextStyle(
-                                  fontSize: 26,
+                                  fontSize: 24,
                                   fontWeight: FontWeight.w900,
                                   color: AppTheme.textPrimary,
-                                  fontFamily: 'Tajawal')),
+                                  fontFamily: 'Tajawal',
+                                  letterSpacing: 0.5)),
                           Obx(() => Text(
-                              'تتم إدارة ${projectController.totalProjects} مشروع حالياً',
+                              '${projectController.totalProjects} مشروع قيد الإدارة',
                               style: TextStyle(
-                                  color: AppTheme.textSecondary, fontSize: 13))),
+                                  color: AppTheme.textSecondary.withValues(alpha: 0.7), 
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500))),
                         ],
                       ),
                       const Spacer(),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => showAddProjectSheet(context),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: AppTheme.primaryGradient,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: AppTheme.greenGlow,
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.add_task_rounded, color: Colors.black, size: 20),
-                              SizedBox(width: 8),
-                              Text('مشروع جديد',
-                                  style: TextStyle(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 13)),
-                            ],
+                      if (canManageProjects)
+                        GestureDetector(
+                          onTap: () => showAddProjectSheet(context),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: AppTheme.primaryGradient,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.2), blurRadius: 15, offset: const Offset(0, 4))
+                              ],
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            child: Row(
+                              children: [
+                                Icon(Icons.add_rounded, color: Get.isDarkMode ? Colors.black : Colors.white, size: 20),
+                                const SizedBox(width: 4),
+                                Text('مشروع جديد',
+                                    style: TextStyle(
+                                        color: Get.isDarkMode ? Colors.black : Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13)),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -88,18 +103,23 @@ class ProjectsScreen extends StatelessWidget {
 
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: VisualEffects.glassMorphism(
-                  borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 5))
+                    ],
+                  ),
                   child: TextField(
                     controller: projectController.searchController,
                     decoration: AppTheme.inputDecoration('ابحث عن مشروع أو فئة...', Icons.search_rounded),
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                   ),
                 ),
               ),
 
               SizedBox(
-                height: 55,
+                height: 50,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -115,10 +135,11 @@ class ProjectsScreen extends StatelessWidget {
               Expanded(
                 child: Obx(() {
                   if (projectController.filteredProjects.isEmpty) {
-                    return AppTheme.emptyState('لا توجد نتائج مطابقة', icon: Icons.search_off_rounded);
+                    return AppTheme.emptyState('لا توجد نتائج مطابقة لفلتر البحث', icon: Icons.search_off_rounded);
                   }
                   return RefreshIndicator(
                     color: AppTheme.primaryGreen,
+                    strokeWidth: 2,
                     onRefresh: () async => projectController.listenToProjects(),
                     child: ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -128,7 +149,6 @@ class ProjectsScreen extends StatelessWidget {
                         return MountAnimations.staggeredListEntry(
                           index: index,
                           delayMs: 60,
-                          dropOffset: 40.0,
                           child: _buildProfessionalProjectCard(context, project),
                         );
                       },
@@ -153,24 +173,25 @@ class ProjectsScreen extends StatelessWidget {
         final isSelected = projectController.selectedCategory.value == cat['id'];
         return AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          margin: const EdgeInsets.only(right: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          margin: const EdgeInsetsDirectional.only(end: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
           decoration: BoxDecoration(
-            gradient: isSelected ? AppTheme.primaryGradient : null,
-            color: !isSelected ? AppTheme.surfaceColor : null,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: isSelected ? Colors.transparent : AppTheme.glassBorder),
-            boxShadow: isSelected ? AppTheme.greenGlow : null,
+            color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.1) : AppTheme.surfaceColor,
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.3) : AppTheme.glassBorder.withValues(alpha: 0.05),
+              width: 1.2
+            ),
           ),
           child: Row(
             children: [
-              Icon(cat['icon'] as IconData, size: 18, color: isSelected ? Colors.black : AppTheme.textHint),
+              Icon(cat['icon'] as IconData, size: 16, color: isSelected ? AppTheme.primaryGreen : AppTheme.textHint),
               const SizedBox(width: 8),
               Text(cat['name'] as String,
                   style: TextStyle(
-                      color: isSelected ? Colors.black : AppTheme.textSecondary,
-                      fontSize: 13,
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500)),
+                      color: isSelected ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600)),
             ],
           ),
         );
@@ -187,163 +208,147 @@ class ProjectsScreen extends StatelessWidget {
     final remaining = (project.budget - project.collected).clamp(0.0, double.infinity);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            categoryColor.withValues(alpha: 0.15),
-            AppTheme.cardColor,
-            AppTheme.cardColor,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: categoryColor.withValues(alpha: 0.75), width: 1.5),
-        boxShadow: [
-          BoxShadow(color: categoryColor.withValues(alpha: 0.75), blurRadius: 25, offset: const Offset(0, 10)),
-        ],
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: AppTheme.cardShadow,
+        border: Border.all(color: categoryColor.withValues(alpha: 0.05), width: 1),
       ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [categoryColor.withValues(alpha: 0.15), categoryColor.withValues(alpha: 0.9)],
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: categoryColor.withValues(alpha: 0.03),
               ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 52, height: 52,
-                  decoration: BoxDecoration(
-                    color: categoryColor.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: categoryColor.withValues(alpha: 0.75)),
-                  ),
-                  child: Icon(cat['icon'] as IconData, color: categoryColor, size: 28),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(project.name,
-                          style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w900, fontSize: 17, height: 1.2)),
-                      const SizedBox(height: 4),
-                      Text(cat['name'] as String,
-                          style: TextStyle(color: categoryColor, fontSize: 12, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-                AppTheme.statusBadge(project.status),
-              ],
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 100, height: 100,
-                  child: CustomPaint(
-                    painter: _ArcProgressPainter(
-                      progress: progress, 
-                      color: categoryColor, 
-                      backgroundColor: AppTheme.surfaceColor,
+              child: Row(
+                children: [
+                  Container(
+                    width: 48, height: 48,
+                    decoration: BoxDecoration(
+                      color: categoryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('$progressPercent%',
-                              style: TextStyle(color: categoryColor, fontWeight: FontWeight.w900, fontSize: 22, height: 1)),
-                          Text('إنجاز', style: TextStyle(color: AppTheme.textHint, fontSize: 10)),
-                        ],
-                      ),
+                    child: Icon(cat['icon'] as IconData, color: categoryColor, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(project.name,
+                            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontSize: 16, height: 1.2)),
+                        const SizedBox(height: 4),
+                        Text(cat['name'] as String,
+                            style: TextStyle(color: categoryColor.withValues(alpha: 0.7), fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(width: 24),
-                Expanded(
-                  child: Column(
-                    children: [
-                      _buildMetricRow('جُمع', '${projectController.formatNumber(project.collected)} دج', categoryColor),
-                      const SizedBox(height: 10),
-                      _buildMetricRow('الهدف', '${projectController.formatNumber(project.budget)} دج', AppTheme.textSecondary),
-                      const SizedBox(height: 10),
-                      _buildMetricRow('المتبقي', '${projectController.formatNumber(remaining)} دج', AppTheme.warningColor),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 6,
-                backgroundColor: AppTheme.surfaceColor,
-                valueColor: AlwaysStoppedAnimation(categoryColor),
+                  AppTheme.statusBadge(project.status),
+                ],
               ),
             ),
-          ),
 
-          const SizedBox(height: 20),
-          Divider(color: AppTheme.glassBorder, height: 1),
-
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => Get.toNamed('/admin/project-detail', arguments: project),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.glassBorder),
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(18, 16, 18, 20),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 90, height: 90,
+                    child: CustomPaint(
+                      painter: _ArcProgressPainter(
+                        progress: progress, 
+                        color: categoryColor, 
+                        backgroundColor: categoryColor.withValues(alpha: 0.08),
                       ),
                       child: Center(
-                        child: Text('عرض التفاصيل 👁️', 
-                          style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('$progressPercent%',
+                                style: TextStyle(color: categoryColor, fontWeight: FontWeight.w900, fontSize: 20, height: 1)),
+                            Text('مكتمل', style: TextStyle(color: AppTheme.textHint, fontSize: 9)),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _showEditProjectQuickActions(context, project),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: AppTheme.greenGlow,
-                      ),
-                      child: const Center(
-                        child: Text('تعديل سريع ⚙️', 
-                          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800, fontSize: 13)),
-                      ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _buildMetricRow('المجموع المُحصّل', '${projectController.formatNumber(project.collected)} دج', categoryColor),
+                        const SizedBox(height: 8),
+                        _buildMetricRow('هدف المشروع', '${projectController.formatNumber(project.budget)} دج', AppTheme.textSecondary),
+                        const SizedBox(height: 8),
+                        _buildMetricRow('المبلغ المتبقي', '${projectController.formatNumber(remaining)} دج', AppTheme.warningColor),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 4,
+                  backgroundColor: categoryColor.withValues(alpha: 0.05),
+                  valueColor: AlwaysStoppedAnimation(categoryColor),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+            Divider(color: AppTheme.glassBorder.withValues(alpha: 0.05), height: 1),
+
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Get.toNamed('/admin/project-detail', arguments: project),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        backgroundColor: AppTheme.backgroundColor.withValues(alpha: 0.5),
+                      ),
+                      child: Text('عرض التفاصيل', 
+                        style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                    ),
+                  ),
+                  if (canManageProjects) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => _showEditProjectQuickActions(context, project),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                          foregroundColor: AppTheme.primaryGreen,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(color: AppTheme.primaryGreen.withValues(alpha: 0.2))
+                          ),
+                        ),
+                        child: const Text('إدارة سريعة', 
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -352,37 +357,45 @@ class ProjectsScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
+        Text(label, style: TextStyle(color: AppTheme.textHint, fontSize: 11, fontWeight: FontWeight.w500)),
         Text(value, style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 13)),
       ],
     );
   }
 
   void _showEditProjectQuickActions(BuildContext context, ProjectModel project) {
+    if (!canManageProjects) {
+      Get.snackbar('وصول مرفوض', 'إدارة المشاريع متاحة للمدير العام فقط');
+      return;
+    }
+
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: AppTheme.surfaceColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 40, offset: const Offset(0, -10))
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.glassBorder, borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 20),
-            Text('⚙️ إجراءات إدارية سريعة',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontFamily: 'Tajawal')),
-            const SizedBox(height: 30),
+            Container(width: 45, height: 4, decoration: BoxDecoration(color: AppTheme.glassBorder.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10))),
+            const SizedBox(height: 24),
+            Text('إجراءات المشروع',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppTheme.textPrimary, fontFamily: 'Tajawal')),
+            const SizedBox(height: 32),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildCircleAction(Icons.edit_note_rounded, 'تعديل', AppTheme.primaryGreen, () {
+                _buildCircleAction(Icons.edit_rounded, 'تعديل', AppTheme.primaryGreen, () {
                   Get.back();
                   _showEditDialog(context, project);
                 }),
                 _buildCircleAction(
-                  project.status == 'paused' ? Icons.play_circle_filled_rounded : Icons.pause_circle_filled_rounded,
+                  project.status == 'paused' ? Icons.play_arrow_rounded : Icons.pause_rounded,
                   project.status == 'paused' ? 'استئناف' : 'إيقاف',
                   AppTheme.warningColor,
                   () {
@@ -390,40 +403,40 @@ class ProjectsScreen extends StatelessWidget {
                     projectController.toggleProjectStatus(project.id, project.status);
                   },
                 ),
-                _buildCircleAction(Icons.check_circle_rounded, 'إكمال', AppTheme.successColor, () {
+                _buildCircleAction(Icons.task_alt_rounded, 'إكمال', AppTheme.successColor, () {
                   Get.back();
                   Get.dialog(AlertDialog(
                     backgroundColor: AppTheme.surfaceColor,
-                    title: Text('تأكيد الإكمال', style: TextStyle(color: AppTheme.textPrimary)),
-                    content: Text('هل تريد تغيير حالة المشروع إلى "مكتمل"؟', style: TextStyle(color: AppTheme.textSecondary)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    title: Text('إكمال المشروع', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+                    content: Text('هل أنت متأكد من نقل هذا المشروع إلى قائمة "المكتملة"؟', style: TextStyle(color: AppTheme.textSecondary)),
                     actions: [
-                      TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.successColor),
+                      TextButton(onPressed: () => Get.back(), child: Text('تراجع', style: TextStyle(color: AppTheme.textHint))),
+                      AppTheme.gradientButton(
+                        text: 'نعم، مكتمل',
                         onPressed: () {
                           Get.back();
                           projectController.updateProject(project.id, {'status': 'completed'});
                         },
-                        child: const Text('تأكيد', style: TextStyle(color: Colors.black)),
                       ),
                     ],
                   ));
                 }),
-                _buildCircleAction(Icons.delete_forever_rounded, 'حذف', AppTheme.errorColor, () {
+                _buildCircleAction(Icons.delete_outline_rounded, 'حذف', AppTheme.errorColor, () {
                   Get.back();
                   Get.dialog(AlertDialog(
                     backgroundColor: AppTheme.surfaceColor,
-                    title: Text('تأكيد الحذف', style: TextStyle(color: AppTheme.textPrimary)),
-                    content: Text('هل أنت متأكد من حذف "${project.name}"؟ لا يمكن التراجع عن هذا الإجراء.', style: TextStyle(color: AppTheme.textSecondary)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    title: Text('حذف المشروع', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+                    content: Text('سيتم حذف "${project.name}" نهائياً. هل تريد المتابعة؟', style: TextStyle(color: AppTheme.textSecondary)),
                     actions: [
-                      TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
+                      TextButton(onPressed: () => Get.back(), child: Text('إلغاء', style: TextStyle(color: AppTheme.textHint))),
+                      TextButton(
                         onPressed: () {
                           Get.back();
                           projectController.deleteProject(project.id);
                         },
-                        child: const Text('حذف', style: TextStyle(color: Colors.white)),
+                        child: const Text('نعم، حذف', style: TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ));
@@ -444,38 +457,38 @@ class ProjectsScreen extends StatelessWidget {
 
     Get.dialog(AlertDialog(
       backgroundColor: AppTheme.surfaceColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('✏️ تعديل المشروع', style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal')),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      title: Text('تعديل تفاصيل المشروع', style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'Tajawal', fontWeight: FontWeight.w900, fontSize: 18)),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              style: TextStyle(color: AppTheme.textPrimary),
-              decoration: AppTheme.inputDecoration('اسم المشروع', Icons.edit),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+              decoration: AppTheme.inputDecoration('اسم المشروع', Icons.title_rounded),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             TextField(
               controller: descController,
               maxLines: 3,
-              style: TextStyle(color: AppTheme.textPrimary),
-              decoration: AppTheme.inputDecoration('الوصف', Icons.description),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+              decoration: AppTheme.inputDecoration('وصف مختصر للمشروع', Icons.description_outlined),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             TextField(
               controller: budgetController,
               keyboardType: TextInputType.number,
-              style: TextStyle(color: AppTheme.textPrimary),
-              decoration: AppTheme.inputDecoration('الميزانية (دج)', Icons.monetization_on),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+              decoration: AppTheme.inputDecoration('الميزانية المستهدفة (دج)', Icons.account_balance_wallet_outlined),
             ),
           ],
         ),
       ),
       actions: [
         TextButton(onPressed: () => Get.back(), child: Text('إلغاء', style: TextStyle(color: AppTheme.textSecondary))),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+        AppTheme.gradientButton(
+          text: 'حفظ التغييرات',
           onPressed: () {
             Get.back();
             projectController.updateProject(project.id, {
@@ -484,7 +497,6 @@ class ProjectsScreen extends StatelessWidget {
               'budget': double.tryParse(budgetController.text) ?? project.budget,
             });
           },
-          child: const Text('حفظ', style: TextStyle(color: Colors.black)),
         ),
       ],
     ));
@@ -496,16 +508,16 @@ class ProjectsScreen extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.75),
+              color: color.withValues(alpha: 0.08),
               shape: BoxShape.circle,
-              border: Border.all(color: color.withValues(alpha: 0.75)),
+              border: Border.all(color: color.withValues(alpha: 0.15), width: 1.5),
             ),
-            child: Icon(icon, color: color, size: 28),
+            child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(height: 8),
-          Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(label, style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'Tajawal')),
         ],
       ),
     );
@@ -521,7 +533,7 @@ class _ArcProgressPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const strokeWidth = 8.0;
+    const strokeWidth = 6.0;
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width / 2) - strokeWidth / 2;
     const startAngle = -2.356; 
@@ -547,4 +559,3 @@ class _ArcProgressPainter extends CustomPainter {
   @override
   bool shouldRepaint(_ArcProgressPainter old) => old.progress != progress;
 }
-

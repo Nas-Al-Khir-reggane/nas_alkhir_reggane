@@ -6,221 +6,261 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart' as intl;
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/service_request_model.dart';
-import 'package:intl/intl.dart' as intl;
 
 class ShareEmergencyGenerator {
   static Future<void> shareEmergency(ServiceRequestModel request, BuildContext context) async {
     try {
-      // 1. Ø¥Ù†Ø´Ø§Ø¡ Ù…ØªØ­ÙƒÙ… Ù„Ù‚Ø·Ø© Ø§Ù„Ø´Ø§Ø´Ø©
       ScreenshotController screenshotController = ScreenshotController();
       
-      // 2. Ø§Ù„Ø±Ø§Ø¨Ø· Ø§Ù„Ø¹Ù…ÙŠÙ‚ Ù„Ù„Ù†Ø¯Ø§Ø¡
       String deepLink = 'https://nasalkhir.app/emergency?id=${request.id}';
       
-      // 3. Ø§Ø³ØªØ®Ø±Ø§Ø¬ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª
-      String bloodType = request.toMap()['bloodType'] ?? request.toMap()['details']?['الفصيلة'] ?? request.toMap()['details']?['bloodType'] ?? 'غير محدد';
-      String hospital = request.toMap()['hospital'] ?? request.toMap()['details']?['المستشفى'] ?? request.toMap()['details']?['hospital'] ?? request.toMap()['deliveryLocation'] ?? 'مستشفى غير محدد';
+      final reqMap = request.toMap();
+      String bloodType = request.bloodType.isNotEmpty ? request.bloodType : (reqMap['bloodType'] ?? 'غير محدد').toString();
+      String hospital = request.hospital.isNotEmpty ? request.hospital : (reqMap['hospital'] ?? 'مستشفى غير محدد').toString();
+      String phone = request.phone.isNotEmpty ? request.phone : (reqMap['phone'] ?? 'غير متوفر').toString();
+      final String location = [request.wilaya, request.commune].where((s) => s.isNotEmpty).join(' - ');
+      final String createdAtText = intl.DateFormat('yyyy/MM/dd HH:mm').format(request.createdAt);
       
-      // 4. Ø¨Ù†Ø§Ø¡ ØªØµÙ…ÙŠÙ… Ø§Ù„Ø¨Ø·Ø§Ù‚Ø© Ø§Ù„ØµØ§Ù…Øª (Off-screen widget)
-      Widget cardWidget = Directionality(
-        textDirection: TextDirection.rtl,
-        child: Container(
-          width: 600,
+      // بناء الودجت مع SingleChildScrollView لمنع الـ Overflow نهائياً في الصورة
+      Widget cardWidget = MediaQuery(
+        data: const MediaQueryData(size: Size(600, 1200), devicePixelRatio: 2.0),
+        child: Material(
           color: Colors.white,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Ø§Ù„Ù‡ÙŠØ¯Ø±
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 30),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppTheme.errorColor, const Color(0xFFC62828)],
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.campaign_rounded, color: Colors.white, size: 50),
-                    const SizedBox(width: 16),
-                    Text(
-                      'Ù†Ø¯Ø§Ø¡ Ø§Ø³ØªØºØ§Ø«Ø© Ø¹Ø§Ø¬Ù„',
-                      style: GoogleFonts.tajawal(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Container(
+              width: 600,
+              decoration: BoxDecoration(
+                border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.1), width: 1),
               ),
-              
-              // Ø§Ù„ØªÙØ§ØµÙŠÙ„
-              Padding(
-                padding: const EdgeInsets.all(40),
-                child: Column(
-                  children: [
-                    Text(
-                      'Ø­ÙŠØ§Ø©ÙŒ Ø¨Ø±ÙŠØ¦Ø© ØªÙ†ØªØ¸Ø±Ùƒ.. ÙƒÙ† Ø£Ù†Øª Ø§Ù„Ù…Ù†Ù‚Ø°!',
-                      style: GoogleFonts.tajawal(
-                        fontSize: 24,
-                        color: AppTheme.textSecondary,
-                        fontWeight: FontWeight.w500,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // الهيدر
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 20),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppTheme.errorColor, Color(0xFFB71C1C)],
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 40),
-                    
-                    // Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¯Ù…
-                    Row(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        const Icon(Icons.water_drop_rounded, color: Colors.white, size: 40),
+                        const SizedBox(width: 15),
                         Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: AppTheme.errorColor.withValues(alpha: 0.75),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.75)),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(Icons.bloodtype, color: AppTheme.errorColor, size: 48),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Ø§Ù„ÙØµÙŠÙ„Ø© Ø§Ù„Ù…Ø·Ù„ÙˆØ¨Ø©',
-                                  style: GoogleFonts.tajawal(fontSize: 18, color: AppTheme.textSecondary),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  bloodType,
-                                  style: GoogleFonts.tajawal(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.errorColor),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryGreen.withValues(alpha: 0.75),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.75)),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(Icons.local_hospital, color: AppTheme.primaryGreen, size: 48),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Ù…ÙˆÙ‚Ø¹ Ø§Ù„Ù…Ø³ØªØ´ÙÙ‰',
-                                  style: GoogleFonts.tajawal(fontSize: 18, color: AppTheme.textSecondary),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  hospital,
-                                  style: GoogleFonts.tajawal(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
+                          child: Text(
+                            'نداء استغاثة عاجل\nقطرة دم تنقذ حيوات',
+                            textAlign: TextAlign.right,
+                            style: GoogleFonts.tajawal(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              height: 1.2,
                             ),
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              
-              const Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
-              
-              // Ø§Ù„ÙÙˆØªØ± (ØªÙˆØ¬ÙŠÙ‡ Ø§Ù„ÙƒØ§Ù…ÙŠØ±Ø§ Ù„Ù„Ù…Ø³Ø­)
-              Container(
-                padding: const EdgeInsets.all(30),
-                color: const Color(0xFFFAFAFA),
-                child: Row(
-                  children: [
-                    QrImageView(
-                      data: deepLink,
-                      version: QrVersions.auto,
-                      size: 150.0,
-                    ),
-                    const SizedBox(width: 30),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'ØªØ·Ø¨ÙŠÙ‚ Ù†Ø§Ø³ Ø§Ù„Ø®ÙŠØ±',
-                            style: GoogleFonts.tajawal(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.primaryGreen,
-                            ),
+                  ),
+                  
+                  // المحتوى
+                  Padding(
+                    padding: const EdgeInsets.all(30),
+                    child: Column(
+                      children: [
+                        Text(
+                          '﴿ وَمَنْ أَحْيَاهَا فَكَأَنَّمَا أَحْيَا النَّاسَ جَمِيعًا ﴾\nمريض في أمس الحاجة لإغاثتكم، لا تبخلوا عليه بقطرات من دمائكم.',
+                          style: GoogleFonts.tajawal(
+                            fontSize: 18,
+                            color: const Color(0xFF424242),
+                            fontWeight: FontWeight.w600,
+                            height: 1.5,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Ø§Ù…Ø³Ø­ Ø§Ù„Ø±Ù…Ø² Ø¨ÙˆØ§Ø³Ø·Ø© ÙƒØ§Ù…ÙŠØ±Ø§ Ù‡Ø§ØªÙÙƒ Ù„Ù„ÙˆØµÙˆÙ„ Ø§Ù„Ù…Ø¨Ø§Ø´Ø± Ù„Ù„Ù†Ø¯Ø§Ø¡ ÙˆØªØ£ÙƒÙŠØ¯ ØªØ¨Ø±Ø¹ÙƒØŒ Ø£Ùˆ Ù‚Ù… Ø¨ØªØ­Ù…ÙŠÙ„ Ø§Ù„ØªØ·Ø¨ÙŠÙ‚.',
-                            style: GoogleFonts.tajawal(
-                              fontSize: 18,
-                              color: AppTheme.textSecondary,
-                              height: 1.5,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 30),
+                        
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildBadge(Icons.bloodtype, 'الفصيلة', bloodType, AppTheme.errorColor),
                             ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildBadge(Icons.volunteer_activism_rounded, 'المستشفى', hospital, AppTheme.primaryGreen),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
+                        // معلومات الحالة (بدون اسم الحالة للخصوصية)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8F9FA),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE9ECEF)),
                           ),
-                        ],
-                      ),
+                          child: Column(
+                            children: [
+                              _buildDataRow('الموقع:', location.isEmpty ? 'غير محدد' : location),
+                              const Divider(height: 16),
+                              _buildDataRow('وقت النداء:', createdAtText),
+                            ],
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
+                        // التواصل
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE3F2FD),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFBBDEFB)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.phone_in_talk_rounded, color: Color(0xFF1976D2), size: 24),
+                              const SizedBox(width: 10),
+                              Text(
+                                'للتواصل السريع: $phone',
+                                style: GoogleFonts.tajawal(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF0D47A1),
+                                ),
+                                textDirection: TextDirection.ltr,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  
+                  // الفوتر
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    color: const Color(0xFFF1F3F5),
+                    child: Row(
+                      children: [
+                        QrImageView(
+                          data: deepLink,
+                          version: QrVersions.auto,
+                          size: 80.0,
+                          backgroundColor: Colors.white,
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'تطبيق ناس الخير رقان',
+                                style: GoogleFonts.tajawal(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primaryGreen,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'امسح الرمز للاستجابة السريعة وتأكيد حضورك عبر التطبيق.',
+                                style: GoogleFonts.tajawal(
+                                  fontSize: 13,
+                                  color: const Color(0xFF495057),
+                                  height: 1.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       );
 
-      // 5. Ø§Ù„ØªÙ‚Ø§Ø· Ø§Ù„ØµÙˆØ±Ø© Ø¨ØµÙ…Øª
       final uint8list = await screenshotController.captureFromWidget(
         cardWidget,
-        delay: const Duration(milliseconds: 100),
+        delay: const Duration(milliseconds: 200),
       );
 
-      // 6. Ø­ÙØ¸Ù‡Ø§ ÙÙŠ Ù…Ù„Ù Ù…Ø¤Ù‚Øª
       final dir = await getApplicationDocumentsDirectory();
       final imagePath = await File('${dir.path}/emergency_${request.id}.png').create();
       await imagePath.writeAsBytes(uint8list);
 
-      // 7. ØªØ­Ø¶ÙŠØ± Ø±Ø³Ø§Ù„Ø© Ø§Ù„Ù…Ø´Ø§Ø±ÙƒØ© Ø§Ù„Ù†ØµÙŠØ© ÙƒÙ…Ø±ÙÙ‚ Ù„Ù„ØµÙˆØ±Ø©
-      final String shareText = '''
-ðŸš¨ Ù†Ø¯Ø§Ø¡ Ø§Ø³ØªØºØ§Ø«Ø© Ø¹Ø§Ø¬Ù„ ðŸš¨
-Ù†Ø­ØªØ§Ø¬ Ø¥Ù„Ù‰ ØªØ¨Ø±Ø¹ Ø¨Ø§Ù„Ø¯Ù… Ù…Ù† ÙØµÙŠÙ„Ø© ($bloodType)
-ðŸ“ ÙÙŠ: $hospital
-
-Ù„Ù„Ø§Ø³ØªØ¬Ø§Ø¨Ø© Ø§Ù„ÙÙˆØ±ÙŠØ©ØŒ Ø§ÙØªØ­ Ø§Ù„Ø±Ø§Ø¨Ø· Ø§Ù„ØªØ§Ù„ÙŠ (Ø³ÙŠÙ‚ÙˆÙ… Ø¨ØªÙˆØ¬ÙŠÙ‡Ùƒ Ù„Ù„ØªØ·Ø¨ÙŠÙ‚ Ø£Ùˆ Ù„Ù…ØªØ¬Ø± Ø§Ù„ØªØ­Ù…ÙŠÙ„):
-$deepLink
-
-(ÙˆÙŽÙ…ÙŽÙ†Ù’ Ø£ÙŽØ­Ù’ÙŠÙŽØ§Ù‡ÙŽØ§ ÙÙŽÙƒÙŽØ£ÙŽÙ†ÙŽÙ‘Ù…ÙŽØ§ Ø£ÙŽØ­Ù’ÙŠÙŽØ§ Ø§Ù„Ù†ÙŽÙ‘Ø§Ø³ÙŽ Ø¬ÙŽÙ…ÙÙŠØ¹Ø§Ù‹)
-''';
-
-      // 8. ÙØªØ­ ÙˆØ§Ø¬Ù‡Ø© Ø§Ù„Ù†Ø¸Ø§Ù… Ù„Ù„Ù…Ø´Ø§Ø±ÙƒØ©
       await Share.shareXFiles(
         [XFile(imagePath.path)],
-        text: shareText,
-        subject: 'Ù†Ø¯Ø§Ø¡ Ù„ØªØ¨Ø±Ø¹ Ø¨Ø§Ù„Ø¯Ù…',
+        text: '🚨 نداء استغاثة عاجل لتبرع بالدم 🩸\nالفصيلة: $bloodType\nالمستشفى: $hospital\nالموقع: $location\nلمزيد من التفاصيل: $deepLink',
       );
 
     } catch (e) {
-      Get.snackbar(
-        'Ø®Ø·Ø£',
-        'Ù„Ù… Ù†ØªÙ…ÙƒÙ† Ù…Ù† ØªÙˆÙ„ÙŠØ¯ ØµÙˆØ±Ø© Ø§Ù„Ù…Ø´Ø§Ø±ÙƒØ©: $e',
-        backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15),
-        colorText: AppTheme.errorColor,
-      );
+      Get.snackbar('خطأ', 'فشل تجهيز الصورة: $e');
     }
   }
+
+  static Widget _buildBadge(IconData icon, String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 30),
+          const SizedBox(height: 5),
+          Text(label, style: GoogleFonts.tajawal(fontSize: 12, color: Colors.grey[600])),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.tajawal(fontSize: 16, fontWeight: FontWeight.bold, color: color),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _buildDataRow(String label, String value, {bool isBold = false}) {
+    return Row(
+      children: [
+        Text(label, style: GoogleFonts.tajawal(fontSize: 13, color: Colors.grey[600])),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: GoogleFonts.tajawal(
+              fontSize: 14,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+              color: Colors.black87,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
 }
-
-

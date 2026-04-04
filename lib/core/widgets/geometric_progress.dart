@@ -40,7 +40,7 @@ class HexagonalProgressIndicator extends StatelessWidget {
                 size: Size(size, size),
                 painter: _HexagonPainter(
                   progress: 1.0,
-                  color: progressColor.withValues(alpha: 0.75),
+                  color: progressColor.withValues(alpha: 0.15),
                   strokeWidth: 4,
                 ),
               ),
@@ -226,7 +226,7 @@ class _GoalGridProgressState extends State<GoalGridProgress> with SingleTickerPr
                   colors: [widget.activeColor.withValues(alpha: 0.15), widget.activeColor.withValues(alpha: 0.9)],
                 ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: widget.activeColor.withValues(alpha: 0.75)),
+                border: Border.all(color: widget.activeColor.withValues(alpha: 0.15)),
               ),
               child: Text(
                 '$filledUnits / $totalUnits وحدة',

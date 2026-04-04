@@ -42,7 +42,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
         children: [
           SafeArea(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(AppConstants.getScreenPaddingValue(context), 20, AppConstants.getScreenPaddingValue(context), 10),
+              padding: EdgeInsetsDirectional.fromSTEB(AppConstants.getScreenPaddingValue(context), 20, AppConstants.getScreenPaddingValue(context), 10),
               child: Row(
                 children: [
                   Container(
@@ -88,7 +88,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
 
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(AppConstants.getScreenPaddingValue(context), 8, AppConstants.getScreenPaddingValue(context), 32),
+              padding: EdgeInsetsDirectional.fromSTEB(AppConstants.getScreenPaddingValue(context), 8, AppConstants.getScreenPaddingValue(context), 32),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -253,7 +253,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryGreen.withValues(alpha: 0.75),
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: AppTheme.primaryGreen, size: 18),

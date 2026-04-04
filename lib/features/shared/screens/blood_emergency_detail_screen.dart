@@ -9,6 +9,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../data/services/notification_service.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../admin/controllers/admin_controller.dart';
+import '../../../data/models/user_model.dart';
 
 class BloodEmergencyDetailScreen extends StatefulWidget {
   const BloodEmergencyDetailScreen({super.key});
@@ -37,9 +38,12 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
     String hospital = args['hospital'] ?? 'غير محدد';
     final String requestId = args['requestId'] ?? '';
     String phone = args['phone'] ?? '';
-    final bool isGuest = args['isGuest'] == true || args['isGuest'] == 'true';
-    final String collection = isGuest ? 'guest_requests' : AppConstants.serviceRequestsCollection;
+    final String collection = AppConstants.serviceRequestsCollection;
     final currentUser = Get.find<AuthController>().currentUser.value;
+    final dynamic isGuestArg = args['isGuest'];
+    final bool isGuest = isGuestArg is bool
+      ? isGuestArg
+      : (isGuestArg?.toString().toLowerCase() == 'true');
 
     return StreamBuilder<DocumentSnapshot>(
       stream: requestId.isNotEmpty 
@@ -50,6 +54,7 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
         bool isAlreadyRespondedByMe = _hasResponded; // ✨ نستخدم المتغير المحلي أولاً
         bool isEmergencyCovered = false;
         int responderCount = 0;
+        bool isCompleted = false;
 
         if (snapshot.hasData && snapshot.data!.exists) {
           final data = snapshot.data!.data() as Map<String, dynamic>;
@@ -59,6 +64,7 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
           responderCount = responses.length;
           isEmergencyCovered = assignedTo != null && assignedTo.isNotEmpty;
           isAssignedToMe = assignedTo == currentUser?.id;
+          isCompleted = data['status'] == 'completed';
           
           // ✨ نتحقق من Firestore أيضاً لدعم حالة إعادة فتح الشاشة
           final bool firestoreResponded = responses.any((r) => r['userId'] == currentUser?.id);
@@ -114,7 +120,7 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
                                 size: 80,
                                 shadows: [
                                   Shadow(
-                                    color: (isAlreadyRespondedByMe ? AppTheme.successColor : AppTheme.errorColor).withValues(alpha: 0.75),
+                                    color: (isAlreadyRespondedByMe ? AppTheme.successColor : AppTheme.errorColor).withValues(alpha: 0.15),
                                     blurRadius: 20,
                                   ),
                                 ],
@@ -124,13 +130,15 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
                             FadeInDown(
                               delay: const Duration(milliseconds: 200),
                               child: Text(
-                                isAlreadyRespondedByMe 
-                                  ? 'أنت في طريقك لإنقاذ حياة 🚑' 
-                                  : 'نداء استغاثة عاجل',
+                                isCompleted
+                                  ? 'اكتمل التبرع بنجاح 🩸'
+                                  : isAlreadyRespondedByMe 
+                                    ? 'أنت في طريقك لإنقاذ حياة 🚑' 
+                                    : 'نداء استغاثة عاجل',
                                 style: GoogleFonts.tajawal(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
-                                  color: isAlreadyRespondedByMe 
+                                  color: isCompleted || isAlreadyRespondedByMe 
                                     ? AppTheme.successColor 
                                     : AppTheme.errorColor,
                                 ),
@@ -140,9 +148,11 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
                             FadeInDown(
                               delay: const Duration(milliseconds: 300),
                               child: Text(
-                                isAlreadyRespondedByMe 
-                                  ? 'بارك الله فيك، جزاك الله خير الجزاء'
-                                  : 'حياة شخص ما تعتمد على مبادرتك',
+                                isCompleted
+                                  ? 'نشكرك على إنقاذ الأرواح، ستبدأ الآن فترة النقاهة الخاصة بك'
+                                  : isAlreadyRespondedByMe 
+                                    ? 'بارك الله فيك، جزاك الله خير الجزاء'
+                                    : 'حياة شخص ما تعتمد على مبادرتك',
                                 style: GoogleFonts.tajawal(
                                   fontSize: 16,
                                   color: AppTheme.textSecondary,
@@ -151,7 +161,12 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
                             ),
                             const SizedBox(height: 16),
                             
-                            _buildStatusBanner(isEmergencyCovered, isAssignedToMe, isAlreadyRespondedByMe, responderCount),
+                            _buildStatusBanner(isEmergencyCovered, isAssignedToMe, isAlreadyRespondedByMe, responderCount, isCompleted),
+                            
+                            if ((currentUser?.role == UserRole.superAdmin || currentUser?.role == UserRole.admin) && !isCompleted) ...[
+                              const SizedBox(height: 16),
+                              _buildAdminDonorsButton(bloodType, requestId, isEmergencyCovered),
+                            ],
                             
                             const SizedBox(height: 16),
                             _buildImpactCard(isAlreadyRespondedByMe, responderCount),
@@ -173,14 +188,12 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
 
                             const SizedBox(height: 32),
                             
-                            // ✨ نظهر قائمة الجاهزية فقط إذا لم يستجب بعد
-                            if (!isAlreadyRespondedByMe) ...[
+                            if (!isAlreadyRespondedByMe && !isCompleted) ...[
                               _buildMedicalChecklist(),
                               const SizedBox(height: 32),
                             ],
                             
-                            // ✨ بانر بعد الاستجابة
-                            if (isAlreadyRespondedByMe) ...[
+                            if (isAlreadyRespondedByMe && !isCompleted) ...[
                               _buildRespondedCard(hospital),
                               const SizedBox(height: 24),
                             ],
@@ -191,7 +204,8 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
                       ),
                     ),
                     
-                    _buildBottomActions(requestId, phone, bloodType, hospital, isEmergencyCovered, isAlreadyRespondedByMe, isGuest, currentUser?.id),
+                    if (!isCompleted)
+                      _buildBottomActions(requestId, phone, bloodType, hospital, isEmergencyCovered, isAlreadyRespondedByMe, isGuest, currentUser?.id, snapshot.hasData ? (snapshot.data!.data() as Map<String, dynamic>)['assignedTo'] : null),
                   ],
                 ),
               ),
@@ -207,9 +221,9 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.successColor.withValues(alpha: 0.75),
+        color: AppTheme.successColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.successColor.withValues(alpha: 0.75)),
+        border: Border.all(color: AppTheme.successColor.withValues(alpha: 0.15)),
       ),
       child: Column(
         children: [
@@ -235,7 +249,21 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
     );
   }
 
-  Widget _buildStatusBanner(bool isCovered, bool isMe, bool isResponded, int count) {
+  Widget _buildStatusBanner(bool isCovered, bool isMe, bool isResponded, int count, bool isCompleted) {
+    if (isCompleted) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(color: AppTheme.successColor, borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text('تقبل الله منك! تمت عملية التبرع بنجاح.', style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13))),
+          ],
+        ),
+      );
+    }
     if (isMe) {
       return Container(
         width: double.infinity,
@@ -256,7 +284,7 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: AppTheme.primaryGreen.withValues(alpha: 0.75),
+          color: AppTheme.primaryGreen.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppTheme.primaryGreen),
         ),
@@ -274,7 +302,7 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.primaryGreen)),
+        decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.primaryGreen)),
         child: Row(
           children: [
             const Icon(Icons.check_circle, color: AppTheme.primaryGreen),
@@ -289,7 +317,7 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(color: AppTheme.goldAccent.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.goldAccent)),
+        decoration: BoxDecoration(color: AppTheme.goldAccent.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.goldAccent)),
         child: Row(
           children: [
             const Icon(Icons.info, color: AppTheme.goldAccent),
@@ -308,9 +336,9 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: (isResponded ? AppTheme.successColor : AppTheme.errorColor).withValues(alpha: 0.75),
+          color: (isResponded ? AppTheme.successColor : AppTheme.errorColor).withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: (isResponded ? AppTheme.successColor : AppTheme.errorColor).withValues(alpha: 0.75)),
+          border: Border.all(color: (isResponded ? AppTheme.successColor : AppTheme.errorColor).withValues(alpha: 0.15)),
         ),
         child: Row(
           children: [
@@ -357,14 +385,14 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: AppTheme.glassDecoration.copyWith(
-        border: Border.all(color: color.withValues(alpha: 0.75), width: 1.5),
+        border: Border.all(color: color.withValues(alpha: 0.15), width: 1.5),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.75),
+              color: color.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 30),
@@ -417,8 +445,10 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
     );
   }
 
-  Widget _buildBottomActions(String requestId, String phone, String bloodType, String hospital, bool isCovered, bool isResponded, bool isGuest, String? userId) {
+  Widget _buildBottomActions(String requestId, String phone, String bloodType, String hospital, bool isCovered, bool isResponded, bool isGuest, String? userId, String? assignedTo) {
     bool showComingButton = !isCovered && !isResponded;
+    final user = Get.find<AuthController>().currentUser.value;
+    final bool canDonate = user?.canDonateBloodSmart ?? true;
     
     return Container(
       padding: const EdgeInsets.all(24),
@@ -426,55 +456,132 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
         color: AppTheme.surfaceColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.75), blurRadius: 20, offset: const Offset(0, -5))
+          BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, -5))
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (isCovered && (userId == assignedTo || user?.role == UserRole.superAdmin || user?.role == UserRole.admin)) ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isSending ? null : () async {
+                  setState(() => _isSending = true);
+                  await Get.find<AdminController>().updateRequestStatus(requestId, 'completed');
+                  setState(() => _isSending = false);
+                },
+                icon: const Icon(Icons.verified, color: Colors.white),
+                label: Text(
+                  _isSending ? 'جاري التأكيد...' : 'تأكيد إتمام التبرع',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryGreen,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (showComingButton)
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: (_isAllChecked && !_isSending)
-                      ? () => _notifyAdminComing(requestId, bloodType, hospital, isGuest)
-                      : null,
-                    icon: _isSending 
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Icon(Icons.check_circle_outline, color: Colors.white),
-                    label: Text(
-                      _isSending ? 'جاري الإرسال...' : 'أنا قادم للمساعدة', 
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isAllChecked ? AppTheme.primaryGreen : Colors.grey,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                    ),
+                  child: Column(
+                    children: [
+                      if (!canDonate) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'أنت حالياً في فترة الاستراحة الطبية. يمكنك المحاولة مجدداً بعد انتهاء الفترة المحددة لسلامتك.',
+                                  style: GoogleFonts.tajawal(color: Colors.orange.shade800, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: (canDonate && _isAllChecked && !_isSending)
+                            ? () => _notifyAdminComing(requestId, bloodType, hospital, isGuest)
+                            : null,
+                          icon: _isSending 
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Icon(Icons.check_circle_outline, color: Colors.white),
+                          label: Text(
+                            _isSending ? 'جاري الإرسال...' : (canDonate ? 'أنا قادم للمساعدة' : 'غير متاح للتبرع حالياً'), 
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: (canDonate && _isAllChecked) ? AppTheme.primaryGreen : Colors.grey,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             )
           else if (isResponded)
-             Container(
-               width: double.infinity,
-               padding: const EdgeInsets.all(16),
-               decoration: BoxDecoration(
-                 color: AppTheme.successColor.withValues(alpha: 0.75), 
-                 borderRadius: BorderRadius.circular(15),
-               ),
-               child: Center(
-                 child: Row(
-                   mainAxisAlignment: MainAxisAlignment.center,
-                   children: [
-                     const Icon(Icons.favorite, color: AppTheme.successColor, size: 20),
-                     const SizedBox(width: 8),
-                     Text('أنت قيد محاولة الإنقاذ الآن 🚑', style: GoogleFonts.tajawal(color: AppTheme.successColor, fontWeight: FontWeight.bold)),
-                   ],
-                 ),
-               ),
-             ),
+            Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.successColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.favorite, color: AppTheme.successColor, size: 20),
+                        const SizedBox(width: 8),
+                        Text('تم تسجيل استجابتك للحالة بنجاح', style: GoogleFonts.tajawal(color: AppTheme.successColor, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+                if (!isCovered) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _isSending ? null : () => _withdrawMyResponse(requestId),
+                      icon: const Icon(Icons.cancel_outlined, color: AppTheme.errorColor),
+                      label: Text(
+                        _isSending ? 'جاري المعالجة...' : 'إلغاء الاستجابة',
+                        style: GoogleFonts.tajawal(color: AppTheme.errorColor, fontWeight: FontWeight.bold),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: AppTheme.errorColor.withValues(alpha: 0.4)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           
           const SizedBox(height: 12),
           Row(
@@ -530,19 +637,17 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
         requestId: requestId,
         donorName: user.name,
         donorPhone: user.phone,
-        isGuest: isGuest,
       );
 
       // إشعار الإدارة
       await NotificationService.notifyAllAdmins(
         type: 'donor_responding',
-        title: '🚑 متبرع في طريقه للمساعدة!',
-        body: 'المتبرع ${user.name} أكد أنه قادم لتوفير فصيلة $bloodType في $hospital للطلب #$requestId',
+        title: '🚑 سباق مع الزمن.. متبرع في الطريق!',
+        body: 'المحسن ${user.name} أكد استعداده وهو في طريقه الآن لتوفير فصيلة $bloodType في $hospital. نسأل الله له التوفيق والقبول.',
         data: {
           'requestId': requestId,
           'donorName': user.name,
           'donorPhone': user.phone,
-          'isGuest': isGuest.toString(),
         }
       );
 
@@ -552,7 +657,6 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
         bloodType: bloodType,
         hospital: hospital,
         respondingDonorId: user.id,
-        isGuest: isGuest,
       );
       
       Get.snackbar(
@@ -567,12 +671,70 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
       // ✨ إعادة الواجهة لحالتها إذا فشلت العملية
       setState(() { _hasResponded = false; });
       String errorMessage = 'فشل إرسال التأكيد، يرجى المحاولة لاحقاً';
-      if (e.toString().contains('permission-denied')) {
+      final lower = e.toString().toLowerCase();
+      if (lower.contains('permission-denied')) {
         errorMessage = 'عذراً، لا تملك صلاحية تحديث هذا الطلب. يرجى الاتصال بالإدارة هاتفياً.';
+      } else if (lower.contains('request-closed')) {
+        errorMessage = 'تم إغلاق هذا الطلب بالفعل، ونشكرك على مبادرتك الكريمة.';
+      } else if (lower.contains('already-assigned')) {
+        errorMessage = 'تم اعتماد متبرع لهذه الحالة بالفعل. يمكنك متابعة نداءات أخرى.';
+      } else if (lower.contains('request-not-found')) {
+        errorMessage = 'الطلب غير موجود أو تم حذفه.';
       }
       Get.snackbar('خطأ', errorMessage);
     } finally {
       setState(() { _isSending = false; });
+    }
+  }
+
+  Future<void> _withdrawMyResponse(String requestId) async {
+    if (requestId.isEmpty || requestId == 'null') {
+      Get.snackbar('تعذر الإلغاء', 'معرف الطلب غير صالح.');
+      return;
+    }
+
+    final user = Get.find<AuthController>().currentUser.value;
+    setState(() => _isSending = true);
+    try {
+      await Get.find<AdminController>().withdrawBloodResponse(requestId: requestId);
+
+      if (user != null) {
+        await NotificationService.notifyAllAdmins(
+          type: 'donor_response_withdrawn',
+          title: 'تنبيه متابعة طوارئ الدم',
+          body: 'المتبرع ${user.name} ألغى استجابته للحالة، يرجى متابعة إعادة تأمين متبرع بديل سريعاً.',
+          data: {
+            'requestId': requestId,
+            'donorName': user.name,
+          },
+        );
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _hasResponded = false;
+      });
+      Get.snackbar(
+        'تم الإلغاء',
+        'تم إلغاء استجابتك وإعادة فتح الفرصة لبقية المتبرعين.',
+        backgroundColor: Colors.orange.withValues(alpha: 0.15),
+        colorText: Colors.orange.shade800,
+      );
+    } catch (e) {
+      String errorMessage = 'تعذر إلغاء الاستجابة حالياً. يرجى المحاولة مرة أخرى.';
+      final lower = e.toString().toLowerCase();
+      if (lower.contains('assigned-donor-cannot-withdraw')) {
+        errorMessage = 'لا يمكن إلغاء الاستجابة بعد اعتمادك رسمياً. يرجى التواصل مع الإدارة مباشرة.';
+      } else if (lower.contains('request-closed')) {
+        errorMessage = 'تم إغلاق هذا الطلب بالفعل.';
+      } else if (lower.contains('request-not-found')) {
+        errorMessage = 'الطلب غير موجود أو تم حذفه.';
+      }
+      Get.snackbar('تعذر الإلغاء', errorMessage);
+    } finally {
+      if (mounted) {
+        setState(() => _isSending = false);
+      }
     }
   }
 
@@ -581,6 +743,128 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url));
     }
+  }
+
+  Widget _buildAdminDonorsButton(String bloodType, String requestId, bool isCovered) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () => _showAvailableDonorsSheet(bloodType, requestId, isCovered),
+        icon: const Icon(Icons.search, color: Colors.white),
+        label: const Text('بحث عن المتبرعين المتاحين', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.primaryGreen,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        ),
+      ),
+    );
+  }
+
+  void _showAvailableDonorsSheet(String bloodType, String requestId, bool isCovered) {
+    Get.bottomSheet(
+      DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.5,
+        expand: false,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                Text('المتبرعون المتاحون (زمرة $bloodType)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface, fontFamily: 'Tajawal')),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .where('role', isEqualTo: 'donor')
+                        .where('isActive', isEqualTo: true)
+                        .where('bloodType', isEqualTo: bloodType)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                      
+                      final allDonors = snapshot.data!.docs
+                          .map((d) => UserModel.fromMap(d.data() as Map<String, dynamic>, d.id))
+                          .toList();
+                      
+                      final availableDonors = allDonors.where((d) => d.canDonateBloodSmart).toList();
+                      
+                      if (availableDonors.isEmpty) {
+                        return Center(child: Text('لا يوجد متبرعون متاحون لهذه الزمرة حالياً', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal')));
+                      }
+
+                      return ListView.builder(
+                        controller: scrollController,
+                        itemCount: availableDonors.length,
+                        itemBuilder: (context, index) {
+                          final donor = availableDonors[index];
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
+                            ),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15),
+                                child: Text(donor.bloodType ?? '?', style: const TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.bold)),
+                              ),
+                              title: Text(donor.name, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
+                              subtitle: Text(donor.wilaya, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.chat_bubble, color: Theme.of(context).colorScheme.primary),
+                                    onPressed: () => Get.toNamed('/chat/private', arguments: {'userId': donor.id, 'userName': donor.name}),
+                                  ),
+                                  IconButton(
+                                      icon: const Icon(Icons.call, color: AppTheme.primaryGreen),
+                                      onPressed: () => launchUrl(Uri.parse('tel:${donor.phone}')),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.assignment_turned_in, 
+                                        color: isCovered ? Colors.grey : AppTheme.primaryGreen
+                                      ),
+                                      tooltip: isCovered ? 'تم إسناد متبرع بالفعل' : 'إسناد مباشر وتأكيد',
+                                      onPressed: isCovered ? null : () async {
+                                        Get.back();
+                                        await Get.find<AdminController>().forceAssignDonor(
+                                          requestId: requestId,
+                                          donorId: donor.id,
+                                          donorName: donor.name,
+                                          donorPhone: donor.phone,
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+      isScrollControlled: true,
+    );
   }
 }
 

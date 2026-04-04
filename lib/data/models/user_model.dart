@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum UserRole { superAdmin, admin, worker, donor, beneficiary, guest, chatModerator }
+enum UserRole { superAdmin, admin, worker, donor, beneficiary, chatModerator }
 
 extension UserRoleExtension on UserRole {
   String get displayName {
@@ -15,8 +15,6 @@ extension UserRoleExtension on UserRole {
         return 'متبرع';
       case UserRole.beneficiary:
         return 'مستفيد';
-      case UserRole.guest:
-        return 'زائر';
       case UserRole.chatModerator:
         return 'مشرف الدردشة';
     }
@@ -42,8 +40,9 @@ class UserModel {
   final bool isDonorAvailable; // هل المستخدم جاهز للتبرع حالياً؟
   final int bloodDonationsCount; // عدد تبرعات الدم الناجحة ✨
   final String? activeBloodRequestId; // ✨ معرف طلب الدم النشط للمتبرع
-  final bool? activeBloodRequestIsGuest; // ✨ هل الطلب يخص زائر؟
   final String gender; // ✨ حقل الجنس
+  final String? avatarSeed; // ✨ مفتاح توليد الأفاتار الرقمي
+  final String? avatarType; // ✨ نوع الأفاتار الرقمي (مثلاً: human, robot)
   
   // Worker specific fields
   final String? workerRole;
@@ -92,8 +91,9 @@ class UserModel {
     this.currentTasksCount = 0,
     this.notes,
     this.activeBloodRequestId,
-    this.activeBloodRequestIsGuest,
     this.gender = 'غير محدد',
+    this.avatarSeed,
+    this.avatarType = 'avataaars',
   });
 
   Map<String, dynamic> toMap() {
@@ -129,14 +129,15 @@ class UserModel {
       'currentTasksCount': currentTasksCount,
       'notes': notes,
       'activeBloodRequestId': activeBloodRequestId,
-      'activeBloodRequestIsGuest': activeBloodRequestIsGuest,
       'gender': gender,
+      'avatarSeed': avatarSeed,
+      'avatarType': avatarType,
     };
   }
 
   factory UserModel.fromMap(Map<String, dynamic> map, [String? docId]) {
     UserRole getRoleFromString(String? roleStr) {
-      if (roleStr == null) return UserRole.guest;
+      if (roleStr == null) return UserRole.beneficiary;
       String normalized = roleStr.replaceAll('_', '').toLowerCase();
       if (normalized == 'superadmin') return UserRole.superAdmin;
       if (normalized == 'admin' || normalized == 'subadmin') return UserRole.admin;
@@ -144,7 +145,7 @@ class UserModel {
       if (normalized == 'donor') return UserRole.donor;
       if (normalized == 'beneficiary') return UserRole.beneficiary;
       if (normalized == 'chatmoderator' || normalized == 'chatmod') return UserRole.chatModerator;
-      return UserRole.guest;
+      return UserRole.beneficiary;
     }
 
     return UserModel(
@@ -179,8 +180,9 @@ class UserModel {
       currentTasksCount: map['currentTasksCount'] ?? 0,
       notes: map['notes'],
       activeBloodRequestId: map['activeBloodRequestId'],
-      activeBloodRequestIsGuest: map['activeBloodRequestIsGuest'],
       gender: map['gender'] ?? 'غير محدد',
+      avatarSeed: map['avatarSeed'],
+      avatarType: map['avatarType'] ?? 'avataaars',
     );
   }
 
@@ -216,8 +218,9 @@ class UserModel {
     int? currentTasksCount,
     String? notes,
     String? activeBloodRequestId,
-    bool? activeBloodRequestIsGuest,
     String? gender,
+    String? avatarSeed,
+    String? avatarType,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -251,9 +254,23 @@ class UserModel {
       currentTasksCount: currentTasksCount ?? this.currentTasksCount,
       notes: notes ?? this.notes,
       activeBloodRequestId: activeBloodRequestId ?? this.activeBloodRequestId,
-      activeBloodRequestIsGuest: activeBloodRequestIsGuest ?? this.activeBloodRequestIsGuest,
       gender: gender ?? this.gender,
+      avatarSeed: avatarSeed ?? this.avatarSeed,
+      avatarType: avatarType ?? this.avatarType,
     );
+  }
+
+  int get smartDonationCoolOffDays {
+    if (gender == 'ذكر') return 60;
+    if (gender == 'أنثى') return 90;
+    return 90; // Default safe period
+  }
+
+  bool get canDonateBloodSmart {
+    if (lastDonatedAt == null) return true;
+    final now = DateTime.now();
+    final difference = now.difference(lastDonatedAt!).inDays;
+    return difference >= smartDonationCoolOffDays;
   }
 }
 

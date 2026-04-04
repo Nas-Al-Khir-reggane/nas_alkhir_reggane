@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/notification_service.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../../core/constants/app_constants.dart';
 
 class AuthController extends GetxController with WidgetsBindingObserver {
   final AuthService _authService = AuthService();
@@ -14,6 +17,40 @@ class AuthController extends GetxController with WidgetsBindingObserver {
   RxBool isLoading = false.obs;
   Timer? _heartbeatTimer;
   StreamSubscription<DocumentSnapshot>? _userSubscription;
+
+  String _authErrorMessage(dynamic error, {String fallback = 'تعذر إتمام العملية حالياً. يرجى المحاولة مرة أخرى.'}) {
+    final message = error.toString().toLowerCase();
+
+    if (message.contains('invalid-credential') || message.contains('wrong-password') || message.contains('user-not-found')) {
+      return 'بيانات الدخول غير صحيحة. تأكد من البريد الإلكتروني وكلمة المرور.';
+    }
+    if (message.contains('invalid-email')) {
+      return 'صيغة البريد الإلكتروني غير صحيحة.';
+    }
+    if (message.contains('user-disabled')) {
+      return 'تم تعطيل هذا الحساب. يرجى التواصل مع الإدارة.';
+    }
+    if (message.contains('too-many-requests')) {
+      return 'تم تجاوز عدد المحاولات المسموح. يرجى الانتظار ثم إعادة المحاولة.';
+    }
+    if (message.contains('email-already-in-use')) {
+      return 'هذا البريد الإلكتروني مسجل مسبقاً.';
+    }
+    if (message.contains('weak-password')) {
+      return 'كلمة المرور ضعيفة. يرجى اختيار كلمة مرور أقوى.';
+    }
+    if (message.contains('network') || message.contains('socketexception')) {
+      return 'تعذر الاتصال بالخادم. يرجى التحقق من الإنترنت.';
+    }
+    if (message.contains('timeout') || message.contains('deadline-exceeded')) {
+      return 'انتهت مهلة الاتصال. يرجى إعادة المحاولة.';
+    }
+    if (message.contains('permission-denied')) {
+      return 'لا تملك صلاحية تنفيذ هذا الإجراء.';
+    }
+
+    return fallback;
+  }
 
   void _startUserListener() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -81,7 +118,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
   Future<void> _checkDonorCooldown(UserModel user) async {
     if (user.lastDonatedAt != null && user.isDonorAvailable == false) {
       final difference = DateTime.now().difference(user.lastDonatedAt!);
-      if (difference.inDays >= 90) {
+      if (difference.inDays >= user.smartDonationCoolOffDays) {
         try {
           await FirebaseFirestore.instance.collection('users').doc(user.id).update({
             'isDonorAvailable': true,
@@ -125,14 +162,10 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       }
     } catch (e) {
       debugPrint("AuthController: Login Error: $e");
-      if (e.toString().contains('TimeoutException') || e.toString().contains('timed out')) {
-        Get.snackbar("خطأ في الاتصال", "فشل الاتصال بقاعدة البيانات (مهلة زمنية). يرجى التحقق من جودة الإنترنت.",
-          backgroundColor: Colors.red.withValues(alpha: 0.15),
-          duration: const Duration(seconds: 5));
-      } else {
-        Get.snackbar("خطأ", "فشل تسجيل الدخول: ${e.toString()}",
-          backgroundColor: Colors.red.withValues(alpha: 0.15));
-      }
+      final message = _authErrorMessage(e, fallback: 'تعذر تسجيل الدخول حالياً. يرجى المحاولة مرة أخرى.');
+      Get.snackbar('تعذر تسجيل الدخول', message,
+        backgroundColor: Colors.red.withValues(alpha: 0.15),
+        duration: const Duration(seconds: 5));
     } finally {
       isLoading.value = false;
     }
@@ -144,7 +177,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
       Get.snackbar("✅ نجاح", "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني");
     } catch (e) {
-      Get.snackbar("خطأ", "فشل إرسال الرابط: ${e.toString()}");
+      Get.snackbar('تعذر إرسال الرابط', _authErrorMessage(e, fallback: 'فشل إرسال رابط إعادة التعيين. يرجى المحاولة لاحقاً.'));
     } finally {
       isLoading.value = false;
     }
@@ -172,12 +205,6 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       UserRole finalRole = role;
       bool autoApprove = false;
 
-      // الخدعة السرية لتسجيل المدير العام متجاوزاً الواجهة
-      if (email.trim().toLowerCase() == 'admin@nas.com') {
-        finalRole = UserRole.superAdmin;
-        autoApprove = true;
-      }
-
       UserModel userData = UserModel(
         id: '',
         name: name,
@@ -204,9 +231,9 @@ class AuthController extends GetxController with WidgetsBindingObserver {
         Get.offAllNamed(AppRoutes.pending);
       }
     } catch (e) {
-      String errorMessage = "فشل إنشاء الحساب: ${e.toString()}";
-      if (e.toString().contains('email-already-in-use')) {
-        errorMessage = "هذا البريد مسجل مسبقاً. إذا كان ملفك الشخصي غير مكتمل، يرجى تسجيل الدخول أولاً ليتم توجيهك لإكماله.";
+      String errorMessage = _authErrorMessage(e, fallback: 'فشل إنشاء الحساب. يرجى التأكد من البيانات والمحاولة مجدداً.');
+      if (e.toString().toLowerCase().contains('email-already-in-use')) {
+        errorMessage = 'هذا البريد مسجل مسبقاً. إذا كان ملفك الشخصي غير مكتمل، سجّل الدخول أولاً لإكمال بياناتك.';
       }
       Get.snackbar("تنبيه", errorMessage, 
         backgroundColor: Colors.orange.withValues(alpha: 0.15),
@@ -266,7 +293,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
         Get.offAllNamed(AppRoutes.pending);
       }
     } catch (e) {
-      Get.snackbar("خطأ", "فشل حفظ البيانات: ${e.toString()}");
+      Get.snackbar('تعذر حفظ البيانات', _authErrorMessage(e, fallback: 'فشل حفظ بيانات الحساب. يرجى المحاولة مرة أخرى.'));
     } finally {
       isLoading.value = false;
     }
@@ -275,21 +302,26 @@ class AuthController extends GetxController with WidgetsBindingObserver {
   Future<void> logout() async {
     _userSubscription?.cancel();
     _userSubscription = null;
+
+    // مسح كاش الدردشة لمنع تسريب رسائل المستخدم لمستخدم آخر
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keysToRemove = prefs.getKeys()
+          .where((k) => k.startsWith('cached_chat_') || k.startsWith('muted_'))
+          .toList();
+      for (final key in keysToRemove) {
+        await prefs.remove(key);
+      }
+    } catch (e) {
+      debugPrint('⚠️ فشل مسح كاش الدردشة: \$e');
+    }
+
     await _authService.signOut();
     currentUser.value = null;
     Get.offAllNamed(AppRoutes.login);
   }
 
-  Future<User?> signInAnonymously() async {
-    try {
-      isLoading.value = true;
-      final user = await _authService.signInAnonymously();
-      // لا نحتاج لتحديث currentUser لأن الزائر ليس له UserModel مسجل
-      return user;
-    } finally {
-      isLoading.value = false;
-    }
-  }
+  // تم حذف signInAnonymously — لا وجود لميزة الزائر
 
   Future<void> checkAuthState() async {
     try {
@@ -385,13 +417,77 @@ class AuthController extends GetxController with WidgetsBindingObserver {
         case UserRole.chatModerator:
           Get.offAllNamed(AppRoutes.chatGroup);
           break;
-        case UserRole.guest:
-          // تم تغيير الوجهة لصفحة تسجيل الدخول بدلاً من صفحة طلب الزائر
-          // لتمكين المستخدم من الدخول بحسابه الحقيقي عند فتح التطبيق
-          Get.offAllNamed(AppRoutes.login);
-          break;
+      }
+
+      // 🩸 فحص لاحق: تنبيه المستخدمين الجدد/العائدين بنداءات الاستغاثة المتوافقة
+      if (user.isApproved && user.bloodType != null && user.bloodType!.isNotEmpty) {
+        _checkActiveBloodEmergencies(user);
       }
     });
+  }
+
+  /// 🩸 خوارزمية الفحص اللاحق (Post-Registration Catch-up)
+  /// تفحص طلبات الدم النشطة المتوافقة مع فصيلة المستخدم
+  /// وترسل إشعاراً محلياً فورياً إذا وُجدت حالات تحتاج لمساعدته
+  Future<void> _checkActiveBloodEmergencies(UserModel user) async {
+    try {
+      final compatibleTypes = _getCompatibleBloodTypes(user.bloodType!);
+      if (compatibleTypes.isEmpty) return;
+
+      final querySnap = await FirebaseFirestore.instance
+          .collection(AppConstants.serviceRequestsCollection)
+          .where('type', whereIn: ['blood_donation', 'blood_emergency'])
+          .get();
+
+      final activeRequests = querySnap.docs.where((doc) {
+        final data = doc.data();
+        final status = data['status'] ?? 'pending';
+        // تصفية الحالات النشطة برمجياً لتجنب قيود Firebase Query
+        if (status != 'pending' && status != 'in_progress') return false;
+        
+        final reqBloodType = (data['bloodType'] ?? data['details']?['الفصيلة'] ?? '').toString();
+        return compatibleTypes.contains(reqBloodType);
+      }).toList();
+
+      if (activeRequests.isNotEmpty) {
+        final firstReq = activeRequests.first.data();
+        final bloodType = (firstReq['bloodType'] ?? firstReq['details']?['الفصيلة'] ?? '').toString();
+        final hospital = (firstReq['hospital'] ?? firstReq['details']?['المستشفى'] ?? '').toString();
+        final count = activeRequests.length;
+
+        // إرسال إشعار Firestore للمستخدم الجديد
+        await NotificationService.sendNotification(
+          userId: user.id,
+          type: 'blood_emergency',
+          title: '🚨 أهلاً يا منقذ! هناك $count ${count == 1 ? "حالة تحتاج" : "حالات تحتاج"} مساعدتك',
+          body: 'مريض في $hospital بحاجة لفصيلة $bloodType. ساهم في الأجر العظيم.',
+          data: {
+            'requestId': activeRequests.first.id,
+            'bloodType': bloodType,
+            'hospital': hospital,
+          },
+        );
+        debugPrint('🩸 [CatchUp] Notified user ${user.id} about $count active blood requests');
+      }
+    } catch (e) {
+      debugPrint('⚠️ [CatchUp] Error checking blood emergencies: $e');
+    }
+  }
+
+  /// قائمة الفصائل المتوافقة للتبرع
+  List<String> _getCompatibleBloodTypes(String donorType) {
+    const Map<String, List<String>> compatibility = {
+      'O-':  ['O-', 'O+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'],
+      'O+':  ['O+', 'A+', 'B+', 'AB+'],
+      'A-':  ['A-', 'A+', 'AB-', 'AB+'],
+      'A+':  ['A+', 'AB+'],
+      'B-':  ['B-', 'B+', 'AB-', 'AB+'],
+      'B+':  ['B+', 'AB+'],
+      'AB-': ['AB-', 'AB+'],
+      'AB+': ['AB+'],
+    };
+    // نبحث عن الحالات التي تحتاج فصيلة يمكن لهذا المتبرع التبرع لها
+    return compatibility[donorType] ?? [donorType];
   }
 
   Future<void> refreshUser() async {

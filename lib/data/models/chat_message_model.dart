@@ -7,6 +7,8 @@ class ChatMessageModel {
   final String? senderImage;
   final String message;
   final String? imageUrl;
+  final String? audioUrl;
+  final int? audioDuration;
   final DateTime createdAt;
   final bool isRead;
   final String chatId;
@@ -23,6 +25,8 @@ class ChatMessageModel {
     this.senderImage,
     required this.message,
     this.imageUrl,
+    this.audioUrl,
+    this.audioDuration,
     required this.createdAt,
     this.isRead = false,
     required this.chatId,
@@ -41,6 +45,8 @@ class ChatMessageModel {
       'senderImage': senderImage,
       'message': message,
       'imageUrl': imageUrl,
+      'audioUrl': audioUrl,
+      'audioDuration': audioDuration,
       'createdAt': FieldValue.serverTimestamp(),
       'isRead': isRead,
       'chatId': chatId,
@@ -71,6 +77,8 @@ class ChatMessageModel {
       senderImage: map['senderImage'] ?? map['sender_image'],
       message: map['message']?.toString() ?? '',
       imageUrl: (map['imageUrl'] ?? map['image_url'])?.toString(),
+      audioUrl: (map['audioUrl'] ?? map['audio_url'])?.toString(),
+      audioDuration: map['audioDuration'] ?? map['audio_duration'],
       createdAt: parsedDate,
       isRead: map['isRead'] ?? map['is_read'] ?? false,
       chatId: (map['chatId'] ?? map['chat_id'])?.toString() ?? '',

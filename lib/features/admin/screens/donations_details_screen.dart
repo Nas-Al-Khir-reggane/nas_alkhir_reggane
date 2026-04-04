@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import '../../../core/theme/app_theme.dart';
 import '../controllers/admin_controller.dart';
 import '../../../core/animations/visual_effects.dart';
+import '../../../data/models/donation_model.dart';
 
 class DonationsDetailsScreen extends StatelessWidget {
   const DonationsDetailsScreen({super.key});
@@ -83,7 +84,7 @@ class DonationsDetailsScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.goldAccent.withValues(alpha: 0.75),
+              color: AppTheme.goldAccent.withValues(alpha: 0.15),
               blurRadius: 20,
               offset: const Offset(0, 10),
             )
@@ -115,7 +116,7 @@ class DonationsDetailsScreen extends StatelessWidget {
       duration: const Duration(milliseconds: 700),
       child: Container(
         height: 250,
-        padding: const EdgeInsets.only(top: 24, bottom: 16, left: 16, right: 16),
+        padding: const EdgeInsetsDirectional.only(top: 24, bottom: 16, start: 16, end: 16),
         decoration: AppTheme.glassDecoration,
         child: Obx(() {
           if (controller.donationsLastSixMonths.isEmpty) {
@@ -195,7 +196,7 @@ class DonationsDetailsScreen extends StatelessWidget {
                       backDrawRodData: BackgroundBarChartRodData(
                         show: true,
                         toY: maxY,
-                        color: AppTheme.cardColor.withValues(alpha: 0.75),
+                        color: AppTheme.cardColor.withValues(alpha: 0.15),
                       ),
                     ),
                   ],
@@ -245,6 +246,7 @@ class DonationsDetailsScreen extends StatelessWidget {
                 final donorName = data['donorName'] ?? 'متبرع';
                 final isAnonymous = data['isAnonymous'] ?? false;
                 final projectName = data['projectName'] ?? 'عام';
+                final methodRaw = (data['method'] ?? data['paymentMethod'])?.toString();
                 
                 final displayName = isAnonymous ? 'فاعل خير (مجهول)' : donorName;
 
@@ -259,7 +261,7 @@ class DonationsDetailsScreen extends StatelessWidget {
                       leading: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppTheme.goldAccent.withValues(alpha: 0.75),
+                          color: AppTheme.goldAccent.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.volunteer_activism, color: AppTheme.goldAccent),
@@ -274,13 +276,13 @@ class DonationsDetailsScreen extends StatelessWidget {
                           SizedBox(height: 4),
                           Text('إلى: $projectName', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontFamily: 'Tajawal')),
                           SizedBox(height: 2),
-                          Text(data['paymentMethod'] == 'bank' ? 'بنكي' : 'نقدي', style: TextStyle(color: AppTheme.textHint, fontSize: 10)),
+                          Text(DonationModel.methodLabel(methodRaw), style: TextStyle(color: AppTheme.textHint, fontSize: 10)),
                         ],
                       ),
                       trailing: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: AppTheme.successColor.withValues(alpha: 0.75),
+                          color: AppTheme.successColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(

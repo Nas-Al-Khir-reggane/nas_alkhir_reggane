@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'dart:io';
 void replaceRegexInFile(String path, String from, String to) {
   final file = File(path);
@@ -6,7 +7,7 @@ void replaceRegexInFile(String path, String from, String to) {
   final newContent = content.replaceAll(RegExp(from), to);
   if (content != newContent) {
     file.writeAsStringSync(newContent);
-    print('Updated regex ' + path);
+    print('Updated regex $path');
   }
 }
 void main() {

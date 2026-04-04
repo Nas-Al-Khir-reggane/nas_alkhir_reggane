@@ -30,7 +30,12 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
   final RxString selectedPeriod = 'all'.obs;
   final RxString selectedWorker = 'all'.obs;
   final RxBool showFilters = false.obs;
-  final RxBool showGuestRequests = false.obs;
+  final RxBool showEmergenciesOnly = false.obs;
+
+  late final Stream<QuerySnapshot> _activeRequestsCountStream;
+  late final Stream<QuerySnapshot> _allRequestsStream;
+  late final Stream<QuerySnapshot> _workersStream;
+  late Stream<QuerySnapshot> _filteredRequestsStream;
 
   final List<String> tabs = ['الكل', 'معلق', 'جاري', 'مكتمل', 'مرفوض'];
   final List<String> tabValues = ['all', 'pending', 'in_progress', 'completed', 'rejected'];
@@ -41,14 +46,35 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
   @override
   void initState() {
     super.initState();
+    _activeRequestsCountStream = FirebaseFirestore.instance
+        .collection(AppConstants.serviceRequestsCollection)
+        .where('status', whereNotIn: ['rejected'])
+        .snapshots();
+    _allRequestsStream = FirebaseFirestore.instance
+        .collection(AppConstants.serviceRequestsCollection)
+        .snapshots();
+    _workersStream = FirebaseFirestore.instance
+        .collection(AppConstants.usersCollection)
+        .where('role', isEqualTo: 'worker')
+        .snapshots();
+    _filteredRequestsStream = _buildQuery().snapshots();
+
     _tabController = TabController(length: tabs.length, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         selectedStatus.value = tabValues[_tabController.index];
+        _refreshFilteredStream();
       }
     });
     searchController.addListener(() {
       setState(() {});
+    });
+  }
+
+  void _refreshFilteredStream() {
+    if (!mounted) return;
+    setState(() {
+      _filteredRequestsStream = _buildQuery().snapshots();
     });
   }
 
@@ -60,8 +86,11 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
   }
 
   Query _buildQuery() {
-    Query query = FirebaseFirestore.instance.collection(
-        showGuestRequests.value ? 'guest_requests' : AppConstants.serviceRequestsCollection);
+    Query query = FirebaseFirestore.instance.collection(AppConstants.serviceRequestsCollection);
+
+    if (showEmergenciesOnly.value) {
+      query = query.where('urgency', whereIn: ['urgent', 'emergency']);
+    }
 
     if (selectedStatus.value != 'all') {
       query = query.where('status', isEqualTo: selectedStatus.value);
@@ -82,7 +111,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
       query = query.where('assignedTo', isEqualTo: selectedWorker.value);
     }
 
-    return query; // Order by createdAt is handled client-side to avoid requiring complex composite indexes
+    return query;
   }
 
   void clearAllFilters() {
@@ -92,6 +121,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
     selectedCommune.value = 'all';
     selectedPeriod.value = 'all';
     selectedWorker.value = 'all';
+    _refreshFilteredStream();
   }
 
   bool get anyFilterActive =>
@@ -110,30 +140,26 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
         children: [
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 20, 16, 10),
               child: Row(
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('📋 طلبات الخدمة',
+                      const Text('📋 طلبات الخدمة',
                           style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w900,
-                              color: AppTheme.textPrimary,
                               fontFamily: 'Tajawal')),
-                      Obx(() => StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection(showGuestRequests.value ? 'guest_requests' : AppConstants.serviceRequestsCollection)
-                            .where('status', whereNotIn: ['rejected'])
-                            .snapshots(),
+                      StreamBuilder<QuerySnapshot>(
+                        stream: _activeRequestsCountStream,
                         builder: (context, snapshot) {
                           int count = snapshot.hasData ? snapshot.data!.docs.length : 0;
                           totalCount = count;
                           return Text('$count طلب نشط',
                               style: TextStyle(color: AppTheme.textSecondary, fontSize: 13));
                         },
-                      )),
+                      ),
                     ],
                   ),
                   const Spacer(),
@@ -143,7 +169,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: showFilters.value
-                            ? AppTheme.primaryGreen.withValues(alpha: 0.75)
+                            ? AppTheme.primaryGreen.withValues(alpha: 0.15)
                             : AppTheme.surfaceColor,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
@@ -153,8 +179,8 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                       ),
                       child: Icon(Icons.filter_list_rounded,
                           color: showFilters.value
-                              ? AppTheme.primaryGreen
-                              : AppTheme.textSecondary,
+                               ? AppTheme.primaryGreen
+                               : AppTheme.textSecondary,
                           size: 20),
                     ),
                   )),
@@ -169,21 +195,24 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
               children: [
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => showGuestRequests.value = false,
+                    onTap: () {
+                      showEmergenciesOnly.value = false;
+                      _refreshFilteredStream();
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
-                        gradient: !showGuestRequests.value ? AppTheme.primaryGradient : null,
-                        color: showGuestRequests.value ? AppTheme.surfaceColor : null,
+                        gradient: !showEmergenciesOnly.value ? AppTheme.primaryGradient : null,
+                        color: showEmergenciesOnly.value ? AppTheme.surfaceColor : null,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: !showGuestRequests.value ? Colors.transparent : AppTheme.glassBorder),
-                        boxShadow: !showGuestRequests.value ? AppTheme.greenGlow : null,
+                        border: Border.all(color: !showEmergenciesOnly.value ? Colors.transparent : AppTheme.glassBorder),
+                        boxShadow: !showEmergenciesOnly.value ? AppTheme.greenGlow : null,
                       ),
                       alignment: Alignment.center,
-                      child: Text('طلبات الأعضاء',
+                      child: Text('الطلبات العامة',
                           style: TextStyle(
-                              color: !showGuestRequests.value ? Colors.black : AppTheme.textSecondary,
+                              color: !showEmergenciesOnly.value ? Colors.white : AppTheme.textSecondary,
                               fontWeight: FontWeight.w700)),
                     ),
                   ),
@@ -191,21 +220,24 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                 const SizedBox(width: 12),
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => showGuestRequests.value = true,
+                    onTap: () {
+                      showEmergenciesOnly.value = true;
+                      _refreshFilteredStream();
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
-                        gradient: showGuestRequests.value ? AppTheme.primaryGradient : null,
-                        color: !showGuestRequests.value ? AppTheme.surfaceColor : null,
+                        gradient: showEmergenciesOnly.value ? AppTheme.emergencyGradient : null,
+                        color: !showEmergenciesOnly.value ? AppTheme.surfaceColor : null,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: showGuestRequests.value ? Colors.transparent : AppTheme.glassBorder),
-                        boxShadow: showGuestRequests.value ? AppTheme.greenGlow : null,
+                        border: Border.all(color: showEmergenciesOnly.value ? Colors.transparent : AppTheme.glassBorder),
+                        boxShadow: showEmergenciesOnly.value ? AppTheme.redGlow : null,
                       ),
                       alignment: Alignment.center,
-                      child: Text('طلبات الزوار',
+                      child: Text('حالات الطوارئ',
                           style: TextStyle(
-                              color: showGuestRequests.value ? Colors.black : AppTheme.textSecondary,
+                              color: showEmergenciesOnly.value ? Colors.white : AppTheme.textSecondary,
                               fontWeight: FontWeight.w700)),
                     ),
                   ),
@@ -231,7 +263,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                     decoration: BoxDecoration(
                       gradient: LinearGradient(colors: [AppTheme.primaryGreen.withValues(alpha: 0.15), AppTheme.primaryGreen.withValues(alpha: 0.9)]),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.75)),
+                      border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.15)),
                     ),
                     child: Row(
                       children: [
@@ -281,10 +313,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                             ['all', 'today', 'week', 'month']),
                         const SizedBox(width: 8),
                         StreamBuilder<QuerySnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection(AppConstants.usersCollection)
-                              .where('role', isEqualTo: 'worker')
-                              .snapshots(),
+                          stream: _workersStream,
                           builder: (context, snapshot) {
                             List<String> names = ['الكل'];
                             List<String> ids = ['all'];
@@ -312,7 +341,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
           Container(
             color: AppTheme.surfaceColor,
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection(showGuestRequests.value ? 'guest_requests' : AppConstants.serviceRequestsCollection).snapshots(),
+              stream: _allRequestsStream,
               builder: (context, snapshot) {
                 countByStatus = {'الكل': 0, 'معلق': 0, 'جاري': 0, 'مكتمل': 0, 'مرفوض': 0};
                 if (snapshot.hasError) return const Center(child: Text('خطأ في تحميل العدادات', style: TextStyle(color: AppTheme.errorColor)));
@@ -342,17 +371,18 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                         children: [
                           Text(t),
                           const SizedBox(width: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryGreen.withValues(alpha: 0.75),
-                              borderRadius: BorderRadius.circular(10),
+                          if (countByStatus[t] != null && countByStatus[t]! > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                countByStatus[t]?.toString() ?? '0',
+                                style: const TextStyle(fontSize: 10, color: AppTheme.primaryGreen),
+                              ),
                             ),
-                            child: Text(
-                              countByStatus[t]?.toString() ?? '0',
-                              style: const TextStyle(fontSize: 10, color: AppTheme.primaryGreen),
-                            ),
-                          ),
                         ],
                       ),
                     );
@@ -365,17 +395,16 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
           Expanded(
             child: Obx(() {
               final status = selectedStatus.value;
-              final isGuest = showGuestRequests.value;
 
               return StreamBuilder<QuerySnapshot>(
-                stream: _buildQuery().snapshots(),
+                stream: _filteredRequestsStream,
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
                     return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.error_outline, color: AppTheme.errorColor, size: 40),
+                          const Icon(Icons.error_outline, color: AppTheme.errorColor, size: 40),
                           const SizedBox(height: 16),
                           Text('حدث خطأ في عرض الطلبات', style: TextStyle(color: AppTheme.textPrimary)),
                           const SizedBox(height: 8),
@@ -428,7 +457,6 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                       var request = ServiceRequestModel.fromMap({
                         ...doc.data() as Map<String, dynamic>,
                         'id': doc.id,
-                        'isGuest': isGuest,
                       });
                       return _buildRequestCard(request);
                     },
@@ -448,15 +476,15 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
       String currentLabel = currentIndex != -1 ? options[currentIndex] : label;
 
       return Container(
-        margin: const EdgeInsets.only(right: 8),
+        margin: const EdgeInsetsDirectional.only(end: 8),
         child: PopupMenuButton<String>(
           initialValue: value.value,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: value.value == 'all' ? AppTheme.cardColor : AppTheme.primaryGreen.withValues(alpha: 0.75),
+              color: value.value == 'all' ? AppTheme.cardColor : AppTheme.primaryGreen.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: value.value == 'all' ? Colors.grey.withValues(alpha: 0.75) : AppTheme.primaryGreen),
+              border: Border.all(color: value.value == 'all' ? Colors.grey.withValues(alpha: 0.15) : AppTheme.primaryGreen),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -486,6 +514,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
           onSelected: (v) {
             value.value = v;
             if (label == 'الولاية') selectedCommune.value = 'all';
+            _refreshFilteredStream();
           },
         ),
       );
@@ -497,7 +526,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inbox_outlined, size: 80, color: AppTheme.textHint.withValues(alpha: 0.75)),
+          Icon(Icons.inbox_outlined, size: 80, color: AppTheme.textHint.withValues(alpha: 0.15)),
           const SizedBox(height: 16),
           Text('لا توجد طلبات حالياً', style: TextStyle(color: AppTheme.textHint, fontSize: 16)),
         ],
@@ -558,14 +587,14 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
             return result ?? false;
           },
           onDismissed: (direction) {
-            adminController.updateRequestStatus(request.id, 'rejected', isGuest: showGuestRequests.value);
+            adminController.updateRequestStatus(request.id, 'rejected');
           },
           background: Container(
             decoration: BoxDecoration(
-              color: AppTheme.errorColor.withValues(alpha: 0.75),
+              color: AppTheme.errorColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
             ),
-            padding: const EdgeInsets.only(right: 20),
+            padding: const EdgeInsetsDirectional.only(end: 20),
             alignment: Alignment.centerRight,
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -592,10 +621,14 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryGreen.withValues(alpha: 0.75),
+                        color: AppConstants.getServiceColor(request.typeName.isNotEmpty ? request.typeName : request.type).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(AppConstants.getServiceIcon(request.typeName.isNotEmpty ? request.typeName : request.type), color: AppTheme.primaryGreen, size: 20),
+                      child: Icon(
+                        AppConstants.getServiceIcon(request.typeName.isNotEmpty ? request.typeName : request.type), 
+                        color: AppConstants.getServiceColor(request.typeName.isNotEmpty ? request.typeName : request.type), 
+                        size: 20
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -613,7 +646,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                     _buildStatusBadge(request.status),
                   ],
                 ),
-                const Divider(color: Colors.white10, height: 20),
+                const Divider(height: 20),
                 (request.requesterId.isNotEmpty)
                     ? StreamBuilder<DocumentSnapshot>(
                         stream: FirebaseFirestore.instance.collection(AppConstants.usersCollection).doc(request.requesterId).snapshots(),
@@ -630,10 +663,10 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                           final location = commune.isNotEmpty ? '$wilaya - $commune' : wilaya;
                           return Row(
                             children: [
-                              Icon(Icons.person_outline, color: AppTheme.textHint, size: 16),
+                              Icon(Icons.person_outline, color: AppTheme.textSecondary, size: 16),
                               const SizedBox(width: 6),
                               Expanded(child: Text(name, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13), overflow: TextOverflow.ellipsis)),
-                              Icon(Icons.location_on_outlined, color: AppTheme.textHint, size: 16),
+                              Icon(Icons.location_on_outlined, color: AppTheme.textSecondary, size: 16),
                               const SizedBox(width: 4),
                               Flexible(child: Text(location, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12), overflow: TextOverflow.ellipsis)),
                             ],
@@ -642,10 +675,10 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                       )
                     : Row(
                         children: [
-                          Icon(Icons.person_outline, color: AppTheme.textHint, size: 16),
+                          Icon(Icons.person_outline, color: AppTheme.textSecondary, size: 16),
                           const SizedBox(width: 6),
                           Expanded(child: Text(request.requesterName.isNotEmpty ? request.requesterName : 'زائر', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13), overflow: TextOverflow.ellipsis)),
-                          Icon(Icons.location_on_outlined, color: AppTheme.textHint, size: 16),
+                          Icon(Icons.location_on_outlined, color: AppTheme.textSecondary, size: 16),
                           const SizedBox(width: 4),
                           Flexible(child: Builder(builder: (ctx) {
                             final loc = [request.wilaya, request.commune].where((s) => s.isNotEmpty).join(' - ');
@@ -710,7 +743,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                       child: _buildActionButton(
                         Icons.airport_shuttle_rounded,
                         'سيارة',
-                        Colors.teal,
+                        AppTheme.primaryGreen,
                         () => _showAssignVehicleDialog(request),
                       ),
                     ),
@@ -747,7 +780,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
       child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
     );
   }
@@ -758,7 +791,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
         child: FittedBox(
           fit: BoxFit.scaleDown,
           child: Row(
@@ -792,7 +825,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                   width: 40,
                   height: 4,
                   margin: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(2))),
+                  decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(2))),
               Text('اختر المتطوع', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -837,7 +870,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                           title: Text(worker['name'], style: TextStyle(color: AppTheme.textPrimary)),
                           subtitle: Text(worker['phone'] ?? '', style: TextStyle(color: AppTheme.textHint)),
                           onTap: () {
-                            adminController.assignToWorker(request.id, workerId, workerName: worker['name'], isGuest: showGuestRequests.value);
+                            adminController.assignToWorker(request.id, workerId, workerName: worker['name']);
                             Get.back();
                           },
                         );
@@ -884,7 +917,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                       title: Text(data['plateNumber'], style: TextStyle(color: AppTheme.textPrimary)),
                       subtitle: Text(data['type'], style: TextStyle(color: AppTheme.textHint)),
                       onTap: () {
-                        adminController.assignToVehicle(request.id, v.id, isGuest: showGuestRequests.value);
+                        adminController.assignToVehicle(request.id, v.id);
                         Get.back();
                       },
                     );
@@ -923,7 +956,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
                 child: ListTile(
                   onTap: () {
                     if (!isSelected) {
-                      adminController.updateRequestStatus(request.id, status, isGuest: showGuestRequests.value);
+                      adminController.updateRequestStatus(request.id, status);
                       Get.back();
                     }
                   },
@@ -947,4 +980,3 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> with Sing
     );
   }
 }
-

@@ -12,7 +12,10 @@ import 'new_request_screen.dart';
 import '../../../data/models/service_request_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/notification_service.dart';
+import '../../shared/widgets/community_pulse_card.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/animations/sound_manager.dart';
+
 
 class BeneficiaryDashboard extends StatefulWidget {
   const BeneficiaryDashboard({super.key});
@@ -25,7 +28,36 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
   final BeneficiaryController controller = Get.put(BeneficiaryController());
   final AuthController authController = Get.find<AuthController>();
   final NotificationService notificationService = Get.find<NotificationService>();
+  late final Stream<QuerySnapshot> _adminsStream;
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _adminsStream = FirebaseFirestore.instance
+        .collection('users')
+      .where('role', whereIn: ['admin', 'superAdmin'])
+        .snapshots();
+  }
+
+  Future<void> _openDirectAdminChat(UserModel admin) async {
+    final myId = authController.currentUser.value?.id ?? '';
+    if (myId.isEmpty || admin.id.isEmpty) {
+      Get.snackbar('تعذر فتح المحادثة', 'الرجاء إعادة تسجيل الدخول ثم المحاولة مرة أخرى');
+      return;
+    }
+
+    final sortedIds = [myId, admin.id]..sort();
+    final chatId = '${sortedIds[0]}_${sortedIds[1]}';
+
+    Get.toNamed('/chat/private', arguments: {
+      'targetUserId': admin.id,
+      'targetUserName': admin.name,
+      'userId': admin.id,
+      'userName': admin.name,
+      'chatId': chatId,
+    });
+  }
 
   Future<bool> _onWillPop() async {
     final result = await Get.dialog<bool>(
@@ -93,12 +125,15 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
             color: Theme.of(context).colorScheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, -2))
+              BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, -2))
             ],
           ),
           child: BottomNavigationBar(
             currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
+            onTap: (index) {
+              setState(() => _currentIndex = index);
+              SoundManager.to.playNavigation();
+            },
             backgroundColor: Colors.transparent,
             elevation: 0,
             selectedItemColor: Theme.of(context).colorScheme.primary,
@@ -147,7 +182,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 40),
+          const SizedBox(height: 10),
           Row(
             children: [
               Column(
@@ -223,7 +258,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [Theme.of(context).cardColor, Theme.of(context).colorScheme.surface]),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
             ),
             child: Padding(
               padding: EdgeInsets.all(20),
@@ -248,7 +283,8 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const CommunityPulseCard(),
+          const SizedBox(height: 12),
           _buildSectionHeader('📋 طلباتي', 'عرض الكل', onTap: _showAllRequests),
           const SizedBox(height: 12),
           Obx(() => controller.myRequests.isEmpty
@@ -257,7 +293,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
                   ),
                   padding: const EdgeInsets.all(30),
                   child: Column(
@@ -285,7 +321,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                           color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: [
-                            BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4))
+                            BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 4))
                           ],
                           border: Border.all(
                               color: _urgencyBorderColor(request.urgency, context).withValues(alpha: 0.15)),
@@ -329,7 +365,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                                     child: Container(
                                       margin: const EdgeInsets.only(top: 6),
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.75),
+                                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -406,9 +442,9 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                   ],
                 ),
                 borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: categoryColor.withValues(alpha: 0.75), width: 1.5),
+                border: Border.all(color: categoryColor.withValues(alpha: 0.15), width: 1.5),
                 boxShadow: [
-                  BoxShadow(color: categoryColor.withValues(alpha: 0.75), blurRadius: 18, offset: const Offset(0, 7)),
+                  BoxShadow(color: categoryColor.withValues(alpha: 0.15), blurRadius: 18, offset: const Offset(0, 7)),
                 ],
               ),
               child: Column(
@@ -429,9 +465,9 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                         Container(
                           width: 48, height: 48,
                           decoration: BoxDecoration(
-                            color: categoryColor.withValues(alpha: 0.75),
+                            color: categoryColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: categoryColor.withValues(alpha: 0.75)),
+                            border: Border.all(color: categoryColor.withValues(alpha: 0.15)),
                           ),
                           child: Icon(Icons.volunteer_activism, color: categoryColor, size: 26),
                         ),
@@ -445,7 +481,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: categoryColor.withValues(alpha: 0.75),
+                                  color: categoryColor.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text('نشط', style: TextStyle(color: categoryColor, fontSize: 12, fontWeight: FontWeight.w800)),
@@ -490,7 +526,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                               if (description.isNotEmpty)
                                 Text(description,
                                     maxLines: 2, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, height: 1.5)),
+                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13, height: 1.5, fontWeight: FontWeight.w500)),
                               const SizedBox(height: 10),
                               _activityStatRow(context, 'جُمع', '${collected.toInt()} دج', categoryColor),
                               const SizedBox(height: 5),
@@ -519,7 +555,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                   ),
 
                   const SizedBox(height: 12),
-                  Divider(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75), height: 1),
+                  Divider(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15), height: 1),
                   const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.all(12),
@@ -539,14 +575,14 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                          border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.share_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 16),
                             const SizedBox(width: 6),
-                            Text('شارك هذا المشروع', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700, fontSize: 14)),
+                            Text('شارك هذا المشروع', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w700, fontSize: 14)),
                           ],
                         ),
                       ),
@@ -565,7 +601,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), fontSize: 13, fontWeight: FontWeight.w500)),
+        Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w600)),
         Text(value, style: TextStyle(color: valueColor, fontWeight: FontWeight.w800, fontSize: 14)),
       ],
     );
@@ -624,6 +660,8 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                   ],
                 ),
                 const SizedBox(height: 16),
+                const CommunityPulseCard(),
+                const SizedBox(height: 12),
                 Expanded(
                   child: Obx(() => controller.myRequests.isEmpty
                       ? Center(
@@ -717,7 +755,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                 decoration: BoxDecoration(
                   color: isReached ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
                   shape: BoxShape.circle,
-                  border: Border.all(color: isReached ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                  border: Border.all(color: isReached ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
                 ),
                 child: isReached
                     ? Icon(Icons.check, color: Theme.of(context).colorScheme.onPrimary, size: 10)
@@ -727,7 +765,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                 Expanded(
                   child: Container(
                     height: 2,
-                    color: (idx < currentStageIndex) ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.75),
+                    color: (idx < currentStageIndex) ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.15),
                   ),
                 ),
             ],
@@ -756,7 +794,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                   onTap: () => setModalState(() => selectedRating = s),
                   child: Icon(
                     s <= selectedRating ? Icons.star : Icons.star_border,
-                    color: Colors.amber,
+                    color: AppTheme.goldAccent,
                     size: 36,
                   ),
                 )).toList(),
@@ -790,17 +828,11 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
   }
 
   Color _serviceTypeColor(String typeId, BuildContext context) {
-    final service = controller.availableServices.firstWhereOrNull((s) => s.id == typeId);
-    if (service != null) {
-      if (typeId == 'funeral_transport') return Theme.of(context).colorScheme.secondary;
-      return Theme.of(context).colorScheme.primary;
-    }
-    return Theme.of(context).colorScheme.primary;
+    return AppConstants.getServiceColor(typeId);
   }
 
   IconData _serviceTypeIcon(String typeId) {
-    if (typeId == 'funeral_transport') return Icons.airport_shuttle;
-    return Icons.help_outline;
+    return AppConstants.getServiceIcon(typeId);
   }
 
   String _serviceTypeName(String typeId) {
@@ -840,11 +872,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
         const SizedBox(height: 16),
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .where('role', whereIn: ['admin', 'superAdmin'])
-                .where('isActive', isEqualTo: true)
-                .snapshots(),
+            stream: _adminsStream,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary));
@@ -857,7 +885,23 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
               }
               final admins = snapshot.data!.docs
                   .map((d) => UserModel.fromMap(d.data() as Map<String, dynamic>, d.id))
+                  .where((u) => u.isActive)
+                  .where((u) => u.role == UserRole.admin || u.role == UserRole.superAdmin)
                   .toList();
+
+              // ترتيب: المدير العام أولاً ثم البقية أبجدياً
+              admins.sort((a, b) {
+                if (a.role == UserRole.superAdmin && b.role != UserRole.superAdmin) return -1;
+                if (a.role != UserRole.superAdmin && b.role == UserRole.superAdmin) return 1;
+                return a.name.compareTo(b.name);
+              });
+
+              if (admins.isEmpty) {
+                return Center(
+                  child: Text('لا يوجد مدراء متاحون حالياً',
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal')),
+                );
+              }
               return ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: admins.length,
@@ -868,7 +912,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                     decoration: BoxDecoration(
                       color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                      border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
                     ),
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -891,13 +935,12 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                       trailing: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(Icons.chat_bubble_outline, color: Theme.of(context).colorScheme.primary, size: 20),
                       ),
-                      onTap: () => Get.toNamed('/chat/private',
-                          arguments: {'userId': admin.id, 'userName': admin.name}),
+                      onTap: () => _openDirectAdminChat(admin),
                     ),
                   );
                 },
@@ -920,7 +963,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.75),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -974,4 +1017,3 @@ class _BenefArcPainter extends CustomPainter {
   @override
   bool shouldRepaint(_BenefArcPainter old) => old.progress != progress;
 }
-

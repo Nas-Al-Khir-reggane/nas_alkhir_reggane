@@ -21,17 +21,19 @@ import '../../features/admin/screens/reports_screen.dart';
 import '../../features/admin/screens/add_project_screen.dart';
 import '../../features/admin/screens/admin_committed_donors.dart';
 import '../../features/admin/screens/donations_details_screen.dart';
+import '../../features/admin/screens/manage_strategic_goals_screen.dart';
+import '../../features/admin/screens/broadcast_monitor_screen.dart';
 import '../../features/worker/screens/worker_dashboard.dart';
 import '../../features/worker/screens/update_task_screen.dart';
+import '../../features/worker/screens/task_detail_screen.dart';
+import '../../features/worker/screens/worker_task_loader.dart';
 import '../../features/donor/screens/donor_dashboard.dart';
 import '../../features/donor/screens/donate_screen.dart';
 import '../../features/donor/screens/my_subscriptions_screen.dart';
 import '../../features/beneficiary/screens/beneficiary_dashboard.dart';
 import '../../features/beneficiary/screens/new_request_screen.dart';
 import '../../features/beneficiary/screens/request_status_screen.dart';
-import '../../features/guest/screens/guest_request_screen.dart';
-import '../../features/guest/screens/guest_success_screen.dart';
-import '../../features/guest/screens/guest_tracking_screen.dart';
+// تم إزالة ملفات الزائر
 import '../../features/shared/screens/notifications_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../features/shared/screens/profile_screen.dart';
@@ -41,6 +43,7 @@ import '../../data/models/service_request_model.dart';
 import '../../data/models/project_model.dart';
 import '../../data/models/user_model.dart';
 import 'auth_middleware.dart';
+import 'role_middleware.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -52,6 +55,7 @@ class AppRoutes {
   static const String adminUsers = '/admin/users';
   static const String adminServiceTypes = '/admin/service-types';
   static const String adminTaskTypes = '/admin/task-types';
+  static const String adminStrategicGoals = '/admin/strategic-goals';
   static const String adminRequests = '/admin/requests';
   static const String adminRequestDetail = '/admin/request-detail';
   static const String adminProjects = '/admin/projects';
@@ -63,6 +67,7 @@ class AppRoutes {
   static const String adminVehicles = '/admin/vehicles';
   static const String adminReports = '/admin/reports';
   static const String adminDonations = '/admin/donations'; // ✨ NEW
+  static const String adminBroadcastMonitor = '/admin/broadcast-monitor'; // ✨ NEW
   
   static const String workerDashboard = '/worker/dashboard';
   static const String workerUpdateTask = '/worker/update-task';
@@ -75,9 +80,7 @@ class AppRoutes {
   static const String beneficiaryNewRequest = '/beneficiary/new-request';
   static const String beneficiaryRequestStatus = '/beneficiary/request-status';
   
-  static const String guestRequest = '/guest/request';
-  static const String guestSuccess = '/guest/success';
-  static const String guestTracking = '/guest/tracking';
+  // مسارات الزائر تم إزالتها
   
   static const String chat = '/chat';
   static const String chatGroup = '/chat/group';
@@ -121,9 +124,26 @@ class AppRoutes {
     
     // Admin Routes
     GetPage(name: adminDashboard, page: () => const AdminDashboard(), middlewares: [AuthMiddleware()]),
-    GetPage(name: adminUsers, page: () => const ManageUsersScreen(), middlewares: [AuthMiddleware()]),
-    GetPage(name: adminServiceTypes, page: () => const ManageServiceTypesScreen(), middlewares: [AuthMiddleware()]),
-    GetPage(name: adminTaskTypes, page: () => const ManageTaskTypesScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(
+      name: adminUsers,
+      page: () => const ManageUsersScreen(),
+      middlewares: [AuthMiddleware(), RoleMiddleware(allowedRoles: const [UserRole.superAdmin])],
+    ),
+    GetPage(
+      name: adminServiceTypes,
+      page: () => const ManageServiceTypesScreen(),
+      middlewares: [AuthMiddleware(), RoleMiddleware(allowedRoles: const [UserRole.superAdmin])],
+    ),
+    GetPage(
+      name: adminTaskTypes,
+      page: () => const ManageTaskTypesScreen(),
+      middlewares: [AuthMiddleware(), RoleMiddleware(allowedRoles: const [UserRole.superAdmin])],
+    ),
+    GetPage(
+      name: adminStrategicGoals,
+      page: () => const ManageStrategicGoalsScreen(),
+      middlewares: [AuthMiddleware(), RoleMiddleware(allowedRoles: const [UserRole.superAdmin])],
+    ),
     GetPage(name: adminRequests, page: () => const ServiceRequestsScreen(), middlewares: [AuthMiddleware()]),
     GetPage(
       name: adminRequestDetail, 
@@ -133,7 +153,6 @@ class AppRoutes {
         if (arg is Map<String, dynamic> && arg.containsKey('requestId')) {
           return AdminRequestLoader(
             requestId: arg['requestId'],
-            isGuest: arg['isGuest'] == true,
           );
         }
         return const Scaffold(body: Center(child: Text('خطأ في البيانات')));
@@ -150,7 +169,11 @@ class AppRoutes {
       },
       middlewares: [AuthMiddleware()]
     ),
-    GetPage(name: adminAddProject, page: () => const AddProjectScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(
+      name: adminAddProject,
+      page: () => const AddProjectScreen(),
+      middlewares: [AuthMiddleware(), RoleMiddleware(allowedRoles: const [UserRole.superAdmin])],
+    ),
     GetPage(
       name: adminCommittedDonors, 
       page: () {
@@ -175,12 +198,29 @@ class AppRoutes {
     GetPage(
       name: adminDonations,
       page: () => const DonationsDetailsScreen(),
-      middlewares: [AuthMiddleware()],
+      middlewares: [AuthMiddleware(), RoleMiddleware(allowedRoles: const [UserRole.superAdmin])],
+    ),
+    GetPage(
+      name: adminBroadcastMonitor,
+      page: () => const BroadcastMonitorScreen(),
+      middlewares: [AuthMiddleware(), RoleMiddleware(allowedRoles: const [UserRole.superAdmin])],
     ),
     
     // Worker Routes
     GetPage(name: workerDashboard, page: () => const WorkerDashboard(), middlewares: [AuthMiddleware()]),
     GetPage(name: workerUpdateTask, page: () => const UpdateTaskScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(
+      name: '/worker/task-detail',
+      page: () {
+        final arg = Get.arguments;
+        if (arg is ServiceRequestModel) return TaskDetailScreen(task: arg);
+        if (arg is Map<String, dynamic> && arg.containsKey('requestId')) {
+          return WorkerTaskLoader(requestId: arg['requestId']);
+        }
+        return const Scaffold(body: Center(child: Text('خطأ في البيانات')));
+      },
+      middlewares: [AuthMiddleware()]
+    ),
     
     // Donor Routes
     GetPage(name: donorDashboard, page: () => const DonorDashboard(), middlewares: [AuthMiddleware()]),
@@ -199,22 +239,17 @@ class AppRoutes {
       },
     ),
     
-    // Guest Routes
-    GetPage(name: guestRequest, page: () => const GuestRequestScreen()),
-    GetPage(name: guestTracking, page: () => const GuestTrackingScreen()),
-    GetPage(
-      name: guestSuccess, 
-      page: () {
-        final args = Get.arguments as Map<String, dynamic>?;
-        return GuestSuccessScreen(
-          refNumber: args?['refNumber'] ?? '',
-          phone: args?['phone'] ?? '',
-        );
-      }
-    ),
+    // مسارات الزائر تم إزالتها
     
     // Shared Routes
-    GetPage(name: chat, page: () => const ChatScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(
+      name: chat,
+      page: () => const ChatScreen(),
+      middlewares: [
+        AuthMiddleware(),
+        RoleMiddleware(allowedRoles: const [UserRole.admin, UserRole.superAdmin, UserRole.worker, UserRole.chatModerator]),
+      ],
+    ),
     GetPage(
       name: chatGroup, 
       page: () {
@@ -225,7 +260,10 @@ class AppRoutes {
           groupName: args?['groupName'],
         );
       },
-      middlewares: [AuthMiddleware()]
+      middlewares: [
+        AuthMiddleware(),
+        RoleMiddleware(allowedRoles: const [UserRole.worker, UserRole.admin, UserRole.superAdmin, UserRole.chatModerator]),
+      ]
     ),
     GetPage(
       name: chatPrivate, 
@@ -238,7 +276,18 @@ class AppRoutes {
           chatId: args?['chatId'],
         );
       },
-      // No AuthMiddleware — guests need chat access without login
+      // المحادثة الخاصة متاحة لكل الأدوار المسجلة، مع تحقق إضافي صارم داخل ChatScreen + قواعد Firestore
+      middlewares: [
+        AuthMiddleware(),
+        RoleMiddleware(allowedRoles: const [
+          UserRole.beneficiary,
+          UserRole.donor,
+          UserRole.worker,
+          UserRole.chatModerator,
+          UserRole.admin,
+          UserRole.superAdmin,
+        ]),
+      ]
     ),
     GetPage(name: notifications, page: () => const NotificationsScreen(), middlewares: [AuthMiddleware()]),
     GetPage(name: profile, page: () => const ProfileScreen(), middlewares: [AuthMiddleware()]),

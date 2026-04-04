@@ -1,18 +1,20 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/service_request_model.dart';
 import '../../../data/models/chat_message_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/services/notification_service.dart';
+import '../../../data/services/os_tracking_service.dart';
+import '../../../data/services/cloudinary_service.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_theme.dart';
 
 class WorkerController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   RxList<ServiceRequestModel> myTasks = <ServiceRequestModel>[].obs;
   RxList<ServiceRequestModel> completedTasks = <ServiceRequestModel>[].obs;
@@ -21,6 +23,8 @@ class WorkerController extends GetxController {
   RxBool isLoading = false.obs;
   RxBool isAvailable = true.obs;
   Rx<ChatMessageModel?> lastAdminMessage = Rx<ChatMessageModel?>(null);
+  RxBool isTracking = false.obs;
+  final OSTrackingService _trackingService = Get.put(OSTrackingService());
 
   StreamSubscription? _myTasksSub;
   StreamSubscription? _completedTasksSub;
@@ -43,7 +47,7 @@ class WorkerController extends GetxController {
     _myTasksSub = _firestore
         .collection(AppConstants.serviceRequestsCollection)
         .where('assignedTo', isEqualTo: currentWorker.value?.id)
-        .where('status', whereIn: ['in_progress', 'pending'])
+        .where('status', whereIn: ['in_progress', 'pending', 'assigned', 'issue', 'on_hold'])
         .orderBy('createdAt', descending: true)
         .snapshots()
         .listen((snap) {
@@ -51,7 +55,7 @@ class WorkerController extends GetxController {
         var data = d.data();
         data['id'] = d.id;
         return ServiceRequestModel.fromMap(data);
-      }).toList();
+      }).where((t) => t.type != 'blood_donation' && t.type != 'blood_emergency').toList();
     });
 
     _completedTasksSub = _firestore
@@ -64,7 +68,7 @@ class WorkerController extends GetxController {
         var data = d.data();
         data['id'] = d.id;
         return ServiceRequestModel.fromMap(data);
-      }).toList();
+      }).where((t) => t.type != 'blood_donation' && t.type != 'blood_emergency').toList();
     });
   }
 
@@ -117,15 +121,14 @@ class WorkerController extends GetxController {
     required String type,
     required String description,
     File? imageFile,
-    String? projectId, // Optional: if this update is linked to a project
+    String? projectId,
+    bool changeStatusToIssue = false,
   }) async {
     isLoading.value = true;
     try {
-      String? imageUrl;
+      String? mediaUrl;
       if (imageFile != null) {
-        final ref = _storage.ref('updates/${currentWorker.value?.id}/${DateTime.now().millisecondsSinceEpoch}.jpg');
-        await ref.putFile(imageFile);
-        imageUrl = await ref.getDownloadURL();
+        mediaUrl = await CloudinaryService.uploadMedia(imageFile);
       }
 
       final updateData = {
@@ -133,24 +136,23 @@ class WorkerController extends GetxController {
         'workerName': currentWorker.value?.name,
         'type': type,
         'description': description,
-        'imageUrl': imageUrl,
+        'mediaUrl': mediaUrl,
+        'imageUrl': mediaUrl,
         'requestId': requestId,
         'projectId': projectId,
         'createdAt': FieldValue.serverTimestamp(),
       };
 
-      // 1. Save to Request sub-collection
+      // 1. Save update
       await _firestore.collection(AppConstants.serviceRequestsCollection).doc(requestId).collection('updates').add(updateData);
+      await _firestore.collection('worker_updates').add(updateData);
 
-      // 2. Save to Global updates for Projects (to be visible in Project details)
-      if (projectId != null || (projectId == null && myProjectIds.isNotEmpty)) {
-        // If not specified, we can try to find if this request is linked to a project 
-        // or just add it to the first project this worker is assigned to (for general updates)
-        final targetProjectId = projectId ?? (myProjectIds.isNotEmpty ? myProjectIds.first : null);
-        if (targetProjectId != null) {
-          updateData['projectId'] = targetProjectId;
-          await _firestore.collection('worker_updates').add(updateData);
-        }
+      // 2. Change status if issue reported
+      if (changeStatusToIssue) {
+        await _firestore.collection(AppConstants.serviceRequestsCollection).doc(requestId).update({
+          'status': 'issue',
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
       }
 
       // تحديث آخر نشاط للعامل
@@ -159,50 +161,203 @@ class WorkerController extends GetxController {
       });
 
       // إشعار للأدمين
-      await _notifyAdmin(requestId, type, description);
+      await _notifyAdmin(requestId, type, description, isUrgent: changeStatusToIssue);
 
-      Get.snackbar('✅ تم الإرسال', 'تم إرسال التحديث بنجاح',
-          backgroundColor: Get.theme.colorScheme.primary.withValues(alpha: 0.15), colorText: Get.theme.colorScheme.primary);
+      // العودة أولاً لضمان ظهور الرسالة على الشاشة الرئيسية
+      Get.back();
+
+      Get.snackbar(
+        changeStatusToIssue ? '⚠️ تم الإبلاغ عن مشكلة' : '✅ تم إرسال التحديث',
+        changeStatusToIssue ? 'تم إخطار الإدارة بوجود عائق في الميدان' : 'تم إرسال التقرير الميداني بنجاح',
+        backgroundColor: changeStatusToIssue ? AppTheme.errorColor : AppTheme.primaryGreen,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+        margin: const EdgeInsets.all(15),
+        borderRadius: 15,
+        icon: Icon(
+          changeStatusToIssue ? Icons.warning_amber_rounded : Icons.check_circle_outline,
+          color: Colors.white,
+        ),
+        duration: const Duration(seconds: 4),
+      );
       
-      Get.back(); // Return from update screen
     } catch (e) {
-      Get.snackbar('خطأ', 'فشل إرسال التحديث: ${e.toString()}');
+      Get.snackbar('خطأ', 'فشل إرسال التحديث: ${e.toString()}', 
+        backgroundColor: AppTheme.errorColor, colorText: Colors.white);
     } finally {
       isLoading.value = false;
     }
   }
 
-  Future<void> _notifyAdmin(String requestId, String type, String description) async {
-    await NotificationService.notifyAllAdmins(
-      type: 'status_change',
-      title: 'تحديث مهمة',
-      body: 'قام ${currentWorker.value?.name} بإضافة تحديث: $description',
-      data: {'requestId': requestId, 'type': type},
-    );
+  Future<void> startTask(ServiceRequestModel task) async {
+    try {
+      isLoading.value = true;
+      
+      // 1. تحديث حالة الطلب إلى "قيد التنفيذ"
+      await _firestore
+          .collection(AppConstants.serviceRequestsCollection)
+          .doc(task.id)
+          .update({
+            'status': 'in_progress',
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+
+      // 2. إذا كان هناك مركبة مسندة للطلب، ابدأ التتبع
+      String? vehicleId = task.assignedCarId;
+      
+      if (vehicleId != null && vehicleId.isNotEmpty) {
+        await _trackingService.startTracking(vehicleId);
+        isTracking.value = true;
+      }
+
+      Get.snackbar("على بركة الله", "تم بدء المهمة وتفعيل التتبع الحي للمركبة", 
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
+          colorText: AppTheme.primaryGreen);
+    } catch (e) {
+      Get.snackbar("خطأ", "فشل بدء المهمة: $e");
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   Future<void> completeTask(String requestId) async {
     try {
-      await _firestore.collection(AppConstants.serviceRequestsCollection).doc(requestId).update({
+      isLoading.value = true;
+      
+      final doc = await _firestore
+          .collection(AppConstants.serviceRequestsCollection)
+          .doc(requestId).get();
+
+      if (!doc.exists) {
+        Get.snackbar('خطأ', 'الطلب غير موجود');
+        return;
+      }
+      final data = doc.data()!;
+      if (data['assignedTo'] != currentWorker.value?.id) {
+        Get.snackbar('غير مصرح', 'هذه المهمة ليست مسندة إليك');
+        return;
+      }
+
+      // إيقاف التتبع عند إتمام المهمة
+      _trackingService.stopTracking();
+      isTracking.value = false;
+
+      final batch = _firestore.batch();
+      
+      // تحديث حالة الطلب
+      final requestRef = _firestore.collection(AppConstants.serviceRequestsCollection).doc(requestId);
+      batch.update(requestRef, {
         'status': 'completed',
         'completedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      // تحديث إحصائات العامل
-      await _firestore.collection(AppConstants.usersCollection).doc(currentWorker.value?.id).update({
-        'completedTasks': FieldValue.increment(1),
-        'isAvailable': true,
-        'lastActivity': FieldValue.serverTimestamp(),
-      });
-      isAvailable.value = true;
+
+      // تحرير المركبة إن وجدت
+      String? vehicleId = data['assignedCarId'];
+      if (vehicleId != null && vehicleId.isNotEmpty) {
+        batch.update(_firestore.collection('vehicles').doc(vehicleId), {
+           'isAvailable': true,
+           'status': 'ready',
+        });
+      }
+
+      // تحديث إحصائات الفريق والإشعارات
+      await _notifyCompletion(data, requestId);
       
-      Get.snackbar('🎉 أحسنت!', 'تم إتمام المهمة بنجاح',
-          backgroundColor: Get.theme.colorScheme.primary.withValues(alpha: 0.15), colorText: Get.theme.colorScheme.primary);
+      // تحديث إحصائيات الأخ المتطوع
+      final workerRef = _firestore.collection(AppConstants.usersCollection).doc(currentWorker.value?.id);
+      
+      await batch.commit();
+
+      // تجديد الإحصائيات في التطبيق
+      await _firestore.runTransaction((tx) async {
+        final workerSnap = await tx.get(workerRef);
+        if (!workerSnap.exists) return;
+        final workerData = workerSnap.data() as Map<String, dynamic>;
+        final currentTasks = ((workerData['currentTasksCount'] ?? 0) as num).toInt();
+        final safeCurrentTasks = currentTasks > 0 ? currentTasks - 1 : 0;
+        tx.update(workerRef, {
+          'completedTasks': FieldValue.increment(1),
+          'currentTasksCount': safeCurrentTasks,
+          'isAvailable': true,
+          'lastActivity': FieldValue.serverTimestamp(),
+        });
+      });
+      
+      isAvailable.value = true;
+
+      Get.back(); // إغلاق شاشة التحديث
+      Get.back(); // إغلاق شاشة التفاصيل
+      
+      _showCompletionDialog();
+
     } catch (e) {
       Get.snackbar('خطأ', 'فشل إنهاء المهمة: $e',
-          backgroundColor: Get.theme.colorScheme.error.withValues(alpha: 0.15), colorText: Get.theme.colorScheme.error);
+          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.1), colorText: AppTheme.errorColor);
+    } finally {
+      isLoading.value = false;
     }
   }
+
+  void _showCompletionDialog() {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: Get.theme.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen, size: 80),
+            const SizedBox(height: 20),
+            const Text(
+              '🎉 هنيئاً لك!',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'تم إتمام المهمة بنجاح، تقبل الله عملك الصالح وجعله في ميزان حسناتك.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, fontFamily: 'Tajawal', height: 1.5),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: AppTheme.gradientButton(
+                text: 'آمين، العودة للرئيسية',
+                onPressed: () => Get.back(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _notifyCompletion(Map<String, dynamic> data, String requestId) async {
+    final requesterId = data['requesterId']?.toString();
+    if (requesterId != null && requesterId.isNotEmpty) {
+      await NotificationService.sendNotification(
+        userId: requesterId,
+        type: 'request_update',
+        title: 'تحديث حالة الطلب',
+        body: '🕊️ الحمد لله، تم قضاء حاجتك بنجاح. تقبل الله من الجميع.',
+        data: {'requestId': requestId},
+      );
+    }
+  }
+
+  Future<void> _notifyAdmin(String requestId, String type, String description, {bool isUrgent = false}) async {
+    await NotificationService.notifyAllAdmins(
+      type: isUrgent ? 'emergency' : 'status_change',
+      title: isUrgent ? '🚨 بلاغ عاجل من الميدان' : '✨ بشارة: تحديث في الميدان',
+      body: isUrgent 
+          ? 'أبلغ المتطوع ${currentWorker.value?.name} عن عقبة: $description'
+          : 'قام الأخ ${currentWorker.value?.name} بإضافة نداء/تحديث مبشر: $description',
+      data: {'requestId': requestId, 'type': type},
+    );
+  }
+
 
   // إحصائات
   int get currentTasksCount => myTasks.length;
@@ -217,4 +372,3 @@ class WorkerController extends GetxController {
     super.onClose();
   }
 }
-

@@ -73,7 +73,8 @@ class ProjectModel {
     this.isMonthlyGoal = false, // ✨ NEW
   });
 
-  double get progressPercentage => budget > 0 ? (collected / budget * 100).clamp(0, 100) : 0;
+  double get progressRatio => budget > 0 ? (collected / budget).clamp(0.0, 1.0).toDouble() : 0.0;
+  double get progressPercentage => progressRatio * 100;
 
   Map<String, dynamic> toMap() {
     return {

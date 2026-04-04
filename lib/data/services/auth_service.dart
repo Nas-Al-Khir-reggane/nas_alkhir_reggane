@@ -29,16 +29,7 @@ class AuthService {
     return null;
   }
 
-  // تسجيل دخول مجهول (للضيوف)
-  Future<User?> signInAnonymously() async {
-    try {
-      UserCredential result = await _auth.signInAnonymously();
-      return result.user;
-    } catch (e) {
-      debugPrint("Error in signInAnonymously: $e");
-      return null;
-    }
-  }
+  // تسجيل الدخول المجهول للضيوف تم إزالته لأسباب أمنية
 
   // إنشاء حساب جديد
   Future<UserModel?> signUp(String email, String password, UserModel userData) async {
@@ -114,6 +105,9 @@ class AuthService {
     if (user.lastActivity != null) {
       map['lastActivity'] = user.lastActivity!.toIso8601String();
     }
+    if (user.lastDonatedAt != null) {
+      map['lastDonatedAt'] = user.lastDonatedAt!.toIso8601String();
+    }
     await _secureStorage.write(key: 'cached_user_secure', value: jsonEncode(map));
   }
 
@@ -138,6 +132,9 @@ class AuthService {
         if (map['lastActivity'] != null) {
           map['lastActivity'] = Timestamp.fromDate(DateTime.parse(map['lastActivity']));
         }
+        if (map['lastDonatedAt'] != null) {
+          map['lastDonatedAt'] = Timestamp.fromDate(DateTime.parse(map['lastDonatedAt']));
+        }
         return UserModel.fromMap(map);
       } catch (e) {
         return null;
@@ -148,8 +145,12 @@ class AuthService {
 
   // تحديث دور المستخدم (للسوبر أدمن)
   Future<void> updateUserRole(String userId, UserRole role) async {
+    if (!UserRole.values.contains(role)) {
+      throw ArgumentError('Invalid role: $role');
+    }
     await _firestore.collection(AppConstants.usersCollection).doc(userId).update({
       'role': role.name,
+      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 

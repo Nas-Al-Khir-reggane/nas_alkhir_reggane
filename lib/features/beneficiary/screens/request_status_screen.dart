@@ -3,8 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/service_request_model.dart';
-import '../../../core/routes/app_routes.dart';
-import 'package:get/get.dart';
 import '../../../core/constants/app_constants.dart';
 
 class RequestStatusScreen extends StatelessWidget {
@@ -39,7 +37,7 @@ class RequestStatusScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryGreen.withValues(alpha: 0.75),
+                      color: AppTheme.primaryGreen.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(AppConstants.getServiceIcon(request.typeName.isNotEmpty ? request.typeName : request.type), color: AppTheme.primaryGreen, size: 40),
@@ -56,6 +54,11 @@ class RequestStatusScreen extends StatelessWidget {
                   _buildDetailRow('درجة الاستعجال', _urgencyLabel(request.urgency)),
                   _buildDetailRow('رقم الهاتف', request.phone),
                   _buildDetailRow('العنوان', request.address),
+                  if (request.type == 'blood_donation' || request.type == 'blood_emergency') ...[
+                    _buildDetailRow('اسم الحالة', request.patientName.isNotEmpty ? request.patientName : request.requesterName),
+                    _buildDetailRow('الفصيلة المطلوبة', request.bloodType.isNotEmpty ? request.bloodType : (request.details['الفصيلة'] ?? request.details['فصيلة الدم'] ?? 'غير محدد')),
+                    _buildDetailRow('المستشفى', request.hospital.isNotEmpty ? request.hospital : (request.details['المستشفى'] ?? 'غير محدد')),
+                  ],
                 ],
               ),
             ),
@@ -82,24 +85,7 @@ class RequestStatusScreen extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 40),
-            if (request.isGuest && request.phone.isNotEmpty)
-              OutlinedButton.icon(
-                onPressed: () {
-                  Get.toNamed(AppRoutes.chatPrivate, arguments: {
-                    'chatId': 'guest_${request.phone.replaceAll(" ", "")}',
-                    'userName': 'الدعم الفني',
-                  });
-                },
-                icon: const Icon(Icons.support_agent, color: AppTheme.primaryGreen),
-                label: const Text('💬 متابعة المحادثة مع الدعم', style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold)),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                  side: const BorderSide(color: AppTheme.primaryGreen, width: 1.5),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-              ),
-            if (request.status == 'completed' && !request.isGuest)
+            if (request.status == 'completed')
               AppTheme.gradientButton(
                 text: 'تقييم الخدمة',
                 icon: Icons.star,

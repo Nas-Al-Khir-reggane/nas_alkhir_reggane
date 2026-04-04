@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 
+import 'package:intl/intl.dart';
+
 class ScrollAnimations {
   // 1. Reveal on Scroll (تأثير الظهور عند التمرير)
   static Widget revealOnScroll({
@@ -36,26 +38,33 @@ class ScrollAnimations {
   }
 
   // 4. Number Counter Animation (عداد الأرقام الاحترافي)
+  // تم تطويره ليدعم الفواصل الآلافية والحركة الانسيابية الفاخرة
   static Widget numberCounter({
     required num value,
     TextStyle? style,
-    Duration duration = const Duration(seconds: 2),
+    Duration duration = const Duration(milliseconds: 1500),
     String prefix = '',
     String suffix = '',
     int decimals = 0,
     bool isCurrency = false,
+    bool useThousandSeparator = true,
   }) {
+    final format = NumberFormat.decimalPattern();
+    
+    final targetValue = value.toDouble() < 0 ? 0.0 : value.toDouble();
+    
     return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0, end: value.toDouble()),
+      tween: Tween<double>(begin: 0, end: targetValue),
       duration: duration,
-      curve: Curves.easeOutExpo, // الانزلاق السلس للأرقام
+      curve: Curves.easeOutExpo, // انزلاق انسيابي فاخر
       builder: (context, val, child) {
         String formatted;
-        if (isCurrency && val >= 1000) {
-           if (val >= 1000000) {
-             formatted = '${(val / 1000000).toStringAsFixed(1)}M';
-           } else {
-             formatted = '${(val / 1000).toStringAsFixed(1)}k';
+        if (isCurrency && val >= 1000000) {
+           formatted = '${(val / 1000000).toStringAsFixed(1)}M';
+        } else if (useThousandSeparator) {
+           formatted = format.format(val.toInt());
+           if (decimals > 0) {
+             formatted += '.${(val % 1).toStringAsFixed(decimals).substring(2)}';
            }
         } else {
           formatted = val.toStringAsFixed(decimals);

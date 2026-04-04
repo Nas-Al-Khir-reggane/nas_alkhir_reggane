@@ -1,12 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:animate_do/animate_do.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../core/utils/default_avatars.dart';
 import '../../../core/theme/app_theme.dart';
@@ -14,7 +9,10 @@ import '../../../core/constants/app_constants.dart';
 import '../../../data/models/user_model.dart';
 import '../../../core/services/theme_service.dart';
 import '../../../core/routes/app_routes.dart';
+import '../widgets/user_avatar.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:animate_do/animate_do.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -84,7 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), shape: BoxShape.circle),
                 child: Icon(Icons.edit_note_rounded, color: Theme.of(context).colorScheme.primary),
               ),
               onPressed: () {
@@ -123,7 +121,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProfileContent(UserModel user, bool ownProfile) {
     final isWorker = user.role == UserRole.worker;
-    final canChat = !ownProfile && (user.role == UserRole.admin || user.role == UserRole.superAdmin || user.role == UserRole.worker);
+    final currentRole = authController.currentUser.value?.role;
+    final isAdminOrSuper = currentRole == UserRole.admin || currentRole == UserRole.superAdmin;
+    
+    final canChat = !ownProfile && (
+      user.role == UserRole.admin || 
+      user.role == UserRole.superAdmin || 
+      isAdminOrSuper // Admins can chat with anyone
+    );
+    final canViewSensitiveInfo = ownProfile || currentRole == UserRole.superAdmin;
+
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -139,20 +146,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), width: 2),
+                      border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), width: 2),
                     ),
                     child: Hero(
                       tag: 'profile_${user.id}',
-                      child: CircleAvatar(
-                        radius: 55,
-                        backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                        backgroundImage: user.profileImage != null && user.profileImage!.isNotEmpty
-                            ? CachedNetworkImageProvider(user.profileImage!)
-                            : null,
-                        child: (user.profileImage == null || user.profileImage!.isEmpty)
-                            ? Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                                style: GoogleFonts.tajawal(fontSize: 35, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.primary))
-                            : null,
+                      child: UserAvatar(
+                        user: user,
+                        size: 110,
+                        showBadge: false,
                       ),
                     ),
                   ),
@@ -165,7 +166,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: Theme.of(context).colorScheme.primary,
                           shape: BoxShape.circle,
                           border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 3),
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.75), blurRadius: 8)],
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 8)],
                         ),
                         child: Icon(Icons.camera_alt_rounded, color: Theme.of(context).colorScheme.onPrimary, size: 16),
                       ),
@@ -184,7 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(user.role.displayName, style: GoogleFonts.tajawal(color: Theme.of(context).colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w800)),
@@ -195,6 +196,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           
           if (user.lastDonatedAt != null) 
             FadeInUp(child: _buildRestPeriodCard(user)),
+
+          // 🩸 وسام المنقذ: بطاقة تحفيزية لغير المتبرعين
+          if (user.role != UserRole.donor && ownProfile) ...[
+            const SizedBox(height: 16),
+            FadeInUp(child: _buildRescueBadgeCard(user)),
+          ],
           
           if (canChat) ...[
             const SizedBox(height: 20),
@@ -228,17 +235,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSectionLabel('بيانات الاتصال'),
-                  _buildDetailTile(Icons.phone_android_rounded, "رقم الهاتف", user.phone, Colors.blue),
+                  if (canViewSensitiveInfo)
+                    _buildDetailTile(Icons.phone_android_rounded, "رقم الهاتف", user.phone, Colors.blue),
                   _buildDetailTile(Icons.alternate_email_rounded, "البريد الإلكتروني", user.email, Colors.red),
                   
                   const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Divider()),
                   _buildSectionLabel('العنوان والموقع'),
                   _buildDetailTile(Icons.map_outlined, "المنطقة", "${user.wilaya} - ${user.commune}", Colors.orange),
-                  _buildDetailTile(Icons.home_work_outlined, "العنوان", user.address, Colors.purple),
+                  if (canViewSensitiveInfo)
+                    _buildDetailTile(Icons.home_work_outlined, "العنوان", user.address, Colors.purple),
                   
                   const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Divider()),
                   _buildSectionLabel('بيانات التبرع بالدم'),
-                  _buildDetailTile(Icons.bloodtype_rounded, "فصيلة الدم", user.bloodType ?? "غير محدد", Colors.redAccent),
+                  if (canViewSensitiveInfo)
+                    _buildDetailTile(Icons.bloodtype_rounded, "فصيلة الدم", user.bloodType ?? "غير محدد", Colors.redAccent),
                   _buildDetailTile(Icons.event_available_rounded, "تاريخ آخر تبرع", 
                     user.lastDonatedAt != null ? intl.DateFormat('yyyy/MM/dd').format(user.lastDonatedAt!) : "لم يسبق التبرع", 
                     Colors.green),
@@ -277,7 +287,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildSectionLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12, right: 4),
+      padding: const EdgeInsetsDirectional.only(bottom: 12, end: 4),
       child: Text(text, style: GoogleFonts.tajawal(fontSize: 13, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.primary)),
     );
   }
@@ -289,7 +299,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
             child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 15),
@@ -320,9 +330,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       margin: const EdgeInsets.only(top: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.75),
+        color: Colors.orange.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.75)),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
@@ -343,6 +353,104 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// 🩸 بطاقة وسام المنقذ - تظهر لغير المتبرعين لتحفيزهم
+  Widget _buildRescueBadgeCard(UserModel user) {
+    final int count = user.bloodDonationsCount;
+    String rank;
+    String emoji;
+    Color rankColor;
+
+    if (count >= 15) {
+      rank = 'منقذ بلاتيني';
+      emoji = '💎';
+      rankColor = const Color(0xFF00BCD4);
+    } else if (count >= 10) {
+      rank = 'منقذ ذهبي';
+      emoji = '🥇';
+      rankColor = const Color(0xFFFFC107);
+    } else if (count >= 5) {
+      rank = 'منقذ فضي';
+      emoji = '🥈';
+      rankColor = const Color(0xFF9E9E9E);
+    } else if (count >= 1) {
+      rank = 'منقذ برونزي';
+      emoji = '🥉';
+      rankColor = const Color(0xFFFF9800);
+    } else {
+      rank = 'مستعد للإنقاذ';
+      emoji = '🌱';
+      rankColor = Theme.of(context).colorScheme.primary;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            rankColor.withValues(alpha: 0.15),
+            Theme.of(context).cardColor,
+          ],
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: rankColor.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: rankColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: rankColor.withValues(alpha: 0.3)),
+            ),
+            child: Center(
+              child: Text(emoji, style: const TextStyle(fontSize: 28)),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'وسام المنقذ',
+                  style: GoogleFonts.tajawal(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$rank $emoji • $count ${count == 1 ? "مرة" : "مرات"}',
+                  style: GoogleFonts.tajawal(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: rankColor,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  count == 0
+                      ? 'ساهم بالتبرع بالدم وانضم لقافلة المنقذين'
+                      : 'جزاك الله خيراً على مساهمتك في إنقاذ الأرواح',
+                  style: GoogleFonts.tajawal(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.water_drop_rounded, color: rankColor, size: 24),
         ],
       ),
     );
@@ -390,7 +498,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.9)]),
         borderRadius: BorderRadius.circular(25),
-        boxShadow: [BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), blurRadius: 15, offset: const Offset(0, 8))],
+        boxShadow: [BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), blurRadius: 15, offset: const Offset(0, 8))],
       ),
       child: Column(
         children: [
@@ -403,7 +511,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(8)),
                 child: Row(
                   children: [
-                    const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                    const Icon(Icons.star_rounded, color: AppTheme.goldAccent, size: 16),
                     const SizedBox(width: 4),
                     Text(user.rating.toStringAsFixed(1), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ],
@@ -451,7 +559,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     DateTime? lastDonatedAtInDialog = user.lastDonatedAt;
     bool isDonorAvailableInDialog = user.isDonorAvailable;
     String? selectedImageUrl = user.profileImage;
-    bool isUploadingInDialog = false;
+    String? currentSeed = user.avatarSeed ?? user.id;
+    String currentType = user.avatarType ?? 'avataaars';
 
     Get.bottomSheet(
       isScrollControlled: true,
@@ -476,8 +585,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Text('أبقِ معلوماتك محدثة لسهولة التواصل', style: GoogleFonts.tajawal(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                       const SizedBox(height: 30),
                       
-                      _buildEditLabel('الصورة الشخصية'),
-                      _buildAvatarPicker(user, selectedImageUrl, isUploadingInDialog, setStateDialog),
+                      _buildEditLabel('اختر صورتك الرمزية'),
+                      _buildIdentityStudio(
+                        user: user,
+                        currentSeed: currentSeed,
+                        currentType: currentType,
+                        selectedUrl: selectedImageUrl,
+                        onUpdate: (seed, type, url) {
+                          setStateDialog(() {
+                            currentSeed = seed;
+                            currentType = type;
+                            selectedImageUrl = url;
+                          });
+                        },
+                      ),
                       
                       const SizedBox(height: 24),
                       _buildEditLabel('المعلومات الأساسية'),
@@ -525,6 +646,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               'lastDonatedAt': lastDonatedAtInDialog != null ? Timestamp.fromDate(lastDonatedAtInDialog!) : null,
                               'isDonorAvailable': isDonorAvailableInDialog,
                               'profileImage': selectedImageUrl,
+                              'avatarSeed': currentSeed,
+                              'avatarType': currentType,
                             });
                             await authController.refreshUser();
                             Get.back();
@@ -609,42 +732,132 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildAvatarPicker(UserModel user, String? selectedUrl, bool isUploading, Function setStateDialog) {
-    return SizedBox(
-      height: 80,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
+  Widget _buildIdentityStudio({
+    required UserModel user,
+    required String? currentSeed,
+    required String currentType,
+    required String? selectedUrl,
+    required Function(String?, String, String?) onUpdate,
+  }) {
+    final styles = [
+      {'id': 'avataaars', 'name': 'إنساني'},
+      {'id': 'micah', 'name': 'فني'},
+      {'id': 'bottts', 'name': 'آلي'},
+      {'id': 'initials', 'name': 'رسمي'},
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)),
+      ),
+      child: Column(
         children: [
-          GestureDetector(
-            onTap: () async {
-              final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70);
-              if (picked == null) return;
-              setStateDialog(() => isUploading = true);
-              try {
-                final ref = FirebaseStorage.instance.ref('profiles/${user.id}.jpg');
-                await ref.putFile(File(picked.path));
-                final url = await ref.getDownloadURL();
-                setStateDialog(() { selectedUrl = url; isUploading = false; });
-              } catch (e) { setStateDialog(() => isUploading = false); }
-            },
-            child: Container(
-              width: 65,
-              margin: const EdgeInsets.only(left: 12),
-              decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), shape: BoxShape.circle, border: Border.all(color: Theme.of(context).colorScheme.primary, width: 1.5)),
-              child: isUploading ? const Center(child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.add_a_photo_rounded, color: Theme.of(context).colorScheme.primary),
+          // 1. المعاينة الحالية
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              UserAvatar(
+                key: ValueKey('$currentSeed-$currentType-$selectedUrl'),
+                user: user.copyWith(
+                  avatarSeed: currentSeed,
+                  avatarType: currentType,
+                  profileImage: selectedUrl,
+                ),
+                size: 90,
+                showBadge: true,
+              ),
+              Column(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      final newSeed = DateTime.now().millisecondsSinceEpoch.toString();
+                      onUpdate(newSeed, currentType, null); // Shuffle clearing previous manual selection
+                    },
+                    icon: const Icon(Icons.shuffle_rounded, size: 20),
+                    label: const Text("تغيير الشكل", style: TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      elevation: 0,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text("اضغط للحصول على شكل عشوائي", 
+                    style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal')),
+                ],
+              ),
+            ],
+          ),
+          
+          const Padding(padding: EdgeInsets.symmetric(vertical: 15), child: Divider(height: 1)),
+          
+          // 2. اختيار النمط (بسيطة)
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text("نوع المظهر:", style: GoogleFonts.tajawal(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: styles.map((style) {
+                final isSelected = currentType == style['id'] && selectedUrl == null;
+                return Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 8),
+                  child: ChoiceChip(
+                    label: Text(style['name']!, style: const TextStyle(fontFamily: 'Tajawal', fontSize: 12)),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      if (selected) onUpdate(currentSeed, style['id']!, null);
+                    },
+                    selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                    labelStyle: TextStyle(
+                      color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
-          ...DefaultAvatars.getAvatarsForRole(user.role).map((url) {
-            final isSelected = selectedUrl == url;
-            return GestureDetector(
-              onTap: () => setStateDialog(() => selectedUrl = url),
-              child: Container(
-                margin: const EdgeInsets.only(left: 10),
-                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent, width: 3)),
-                child: CircleAvatar(radius: 30, backgroundImage: CachedNetworkImageProvider(url)),
-              ),
-            );
-          }),
+          
+          const SizedBox(height: 15),
+          
+          // 3. شخصيات جاهزة (Originals)
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text("شخصيات جاهزة:", style: GoogleFonts.tajawal(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 60,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: DefaultAvatars.getAvatarsForRole(user.role, user.gender).map((url) {
+                final isSelected = selectedUrl == url;
+                return GestureDetector(
+                  onTap: () => onUpdate(currentSeed, currentType, url),
+                  child: Container(
+                    margin: const EdgeInsetsDirectional.only(end: 10),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle, 
+                      border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent, width: 2.5)
+                    ),
+                    child: CircleAvatar(
+                      radius: 26, 
+                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      backgroundImage: CachedNetworkImageProvider(url)
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
         ],
       ),
     );

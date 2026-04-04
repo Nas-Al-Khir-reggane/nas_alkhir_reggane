@@ -6,13 +6,17 @@ import 'package:animate_do/animate_do.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../shared/widgets/strategic_goal_card.dart';
+
+import '../../../core/routes/app_routes.dart';
+import '../../../core/animations/scroll_animations.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/theme_service.dart';
 import '../../../core/animations/micro_interactions.dart';
 import '../controllers/admin_controller.dart';
 import '../../chat/controllers/chat_controller.dart';
-import '../../../core/animations/scroll_animations.dart';
 import '../../../core/animations/visual_effects.dart';
 import '../../../core/animations/sound_manager.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -24,8 +28,15 @@ import 'service_requests_screen.dart' as real_requests;
 import 'projects_screen.dart';
 import 'workers_screen.dart';
 import 'package:nas_al_kheir/core/widgets/geometric_progress.dart';
-import '../../../core/widgets/app_logo.dart';
+import '../widgets/stats_grid.dart';
+import '../widgets/operational_overview.dart';
+import 'manage_strategic_goals_screen.dart';
+import '../widgets/mission_control_map.dart';
+import '../widgets/activity_pulse.dart';
+import '../../../core/widgets/role_guard.dart';
 import 'project_detail_screen.dart';
+import '../widgets/dashboard_header.dart';
+import '../../shared/widgets/community_pulse_card.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -39,6 +50,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   final AdminController controller = Get.put(AdminController());
   final AuthController authController = Get.find<AuthController>();
   final NotificationService notificationService = Get.find<NotificationService>();
+  final intl.NumberFormat _dzdFormat = intl.NumberFormat('#,##0');
+
+  String _formatDzd(num amount) => '${_dzdFormat.format(amount)} دج';
 
   Future<bool> _onWillPop() async {
     final result = await Get.dialog<bool>(
@@ -124,7 +138,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   // Inbox tab is index 4
-  static const int _inboxIndex = 4;
+
 
   Widget _buildBottomBar() {
     return Container(
@@ -132,7 +146,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         color: Theme.of(context).colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, -2))
+          BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, -2))
         ],
       ),
       child: ClipRRect(
@@ -209,7 +223,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                 blurRadius: 12,
                 spreadRadius: 2,
                 offset: const Offset(0, 4),
@@ -217,6 +231,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ],
           ),
           child: FloatingActionButton.extended(
+            heroTag: 'admin_dashboard_fab',
             onPressed: () => _showActionMenu(),
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -251,7 +266,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(2))),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
             Text('إجراءات سريعة', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.w800, fontFamily: 'Tajawal')),
             const SizedBox(height: 16),
@@ -270,10 +285,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
             _buildActionItem(Icons.person_add, 'إضافة متطوع جديد', () {
               Get.back();
               WorkersScreen.showAddWorkerSheet(context);
-            }),
-            _buildActionItem(Icons.settings_backup_restore_rounded, 'استعادة الخدمات الافتراضية', () {
-              Get.back();
-              controller.seedDefaultServices();
             }),
           ],
         ),
@@ -365,27 +376,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 try {
                   final primaryColor = Theme.of(context).colorScheme.primary;
                   final onSurfaceColor = Theme.of(context).colorScheme.onSurface;
-                  await FirebaseFirestore.instance.collection('donations').add({
-                    'donorId': 'admin_registered',
-                    'donorName': donorNameCtrl.text,
-                    'amount': amount,
-                    'projectId': selectedProject,
-                    'projectName': selectedProjectName,
-                    'method': selectedMethod,
-                    'isAnonymous': false,
-                    'status': 'confirmed',
-                    'registeredByAdmin': true,
-                    'date': FieldValue.serverTimestamp(),
-                  });
-                  if (selectedProject != 'general') {
-                    await FirebaseFirestore.instance
-                        .collection('projects')
-                        .doc(selectedProject)
-                        .update({
-                          'collected': FieldValue.increment(amount),
-                          'donorsCount': FieldValue.increment(1),
-                        });
-                  }
+                                  await controller.registerAdminDonation(
+                                    donorName: donorNameCtrl.text,
+                                    amount: amount,
+                                    method: selectedMethod,
+                                    projectId: selectedProject,
+                                    projectName: selectedProjectName,
+                                  );
                   Get.back();
                   Get.snackbar('✅ تم', 'تم تسجيل التبرع بنجاح',
                       backgroundColor: primaryColor.withValues(alpha: 0.15),
@@ -408,28 +405,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
           child: Icon(icon, color: Theme.of(context).colorScheme.primary),
         ),
         title: Text(title, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600, fontFamily: 'Tajawal')),
-      ),
-    );
-  }
-
-  Widget _buildHeaderButton({required Widget child, required VoidCallback onTap}) {
-    return MicroInteractions.bouncingButton(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.75),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4)),
-          ],
-        ),
-        child: child,
       ),
     );
   }
@@ -447,126 +426,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
           children: [
             const SizedBox(height: 55),
             
-            // --- Masterpiece Luxurious Header ---
-            Row(
-              children: [
-                // 1. Manager Identity (Right Side - Expanded for long names)
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('مرحباً،', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, letterSpacing: 0.5)),
-                      Obx(() => FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                              authController.currentUser.value?.name ?? 'المدير',
-                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 19, fontWeight: FontWeight.w900, height: 1.2),
-                              maxLines: 1,
-                            ),
-                      )),
-                      Obx(() => Text(
-                        authController.currentUser.value?.role.displayName ?? '',
-                        style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 11, fontWeight: FontWeight.w700),
-                      )),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(width: 12),
-
-                // 2. Crystal Control Center (Middle)
-                FadeInDown(
-                  duration: const Duration(milliseconds: 800),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildHeaderButton(
-                        onTap: () => Get.toNamed('/profile'),
-                        child: Obx(() {
-                          final user = authController.currentUser.value;
-                          return Container(
-                            width: 26, height: 26,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), width: 1.5),
-                            ),
-                            child: CircleAvatar(
-                              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                              backgroundImage: (user?.profileImage != null && user!.profileImage!.isNotEmpty)
-                                  ? CachedNetworkImageProvider(user.profileImage!) as ImageProvider
-                                  : null,
-                              child: (user?.profileImage == null || user!.profileImage!.isEmpty)
-                                  ? Icon(Icons.person, color: Theme.of(context).colorScheme.primary, size: 14)
-                                  : null,
-                            ),
-                          );
-                        }),
-                      ),
-                      const SizedBox(width: 6),
-                      _buildHeaderButton(
-                        onTap: () {
-                          AppConstants.toggleTheme();
-                          SoundManager.to.playToggle(!Get.isDarkMode);
-                        },
-                        child: Icon(ThemeService().themeIcon, color: Theme.of(context).colorScheme.primary, size: 18),
-                      ),
-                      const SizedBox(width: 6),
-                      _buildHeaderButton(
-                        onTap: () => Get.toNamed('/notifications'),
-                        child: Obx(() => Stack(
-                          children: [
-                            Icon(Icons.notifications_none_rounded, color: Theme.of(context).colorScheme.onSurface, size: 18),
-                            if (notificationService.unreadCount.value > 0)
-                              Positioned(
-                                right: 0, top: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(3),
-                                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
-                                  constraints: const BoxConstraints(minWidth: 10, minHeight: 10),
-                                  child: Text(
-                                    notificationService.unreadCount.value.toString(),
-                                    style: const TextStyle(color: Colors.white, fontSize: 6, fontWeight: FontWeight.bold),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        )),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(width: 12),
-
-                // 3. Corner Majesty (Left Side)
-                FadeInLeft(
-                  duration: const Duration(milliseconds: 1000),
-                  child: AppLogo(
-                    size: 72,
-                    color: Get.isDarkMode 
-                        ? AppTheme.goldAccent.withValues(alpha: 0.15) 
-                        : AppTheme.primaryGreen.withValues(alpha: 0.75), // جعل اللون خافتاً وناعماً
-                    showGlow: Get.isDarkMode,
-                  ),
-                ),
-              ],
-            ),
+            const DashboardHeader(),
             
             const SizedBox(height: 25),
-            
-            // --- Urgent Banner ---
+
+            // --- Urgent Banner (Moved to top for visibility) ---
             Obx(() => controller.unseenUrgentCount.value > 0
                 ? FadeIn(
                     child: GestureDetector(
                       onTap: () => setState(() => _currentIndex = 1),
                       child: Container(
+                        margin: const EdgeInsets.only(bottom: 25),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(colors: [Color(0xFFD50000), Color(0xFFFF6D00)]),
                           borderRadius: BorderRadius.circular(18),
-                          boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.75), blurRadius: 15, offset: const Offset(0, 5))],
+                          boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.15), blurRadius: 15, offset: const Offset(0, 5))],
                         ),
                         padding: const EdgeInsets.all(16),
                         child: Row(
@@ -589,30 +463,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                   )
                 : const SizedBox.shrink()),
-            
-            const SizedBox(height: 25),
-            Text('نظرة عامة', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 17, fontWeight: FontWeight.w800, fontFamily: 'Tajawal')),
-            const SizedBox(height: 14),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              childAspectRatio: 1.4,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
+
+            const CommunityPulseCard(),
+            const SizedBox(height: 12),
+
+             const RoleGuard(
+              allowedRoles: [UserRole.superAdmin],
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 25),
+                child: OperationalOverview(), // تم تغيير المسمى تقنياً
+              ),
+            ),
+
+            // --- Humanity Challenges Section ---
+            _buildHumanityChallengesSection(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildKPICard('إجمالي التبرعات', controller.totalDonations, Icons.volunteer_activism, AppTheme.goldGradient, 'دج', onTap: () => Get.toNamed('/admin/donations')),
-                _buildKPICard('الطلبات المعلقة', controller.pendingRequests, Icons.pending_actions,
-                    const LinearGradient(colors: [Colors.orange, Colors.deepOrange]), '', onTap: () => setState(() => _currentIndex = 1)),
-                _buildKPICard('المشاريع النشطة', controller.activeProjects, Icons.folder_open, AppTheme.primaryGradient, '', onTap: () => setState(() => _currentIndex = 2)),
-                _buildKPICard('المتطوعون المتاحون', controller.availableWorkers, Icons.engineering,
-                    const LinearGradient(colors: [Colors.blue, Colors.indigo]), '', onTap: () => setState(() => _currentIndex = 3)),
-                _buildKPICard('السيارات المتاحة', controller.availableVehicles, Icons.airport_shuttle,
-                    const LinearGradient(colors: [Colors.teal, Colors.cyan]), '', onTap: () => Get.toNamed('/admin/vehicles')),
-                _buildKPICard('المستفيدون', controller.totalBeneficiaries, Icons.people,
-                    const LinearGradient(colors: [Colors.purple, Colors.deepPurple]), '', onTap: () => Get.toNamed('/admin/users')),
+                Text('المؤشرات الخيرية والميزانية', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 17, fontWeight: FontWeight.w800, fontFamily: 'Tajawal')),
+                if (controller.isSuperAdmin) 
+                  Obx(() => controller.isLoading.value 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : IconButton(
+                        icon: Icon(Icons.sync_rounded, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7), size: 20),
+                        tooltip: 'إعادة مزامنة الإحصائيات',
+                        onPressed: () => controller.recalculateGlobalDonations(),
+                      )
+                  ),
               ],
             ),
+            const SizedBox(height: 14),
+            const StatsGrid(),
+            
+            const SizedBox(height: 24),
+            
+            // --- Mission Control Map ---
+            MissionControlMap(),
+            
             const SizedBox(height: 24),
             Obx(() => controller.urgentRequests.isNotEmpty
                 ? Column(
@@ -629,83 +516,91 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   )
                 : const SizedBox.shrink()),
             const SizedBox(height: 24),
-            _buildSectionHeader('📈 التبرعات آخر 6 أشهر', ''),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () => Get.toNamed('/admin/reports'),
-              child: Container(
-                decoration: AppTheme.glassDecoration,
-                padding: const EdgeInsets.all(16),
-                height: 200,
-                child: Obx(() {
-                  if (controller.donationsLastSixMonths.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.query_stats, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), size: 40),
-                          const SizedBox(height: 8),
-                          Text('لا توجد بيانات تبرعات كافية', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12, fontFamily: 'Tajawal')),
-                        ],
-                      ),
-                    );
-                  }
-                  return LineChart(
-                        LineChartData(
-                          gridData: FlGridData(
-                              show: true, drawVerticalLine: false, getDrawingHorizontalLine: (_) => FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75), strokeWidth: 1)),
-                          titlesData: FlTitlesData(
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                getTitlesWidget: (v, _) {
-                                  final index = v.toInt();
-                                  if (index < 0 || index >= controller.donationsLastSixMonths.length) return const SizedBox.shrink();
-                                  return Text(
-                                    controller.donationsLastSixMonths[index]['month'],
-                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10));
-                                },
+
+            // --- Charity Analytics (Super Admin Only) ---
+            RoleGuard(
+              allowedRoles: const [UserRole.superAdmin],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   _buildSectionHeader('📈 اتجاهات العطاء الإنساني', ''),
+                  const SizedBox(height: 12),
+                  Container(
+                    decoration: AppTheme.glassDecoration,
+                    padding: const EdgeInsets.all(16),
+                    height: 200,
+                    child: Obx(() {
+                      if (controller.donationsLastSixMonths.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.query_stats, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15), size: 40),
+                              const SizedBox(height: 8),
+                              Text('لا توجد بيانات تبرعات كافية', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12, fontFamily: 'Tajawal')),
+                            ],
+                          ),
+                        );
+                      }
+                      return LineChart(
+                            LineChartData(
+                              gridData: FlGridData(
+                                  show: true, drawVerticalLine: false, getDrawingHorizontalLine: (_) => FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15), strokeWidth: 1)),
+                              titlesData: FlTitlesData(
+                                bottomTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    getTitlesWidget: (v, _) {
+                                      final index = v.toInt();
+                                      if (index < 0 || index >= controller.donationsLastSixMonths.length) return const SizedBox.shrink();
+                                      return Text(
+                                        controller.donationsLastSixMonths[index]['month'],
+                                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10));
+                                    },
+                                  ),
+                                ),
+                                leftTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    reservedSize: 30,
+                                    getTitlesWidget: (v, _) => Text('${v.toInt()}k', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
+                                  ),
+                                ),
+                                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              ),
+                              borderData: FlBorderData(show: false),
+                              lineBarsData: [
+                                LineChartBarData(
+                                  spots: controller.donationsLastSixMonths
+                                      .asMap()
+                                      .entries
+                                      .map((e) => FlSpot(e.key.toDouble(), (e.value['amount'] ?? 0.0).toDouble()))
+                                      .toList(),
+                                  isCurved: true,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  barWidth: 3,
+                                  belowBarData: BarAreaData(show: true, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)),
+                                  dotData: FlDotData(
+                                      show: true,
+                                      getDotPainter: (spot, percent, bar, index) =>
+                                          FlDotCirclePainter(radius: 4, color: Theme.of(context).colorScheme.primary, strokeColor: Theme.of(context).colorScheme.surface, strokeWidth: 2)),
+                                )
+                              ],
+                              lineTouchData: LineTouchData(
+                                touchTooltipData: LineTouchTooltipData(
+                                  getTooltipItems: (spots) => spots
+                                      .map((s) => LineTooltipItem('${s.y.toInt()} دج',
+                                          TextStyle(color: Theme.of(context).colorScheme.primary, fontFamily: 'Tajawal', fontWeight: FontWeight.w600)))
+                                      .toList(),
+                                ),
                               ),
                             ),
-                            leftTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 30,
-                                getTitlesWidget: (v, _) => Text('${v.toInt()}k', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
-                              ),
-                            ),
-                            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          ),
-                          borderData: FlBorderData(show: false),
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: controller.donationsLastSixMonths
-                                  .asMap()
-                                  .entries
-                                  .map((e) => FlSpot(e.key.toDouble(), (e.value['amount'] ?? 0.0).toDouble()))
-                                  .toList(),
-                              isCurved: true,
-                              color: Theme.of(context).colorScheme.primary,
-                              barWidth: 3,
-                              belowBarData: BarAreaData(show: true, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75)),
-                              dotData: FlDotData(
-                                  show: true,
-                                  getDotPainter: (spot, percent, bar, index) =>
-                                      FlDotCirclePainter(radius: 4, color: Theme.of(context).colorScheme.primary, strokeColor: Theme.of(context).colorScheme.surface, strokeWidth: 2)),
-                            )
-                          ],
-                          lineTouchData: LineTouchData(
-                            touchTooltipData: LineTouchTooltipData(
-                              getTooltipItems: (spots) => spots
-                                  .map((s) => LineTooltipItem('${s.y.toInt()} دج',
-                                      TextStyle(color: Theme.of(context).colorScheme.primary, fontFamily: 'Tajawal', fontWeight: FontWeight.w600)))
-                                  .toList(),
-                            ),
-                          ),
-                        ),
-                      );
-                }),
+                          );
+                    }),
+                  ),
+                  const SizedBox(height: 24),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -723,7 +618,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       child: Obx(() {
                         if (controller.serviceTypeDistribution.isEmpty || 
                             (controller.serviceTypeDistribution.length == 1 && controller.serviceTypeDistribution[0]['name'] == 'لا يوجد')) {
-                          return Center(child: Icon(Icons.pie_chart_outline, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), size: 50));
+                          return Center(child: Icon(Icons.pie_chart_outline, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15), size: 50));
                         }
                         return PieChart(PieChartData(
                             sections: controller.serviceTypeDistribution
@@ -753,7 +648,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                       children: [
                                         Container(width: 12, height: 12, decoration: BoxDecoration(color: item['color'], borderRadius: BorderRadius.circular(3))),
                                         const SizedBox(width: 8),
-                                        Expanded(child: Text(AppConstants.translateServiceType(item['name']), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11, fontFamily: 'Tajawal'), overflow: TextOverflow.ellipsis)),
+                                        Expanded(child: Text(item['name'], style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11, fontFamily: 'Tajawal'), overflow: TextOverflow.ellipsis)),
                                       ],
                                     ),
                                   ))
@@ -782,22 +677,50 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 barRods: [
                                   BarChartRodData(
                                     toY: item['count'].toDouble(),
-                                    gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.9)]),
-                                    width: 8,
-                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                                    gradient: LinearGradient(
+                                      colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary],
+                                      begin: Alignment.bottomCenter,
+                                      end: Alignment.topCenter,
+                                    ),
+                                    width: 14,
+                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                                    backDrawRodData: BackgroundBarChartRodData(
+                                      show: true,
+                                      toY: (controller.monthlyRequests.isEmpty 
+                                            ? 1.0 
+                                            : controller.monthlyRequests.map((e) => (e['count'] as num).toDouble()).reduce((a, b) => a > b ? a : b) + 1).toDouble(),
+                                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                    ),
                                   )
                                 ],
                               ))
                           .toList(),
                       gridData: const FlGridData(show: false),
-                      borderData: FlBorderData(show: false),
+                      borderData: FlBorderData(
+                        show: true,
+                        border: Border(
+                          bottom: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1), width: 1),
+                        ),
+                      ),
                       titlesData: FlTitlesData(
                         bottomTitles: AxisTitles(
                             sideTitles: SideTitles(
                                 showTitles: true,
+                                reservedSize: 28,
                                 getTitlesWidget: (v, meta) {
                                   if (v.toInt() % 5 != 0 && v.toInt() != 1) return const SizedBox.shrink();
-                                  return Text('${v.toInt()}', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 9));
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: Text(
+                                      '${v.toInt()}', 
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onSurface, 
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                        fontFamily: 'Tajawal'
+                                      )
+                                    ),
+                                  );
                                 },
                             ),
                         ),
@@ -821,7 +744,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   children: controller.activeProjectsList
                       .take(3)
                       .map((project) {
-                        final progress = project.budget > 0 ? project.collected / project.budget : 0.0;
+                        final progress = project.progressRatio;
                         return GestureDetector(
                               onTap: () => Get.to(() => ProjectDetailScreen(project: project)),
                               child: Container(
@@ -854,17 +777,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                           const SizedBox(height: 6),
                                           Row(
                                             children: [
-                                              Text(
-                                                '${project.collected.toInt()} دج',
-                                                style: TextStyle(
-                                                    color: Theme.of(context).colorScheme.primary,
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w600
-                                                )
+                                              ScrollAnimations.numberCounter(
+                                                value: project.collected.toDouble(),
+                                                style: GoogleFonts.tajawal(
+                                                  color: Theme.of(context).colorScheme.onSurface,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w900,
+                                                ),
                                               ),
                                               const Spacer(),
                                               Text(
-                                                'من ${project.budget.toInt()} دج',
+                                                'من ${_formatDzd(project.budget)}',
                                                 style: TextStyle(
                                                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                                                     fontSize: 11
@@ -877,7 +800,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                             height: 3,
                                             width: double.infinity,
                                             decoration: BoxDecoration(
-                                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                                               borderRadius: BorderRadius.circular(2),
                                             ),
                                             child: FractionallySizedBox(
@@ -885,7 +808,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                               widthFactor: progress.clamp(0.0, 1.0),
                                               child: Container(
                                                 decoration: BoxDecoration(
-                                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                                                   borderRadius: BorderRadius.circular(2),
                                                 ),
                                               ),
@@ -895,7 +818,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Icon(Icons.arrow_forward_ios, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), size: 14),
+                                    Icon(Icons.arrow_forward_ios, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), size: 14),
                                   ],
                                 ),
                               ),
@@ -904,66 +827,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       .toList(),
                 )),
             const SizedBox(height: 16),
-            _buildSectionHeader('🔧 تحديثات ميدانية', ''),
-            const SizedBox(height: 12),
-            Obx(() => Column(
-                  children: controller.fieldUpdates
-                      .take(5)
-                      .map((update) => GestureDetector(
-                            onTap: () {
-                               if (update.projectId != null) {
-                                  try {
-                                    final project = controller.activeProjectsList.firstWhere((p) => p.id == update.projectId);
-                                    Get.to(() => ProjectDetailScreen(project: project));
-                                  } catch (e) {
-                                    debugPrint('❌ [AdminDashboard] field update navigation error: $e');
-                                  }
-                               } else if (update.requestId != null) {
-                                  Get.toNamed('/admin/request-detail', arguments: update.requestId);
-                               }
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              decoration: BoxDecoration(
-                                  color: Theme.of(context).cardColor,
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border(right: BorderSide(color: Theme.of(context).colorScheme.primary, width: 3))),
-                              padding: const EdgeInsets.all(14),
-                              child: Row(
-                                children: [
-                                  Obx(() {
-                                    final imageUrl = controller.workerAvatarsCache[update.workerId];
-                                    return CircleAvatar(
-                                      radius: 20,
-                                      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                                      backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? CachedNetworkImageProvider(imageUrl) as ImageProvider : null,
-                                      child: (imageUrl == null || imageUrl.isEmpty)
-                                        ? Text(update.workerName.isNotEmpty ? update.workerName[0] : '?',
-                                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700))
-                                        : null,
-                                    );
-                                  }),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(update.workerName, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600, fontSize: 13)),
-                                        Text(update.description, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12), maxLines: 2),
-                                        Text(_timeAgo(update.createdAt), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), fontSize: 10)),
-                                      ],
-                                    ),
-                                  ),
-                                  if (update.imageUrl != null)
-                                    ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: CachedNetworkImage(imageUrl: update.imageUrl!, width: 50, height: 50, fit: BoxFit.cover)),
-                                ],
-                              ),
-                            ),
-                          ))
-                      .toList(),
-                )),
+            const ActivityPulse(),
             const SizedBox(height: 16),
             _buildSectionHeader('💚 آخر التبرعات', ''),
             const SizedBox(height: 12),
@@ -1014,12 +878,45 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     ),
                               title: Text(donation.donorName, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
                               subtitle: Text(donation.projectName, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
-                              trailing: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                mainAxisAlignment: MainAxisAlignment.center,
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text('${donation.amount.toInt()} دج', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700)),
-                                  Text(intl.DateFormat('MM/dd').format(donation.date), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(_formatDzd(donation.amount), style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700)),
+                                      Text(intl.DateFormat('MM/dd').format(donation.date), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
+                                    ],
+                                  ),
+                                  if (controller.isSuperAdmin) ...[
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_forever_rounded, color: Colors.redAccent, size: 20),
+                                      onPressed: () {
+                                        Get.dialog(
+                                          AlertDialog(
+                                            backgroundColor: Theme.of(context).cardColor,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                            title: const Text('تأكيد الحذف ⚠️', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+                                            content: Text('هل أنت متأكد من حذف تبرع بقيمة ${_formatDzd(donation.amount)}؟ سيتم تحديث كافة الإحصائيات تلقائياً.',
+                                                style: const TextStyle(fontFamily: 'Tajawal')),
+                                            actions: [
+                                              TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
+                                              ElevatedButton(
+                                                style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+                                                onPressed: () {
+                                                  Get.back();
+                                                  controller.deleteDonation(donation);
+                                                },
+                                                child: const Text('حذف نهائي', style: TextStyle(fontWeight: FontWeight.bold)),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
                                 ],
                               ),
                               tileColor: Theme.of(context).cardColor,
@@ -1035,50 +932,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildKPICard(String label, RxInt value, IconData icon, Gradient gradient, String suffix, {VoidCallback? onTap}) {
-    return VisualEffects.glassMorphism(
-      borderRadius: BorderRadius.circular(20),
-      opacity: 0.1,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: gradient,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
-                    child: Icon(icon, color: Colors.white, size: 18),
-                  ),
-                  if (suffix.isNotEmpty) Text(suffix, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Obx(() => FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerRight,
-                child: ScrollAnimations.numberCounter(
-                    value: value.value,
-                    isCurrency: suffix == 'دج',
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
-                ),
-              )),
-              Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildUrgentRequestCard(ServiceRequestModel request) {
     final color = request.urgency == 'emergency' ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary;
     return GestureDetector(
@@ -1088,14 +941,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
         decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withValues(alpha: 0.75), width: 1.5),
-            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.75), blurRadius: 10)]),
+            border: Border.all(color: color.withValues(alpha: 0.15), width: 1.5),
+            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 10)]),
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.75), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.15), shape: BoxShape.circle),
                 child: Icon(Icons.emergency_outlined, color: color, size: 24)),
             const SizedBox(width: 12),
             Expanded(
@@ -1111,7 +964,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                   const SizedBox(height: 4),
                   Text(request.requesterName, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
-                  Text('${request.wilaya} - ${_timeAgo(request.createdAt)}', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), fontSize: 11)),
+                  Text('${request.wilaya} - ${_timeAgo(request.createdAt)}', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
                 ],
               ),
             ),
@@ -1125,6 +978,33 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+
+  Widget _buildHumanityChallengesSection() {
+    return Obx(() {
+      final role = authController.currentUser.value?.role;
+      final isAdminOrSuper = role == UserRole.superAdmin || role == UserRole.admin;
+      if (!isAdminOrSuper) return const SizedBox.shrink();
+      if (controller.activeGoals.isEmpty) return const SizedBox.shrink();
+      final canManage = role == UserRole.superAdmin;
+      
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            '🎯 أهدافنا الإنسانية الكبرى',
+            canManage ? 'تعديل' : '',
+            onTap: canManage ? () => Get.to(() => ManageStrategicGoalsScreen()) : null,
+          ),
+          const SizedBox(height: 12),
+          Text('ساهم وكن جزءاً من مسيرة الخير والنمو بجمعيتنا',
+            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal')),
+          const SizedBox(height: 16),
+          ...controller.activeGoals.map((goal) => StrategicGoalCard(goal: goal)),
+          const SizedBox(height: 24),
+        ],
+      );
+    });
+  }
 
   Widget _buildSectionHeader(String title, String actionText, {VoidCallback? onTap}) {
     return Row(
@@ -1146,72 +1026,80 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildManagementTab() {
-    final user = authController.currentUser.value;
+    return Obx(() {
+      final user = authController.currentUser.value;
 
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        Container(
-          padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
-          decoration: BoxDecoration(
-            gradient: Theme.of(context).brightness == Brightness.dark
-              ? LinearGradient(colors: [Theme.of(context).scaffoldBackgroundColor, Theme.of(context).cardColor], begin: Alignment.topCenter, end: Alignment.bottomCenter)
-              : LinearGradient(
-                  colors: [Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), Theme.of(context).colorScheme.surface],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsetsDirectional.fromSTEB(24, 60, 24, 30),
+            decoration: BoxDecoration(
+              gradient: Theme.of(context).brightness == Brightness.dark
+                ? LinearGradient(colors: [Theme.of(context).scaffoldBackgroundColor, Theme.of(context).cardColor], begin: Alignment.topCenter, end: Alignment.bottomCenter)
+                : LinearGradient(
+                    colors: [Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), Theme.of(context).colorScheme.surface],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 35,
+                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                  backgroundImage: (user?.profileImage != null && user!.profileImage!.isNotEmpty)
+                      ? CachedNetworkImageProvider(user.profileImage!) as ImageProvider
+                      : null,
+                  child: (user?.profileImage == null || user!.profileImage!.isEmpty)
+                      ? Text(user != null && user.name.isNotEmpty ? user.name[0] : 'A',
+                          style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 28, fontWeight: FontWeight.w800))
+                      : null,
                 ),
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 35,
-                backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                backgroundImage: (user?.profileImage != null && user!.profileImage!.isNotEmpty)
-                    ? CachedNetworkImageProvider(user.profileImage!) as ImageProvider
-                    : null,
-                child: (user?.profileImage == null || user!.profileImage!.isEmpty)
-                    ? Text(user != null && user.name.isNotEmpty ? user.name[0] : 'A',
-                        style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 28, fontWeight: FontWeight.w800))
-                    : null,
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(user?.name ?? 'المدير', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.w700)),
-                    Text(user?.role.displayName ?? '', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600)),
-                    Text(user?.email ?? '', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(user?.name ?? 'المدير', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.w700)),
+                      Text(user?.role.displayName ?? '', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600)),
+                      Text(user?.email ?? '', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
                 ),
-              ),
-              IconButton(
-                onPressed: () => Get.toNamed('/profile'),
-                icon: Icon(Icons.edit_outlined, color: Theme.of(context).colorScheme.primary),
-              ),
-            ],
+                IconButton(
+                  onPressed: () => Get.toNamed('/profile'),
+                  icon: Icon(Icons.edit_outlined, color: Theme.of(context).colorScheme.primary),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
-        if (user?.role.name == 'superAdmin')
-          _buildSettingsTile(Icons.people, 'إدارة المستخدمين', 'موافقة وإدارة الحسابات', () => Get.toNamed('/admin/users')),
-        _buildSettingsTile(Icons.miscellaneous_services, 'أنواع الخدمات', 'إضافة وتعديل أنواع الخدمات', () => Get.toNamed('/admin/service-types')),
-        _buildSettingsTile(Icons.task, 'أنواع المهام', 'إضافة وتعديل أنواع المهام', () => Get.toNamed('/admin/task-types')),
-        _buildSettingsTile(Icons.airport_shuttle, 'سيارات الجنازة', 'إدارة الأسطول', () => Get.toNamed('/admin/vehicles')),
-        _buildSettingsTile(Icons.bar_chart, 'التقارير', 'تقارير شهرية وسنوية PDF', () => Get.toNamed('/admin/reports')),
-        _buildSettingsTile(Icons.campaign_rounded, 'إعلان عام', 'إرسال تنبيه لجميع المشتركين', () => _showGlobalAnnouncementDialog()),
-        const SizedBox(height: 12),
-        _buildSettingsTile(Icons.inbox_rounded, 'صندوق الرسائل', 'جميع محادثاتك الخاصة والجماعية', () => setState(() => _currentIndex = _inboxIndex)),
-        const SizedBox(height: 12),
-        Divider(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75), indent: 24, endIndent: 24),
-        _buildSettingsTile(ThemeService().themeIcon, 'مظهر التطبيق', ThemeService().themeModeName, () => AppConstants.toggleTheme()),
-        Divider(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75), indent: 24, endIndent: 24),
-        _buildSettingsTile(Icons.logout, 'تسجيل الخروج', 'الخروج من الحساب', () => _showLogoutConfirmation(), isDestructive: true),
-        const SizedBox(height: 50),
-      ],
-    );
+          const SizedBox(height: 16),
+          // حصر ميزات المدير العام بشكل صارم ورياكتيف
+          if (controller.isSuperAdmin) ...[
+            _buildSettingsTile(Icons.radar_rounded, 'رادار البث التفاعلي 📡', 'مراقبة المشاهدات والتفاعل مع الإعلانات', () => Get.toNamed(AppRoutes.adminBroadcastMonitor)),
+            _buildSettingsTile(Icons.campaign_rounded, 'إعلان عام 📢', 'إرسال نداء فوري جديد لجميع المستخدمين', _showGlobalAnnouncementDialog),
+            const SizedBox(height: 12),
+            _buildSettingsTile(Icons.people, 'إدارة المستخدمين', 'موافقة وإدارة الحسابات', () => Get.toNamed('/admin/users')),
+            _buildSettingsTile(Icons.miscellaneous_services, 'أنواع الخدمات', 'إضافة وتعديل أنواع الخدمات', () => Get.toNamed('/admin/service-types')),
+            _buildSettingsTile(Icons.task, 'أنواع المهام', 'إضافة وتعديل أنواع المهام', () => Get.toNamed('/admin/task-types')),
+            _buildSettingsTile(Icons.track_changes_outlined, 'الأهداف الخيرية', 'تعديل أوامر الجمعية', () => Get.toNamed(AppRoutes.adminStrategicGoals)),
+            _buildSettingsTile(Icons.bar_chart, 'التقارير وإحصائيات المردود', 'تقارير شهرية وسنوية شاملة ومفصلة PDF', () => Get.toNamed('/admin/reports')),
+          ],
+          _buildSettingsTile(Icons.airport_shuttle, 'سيارات الجنازة', 'إدارة السيارات', () => Get.toNamed('/admin/vehicles')),
+          const SizedBox(height: 12),
+          _buildSettingsTile(Icons.inbox_rounded, 'صندوق الرسائل', 'جميع محادثاتك الخاصة والجماعية', () => setState(() => _currentIndex = 4)), // Index 4 is Inbox
+          const SizedBox(height: 12),
+          Divider(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15), indent: 24, endIndent: 24),
+          _buildSettingsTile(ThemeService().themeIcon, 'مظهر التطبيق', ThemeService().themeModeName, () => AppConstants.toggleTheme()),
+          Divider(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15), indent: 24, endIndent: 24),
+          _buildSettingsTile(Icons.logout, 'تسجيل الخروج', 'الخروج من الحساب', () => _showLogoutConfirmation(), isDestructive: true),
+          const SizedBox(height: 50),
+        ],
+      );
+    });
   }
 
   void _showLogoutConfirmation() {
@@ -1264,14 +1152,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
           child: Icon(icon, color: color, size: 22),
         ),
         title: Text(title, style: TextStyle(color: isDestructive ? color : Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
         subtitle: subtitle.isNotEmpty ? Text(subtitle, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)) : null,
         trailing: showToggle
             ? Switch(value: Theme.of(context).brightness == Brightness.dark, onChanged: (v) => AppConstants.toggleTheme())
-            : Icon(Icons.arrow_forward_ios, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), size: 14),
+            : Icon(Icons.arrow_forward_ios, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15), size: 14),
         onTap: onTap,
       ),
     );
@@ -1286,8 +1174,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
       AlertDialog(
         backgroundColor: Theme.of(Get.context!).cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('إرسال إعلان عام 📢',
-            style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+        title: Column(
+          children: [
+            const Text('إرسال نداء عام تفاعلي 📢',
+                style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Tajawal', fontSize: 18)),
+            const SizedBox(height: 4),
+            Text('سيتم تتبع المشاهدات وظهورها في الرادار',
+                style: TextStyle(fontSize: 11, color: Theme.of(Get.context!).colorScheme.onSurfaceVariant, fontWeight: FontWeight.normal)),
+          ],
+        ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1295,14 +1190,33 @@ class _AdminDashboardState extends State<AdminDashboard> {
               TextField(
                 controller: titleCtrl,
                 style: TextStyle(color: Theme.of(Get.context!).colorScheme.onSurface),
-                decoration: AppTheme.inputDecoration('عنوان الإعلان...', Icons.title_rounded),
+                decoration: AppTheme.inputDecoration('عنوان النداء (مثلاً: نداء استغاثة عاجل)', Icons.title_rounded),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: bodyCtrl,
                 maxLines: 4,
                 style: TextStyle(color: Theme.of(Get.context!).colorScheme.onSurface),
-                decoration: AppTheme.inputDecoration('محتوى الرسالة...', Icons.description_outlined),
+                decoration: AppTheme.inputDecoration('محتوى النداء وتوجيهات للمجتمع...', Icons.description_outlined),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(Get.context!).colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Theme.of(Get.context!).colorScheme.primary.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 16, color: Theme.of(Get.context!).colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('هذا النظام لا يرسل إشعارات PUSH هادئة، بل يظهر كبطاقة تفاعلية داخل التطبيق.',
+                        style: TextStyle(fontSize: 10, color: Theme.of(Get.context!).colorScheme.primary)),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1312,18 +1226,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
           Obx(() => controller.isLoading.value
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
               : AppTheme.gradientButton(
-                  text: 'إرسال للكل',
-                  icon: Icons.send_rounded,
-                  onPressed: () {
+                  text: 'نشر النداء وتفعيل الرادار',
+                  icon: Icons.rocket_launch_rounded,
+                  onPressed: () async {
                     if (titleCtrl.text.isEmpty || bodyCtrl.text.isEmpty) {
                       Get.snackbar('تنبيه', 'يرجى ملء جميع الحقول');
                       return;
                     }
                     Get.back();
-                    controller.sendGlobalAnnouncement(
+                    await controller.sendGlobalBroadcast(
                       title: titleCtrl.text,
                       body: bodyCtrl.text,
                     );
+                    // فتح الرادار تلقائياً بعد الإرسال
+                    Get.toNamed(AppRoutes.adminBroadcastMonitor);
                   },
                 )),
         ],
@@ -1331,4 +1247,3 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 }
-

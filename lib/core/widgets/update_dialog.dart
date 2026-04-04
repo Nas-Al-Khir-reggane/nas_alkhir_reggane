@@ -47,7 +47,7 @@ class UpdateDialog extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.75),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -62,7 +62,7 @@ class UpdateDialog extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.75),
+                  color: Colors.blue.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -103,10 +103,10 @@ class UpdateDialog extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.white.withValues(alpha: 0.75) : Colors.grey.shade50,
+                  color: isDarkMode ? Colors.white.withValues(alpha: 0.15) : Colors.grey.shade50,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isDarkMode ? Colors.white.withValues(alpha: 0.75) : Colors.grey.shade200,
+                    color: isDarkMode ? Colors.white.withValues(alpha: 0.15) : Colors.grey.shade200,
                   ),
                 ),
                 child: Column(
@@ -170,7 +170,7 @@ class UpdateDialog extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       elevation: 4,
-                      shadowColor: Colors.blue.withValues(alpha: 0.75),
+                      shadowColor: Colors.blue.withValues(alpha: 0.15),
                     ),
                     child: Text(
                       "تحديث الآن",
@@ -190,7 +190,7 @@ class UpdateDialog extends StatelessWidget {
                 "* هذا التحديث ضروري لمتابعة استخدام التطبيق",
                 style: GoogleFonts.tajawal(
                   fontSize: 11,
-                  color: Colors.red.withValues(alpha: 0.75),
+                  color: Colors.red.withValues(alpha: 0.15),
                   fontStyle: FontStyle.italic,
                 ),
               ),

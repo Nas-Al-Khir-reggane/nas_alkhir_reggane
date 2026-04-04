@@ -35,7 +35,7 @@ class _BloodDonorProfileScreenState extends State<BloodDonorProfileScreen> {
             _buildSliverAppBar(user),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
+                padding: const EdgeInsetsDirectional.fromSTEB(20, 24, 20, 100),
                 child: Column(
                   children: [
                     _buildHeroCard(user),
@@ -80,7 +80,7 @@ class _BloodDonorProfileScreenState extends State<BloodDonorProfileScreen> {
             Positioned(
               right: -50,
               top: -50,
-              child: Icon(Icons.bloodtype, size: 250, color: Colors.white.withValues(alpha: 0.75)),
+              child: Icon(Icons.bloodtype, size: 250, color: Colors.white.withValues(alpha: 0.15)),
             ),
           ],
         ),
@@ -113,7 +113,7 @@ class _BloodDonorProfileScreenState extends State<BloodDonorProfileScreen> {
           ),
           boxShadow: [
             BoxShadow(
-              color: rankColor.withValues(alpha: 0.75),
+              color: rankColor.withValues(alpha: 0.15),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -124,7 +124,7 @@ class _BloodDonorProfileScreenState extends State<BloodDonorProfileScreen> {
             Positioned(
               top: -20,
               left: -20,
-              child: Icon(Icons.verified_user, size: 150, color: Colors.white.withValues(alpha: 0.75)),
+              child: Icon(Icons.verified_user, size: 150, color: Colors.white.withValues(alpha: 0.15)),
             ),
             Padding(
               padding: const EdgeInsets.all(24),
@@ -161,12 +161,12 @@ class _BloodDonorProfileScreenState extends State<BloodDonorProfileScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.75),
+                          color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(30),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.military_tech, color: Colors.amber, size: 20),
+                            const Icon(Icons.military_tech, color: AppTheme.goldAccent, size: 20),
                             const SizedBox(width: 6),
                             Text(rank, 
                               style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
@@ -193,7 +193,7 @@ class _BloodDonorProfileScreenState extends State<BloodDonorProfileScreen> {
         children: [
           _buildStatItem('تبرعات الدم', user.bloodDonationsCount.toString(), Icons.volunteer_activism, Colors.redAccent),
           const SizedBox(width: 16),
-          _buildStatItem('أرواح أُنقذت', (user.bloodDonationsCount * 3).toString(), Icons.favorite_rounded, Colors.pinkAccent),
+          _buildStatItem('أرواح أُنقذت', (user.bloodDonationsCount).toString(), Icons.favorite_rounded, Colors.pinkAccent),
         ],
       ),
     );
@@ -224,8 +224,9 @@ class _BloodDonorProfileScreenState extends State<BloodDonorProfileScreen> {
     final now = DateTime.now();
     final difference = now.difference(user.lastDonatedAt!);
     final daysPassed = difference.inDays;
-    final progress = (daysPassed / 30).clamp(0.0, 1.0);
-    final remaining = 30 - daysPassed;
+    final cooldownDays = user.smartDonationCoolOffDays;
+    final progress = (daysPassed / cooldownDays).clamp(0.0, 1.0);
+    final remaining = cooldownDays - daysPassed;
 
     return FadeInUp(
       delay: const Duration(milliseconds: 300),
@@ -373,7 +374,7 @@ class _BloodDonorProfileScreenState extends State<BloodDonorProfileScreen> {
                       leading: Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: (status == 'completed' ? Colors.green : Colors.orange).withValues(alpha: 0.75), 
+                          color: (status == 'completed' ? Colors.green : Colors.orange).withValues(alpha: 0.15), 
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -409,7 +410,7 @@ class _BloodDonorProfileScreenState extends State<BloodDonorProfileScreen> {
       decoration: AppTheme.glassDecoration,
       child: Column(
         children: [
-          Icon(Icons.history, color: AppTheme.textSecondary.withValues(alpha: 0.75), size: 40),
+          Icon(Icons.history, color: AppTheme.textSecondary.withValues(alpha: 0.15), size: 40),
           const SizedBox(height: 12),
           Text('لا يوجد سجل استجابات بعد', style: GoogleFonts.tajawal(color: AppTheme.textSecondary)),
         ],

@@ -80,7 +80,7 @@ class WorkersScreen extends StatelessWidget {
   Widget _buildAppBar(BuildContext context, WorkerManagementController controller) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 20, 16, 10),
         child: Row(
           children: [
             Expanded(
@@ -150,7 +150,7 @@ class WorkersScreen extends StatelessWidget {
               const SizedBox(width: 8),
               _buildTeamStat(context, 'مشغولون', controller.busyWorkers, AppTheme.warningColor, Icons.work_outline),
               const SizedBox(width: 8),
-              _buildTeamStat(context, 'السائقون', controller.fatalDrivers, const Color(0xFF4A148C), Icons.airport_shuttle),
+              _buildTeamStat(context, 'السائقون', controller.fatalDrivers, AppTheme.primaryGreen, Icons.airport_shuttle),
               const SizedBox(width: 8),
               _buildTeamStat(context, 'الإجمالي', controller.totalWorkers, AppTheme.primaryGreen, Icons.group),
             ],
@@ -205,7 +205,7 @@ class WorkersScreen extends StatelessWidget {
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.only(left: 8),
+                margin: const EdgeInsetsDirectional.only(start: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   gradient: isSelected ? AppTheme.primaryGradient : null,
@@ -252,7 +252,7 @@ class WorkersScreen extends StatelessWidget {
                   margin: const EdgeInsets.symmetric(horizontal: 3),
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    color: isSelected ? activeColor.withValues(alpha: 0.75) : Theme.of(context).cardColor,
+                    color: isSelected ? activeColor.withValues(alpha: 0.15) : Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: isSelected ? activeColor : AppTheme.glassBorder),
                   ),
@@ -309,7 +309,7 @@ class WorkersScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: AppTheme.cardShadow,
           border: Border.all(
-              color: worker.isAvailable ? AppTheme.glassBorder : AppTheme.warningColor.withValues(alpha: 0.75)),
+              color: worker.isAvailable ? AppTheme.glassBorder : AppTheme.warningColor.withValues(alpha: 0.15)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -361,7 +361,7 @@ class WorkersScreen extends StatelessWidget {
                         ),
                         Row(
                           children: [
-                            const Icon(Icons.star, color: Colors.amber, size: 14),
+                            const Icon(Icons.star, color: AppTheme.goldAccent, size: 14),
                             const SizedBox(width: 2),
                             Text(worker.rating.toStringAsFixed(1),
                                 style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
@@ -371,7 +371,7 @@ class WorkersScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      decoration: BoxDecoration(color: roleColor.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(color: roleColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -450,7 +450,7 @@ class WorkersScreen extends StatelessWidget {
                             const PopupMenuItem(
                                 value: 'rate',
                                 child: Row(children: [
-                                  Icon(Icons.star_outline, color: Colors.amber, size: 18),
+                                  Icon(Icons.star_outline, color: AppTheme.goldAccent, size: 18),
                                   Text(' تقييم')
                                 ])),
                             PopupMenuItem(
@@ -488,7 +488,7 @@ class WorkersScreen extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -520,7 +520,7 @@ class WorkersScreen extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.people_outline, size: 80, color: AppTheme.textHint.withValues(alpha: 0.75)),
+          Icon(Icons.people_outline, size: 80, color: AppTheme.textHint.withValues(alpha: 0.15)),
           const SizedBox(height: 16),
           Text('لا يوجد عمال مطابقين للبحث', style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
         ],
@@ -608,7 +608,7 @@ class WorkersScreen extends StatelessWidget {
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           decoration: BoxDecoration(
-                            color: isSelected ? color.withValues(alpha: 0.75) : Theme.of(context).cardColor,
+                            color: isSelected ? color.withValues(alpha: 0.15) : Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                                 color: isSelected ? color : AppTheme.glassBorder, width: isSelected ? 2 : 1),
@@ -744,7 +744,7 @@ class WorkersScreen extends StatelessWidget {
                           leading: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                                color: AppTheme.primaryGreen.withValues(alpha: 0.75),
+                                color: AppTheme.primaryGreen.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10)),
                             child: const Icon(Icons.volunteer_activism, color: AppTheme.primaryGreen, size: 20),
                           ),
@@ -822,7 +822,7 @@ class WorkersScreen extends StatelessWidget {
           onTap: () => onRatingChanged(star.toDouble()),
           child: Icon(
             star <= currentRating ? Icons.star : Icons.star_border,
-            color: Colors.amber,
+            color: AppTheme.goldAccent,
             size: 36,
           ),
         );

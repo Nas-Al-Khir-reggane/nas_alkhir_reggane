@@ -72,7 +72,7 @@ class AdminCommittedDonors extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: isPaidThisMonth ? AppTheme.successColor.withValues(alpha: 0.15) : AppTheme.errorColor.withValues(alpha: 0.75),
+                          color: isPaidThisMonth ? AppTheme.successColor.withValues(alpha: 0.15) : AppTheme.errorColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(isPaidThisMonth ? 'نشط' : 'متوقف', 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:ui' as ui;
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -31,6 +33,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   String? selectedWilaya;
   bool isReordering = false;
+  List<File> selectedFiles = [];
 
   bool get isAdmin => controller.currentBeneficiary.value?.role == UserRole.admin || 
                    controller.currentBeneficiary.value?.role == UserRole.superAdmin;
@@ -52,6 +55,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     setState(() {
       selectedService = service;
       selectedWilaya = null;
+      selectedFiles.clear();
       dynamicControllers.clear();
       for (var field in service.fields) {
         dynamicControllers[field] = TextEditingController();
@@ -79,6 +83,26 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       return;
     }
 
+    if (selectedService!.id == 'blood_donation' || selectedService!.id == 'blood_emergency') {
+      final patientName = (details['اسم المريض'] ?? details['المريض'] ?? beneficiaryNameController.text).toString().trim();
+      final bloodType = (details['الفصيلة'] ?? details['فصيلة الدم'] ?? details['bloodType']).toString().trim();
+      final hospital = (details['المستشفى'] ?? details['hospital']).toString().trim();
+      final contactPhone = (details['رقم الهاتف'] ?? details['رقم التواصل'] ?? beneficiaryPhoneController.text).toString().trim();
+
+      if (patientName.isEmpty || bloodType.isEmpty || hospital.isEmpty || contactPhone.isEmpty) {
+        Get.snackbar(
+          'بيانات ناقصة',
+          'طلبات التبرع بالدم تتطلب: اسم الحالة، الفصيلة، المستشفى، ورقم التواصل',
+          backgroundColor: Colors.orange.withValues(alpha: 0.2),
+          colorText: Colors.orange,
+        );
+        return;
+      }
+
+      details['اسم المريض'] = patientName;
+      details['رقم الهاتف'] = contactPhone;
+    }
+
     Map<String, dynamic> requestData = {
       'type': selectedService!.id,
       'typeName': selectedService!.name,
@@ -93,7 +117,43 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       requestData['beneficiaryAddress'] = beneficiaryAddressController.text;
     }
 
-    controller.submitRequest(requestData);
+    controller.submitRequest(requestData, attachments: selectedFiles);
+
+    // ✅ مسح النموذج بعد الإرسال
+    setState(() {
+      selectedService = null;
+      selectedFiles.clear();
+      dynamicControllers.forEach((_, ctrl) => ctrl.dispose());
+      dynamicControllers.clear();
+      selectedUrgency = 'normal';
+      selectedWilaya = null;
+    });
+    descriptionController.clear();
+    beneficiaryNameController.clear();
+    beneficiaryPhoneController.clear();
+    beneficiaryAddressController.clear();
+  }
+
+  Future<void> _pickFiles(StateSetter setModalState) async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+    );
+    if (result != null) {
+      setModalState(() {
+        for (var path in result.paths) {
+          if (path != null) {
+            File f = File(path);
+            if (f.lengthSync() <= 2 * 1024 * 1024) {
+              selectedFiles.add(f);
+            } else {
+              Get.snackbar('تنبيه', 'حجم الملف لا يمكن أن يتجاوز 2 ميغابايت');
+            }
+          }
+        }
+      });
+    }
   }
 
   void _showDetailsBottomSheet() {
@@ -132,13 +192,14 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              gradient: AppTheme.primaryGradient,
+                              color: AppConstants.getServiceColor(selectedService!.name).withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(15),
-                              boxShadow: [
-                                BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))
-                              ],
+                              border: Border.all(color: AppConstants.getServiceColor(selectedService!.name).withValues(alpha: 0.2)),
                             ),
-                            child: Icon(AppConstants.getIconFromName(selectedService!.icon), color: Colors.white, size: 28),
+                            child: Icon(
+                              AppConstants.getIconFromName(selectedService!.icon), 
+                              color: AppConstants.getServiceColor(selectedService!.name), 
+                              size: 28),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -201,6 +262,25 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         ),
                       ),
     
+                      if (selectedService!.id == 'dar_sabil' || selectedService!.name.contains('دار السبيل') || selectedService!.name == 'دار السبيل أدرار') ...[
+                        const SizedBox(height: 24),
+                        _buildSectionHeader('إرفاق وثائق (اختياري)', Icons.attach_file_rounded),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: () => _pickFiles(setModalState),
+                          icon: const Icon(Icons.upload_file),
+                          label: const Text('اختر ملفات (صور أو PDF بحد أقصى 2 م.ب)'),
+                        ),
+                        if (selectedFiles.isNotEmpty)
+                          Wrap(
+                            spacing: 8,
+                            children: selectedFiles.map((f) => Chip(
+                              label: Text(f.path.split('/').last, style: const TextStyle(fontSize: 10)),
+                              onDeleted: () => setModalState(() => selectedFiles.remove(f)),
+                            )).toList(),
+                          )
+                      ],
+
                       const SizedBox(height: 24),
                       _buildSectionHeader('درجة استعجال الطلب', Icons.bolt_rounded),
                       const SizedBox(height: 12),
@@ -304,15 +384,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   }
 
   Widget _buildSmartField(String field, StateSetter setModalState) {
+    final config = selectedService?.fieldConfigs[field] ?? 'text';
     final text = field.toLowerCase();
     
-    if (text.contains('التاريخ والوقت') || (text.contains('تاريخ') && text.contains('وقت'))) {
-      return _buildPickerField(field, false, false, true);
-    }
-    if (text.contains('تاريخ')) return _buildPickerField(field, true, false, false);
-    if (text.contains('وقت')) return _buildPickerField(field, false, true, false);
-
-    if (text.contains('ولاية')) {
+    // 1. استخدام الإعدادات الصريحة (fieldConfigs) إذا وجدت
+    if (config == 'date') return _buildPickerField(field, true, false, true);
+    
+    if (config == 'wilaya' || text.contains('ولاية')) {
       return _buildDropdownField(field, AppConstants.algeriaWilayas, 'اختر الولاية...', (val) {
         setModalState(() {
           selectedWilaya = val;
@@ -320,27 +398,35 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         });
       });
     }
-
+    
     if (text.contains('بلدية')) {
       List<String> communes = selectedWilaya != null ? AppConstants.getCommunesForWilaya(selectedWilaya!) : [];
       return _buildDropdownField(field, communes, selectedWilaya == null ? 'اختر الولاية أولاً' : 'اختر البلدية...', (val) => dynamicControllers[field]!.text = val ?? '', enabled: selectedWilaya != null);
     }
 
-    if (text.contains('فصيلة')) {
+    if (config == 'blood_type' || text.contains('فصيلة')) {
       return _buildDropdownField(field, ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], 'اختر فصيلة الدم...', (val) => dynamicControllers[field]!.text = val ?? '');
     }
 
-    if (text.contains('جنس')) return _buildChoiceChips(field, ['ذكر', 'أنثى'], setModalState);
-
-    if (text.contains('مكان الغسل')) {
-      return _buildDropdownField(field, ['المنزل', 'المسجد', 'مغسلة المستشفى', 'أخرى'], 'اختر مكان الغسل...', (val) => dynamicControllers[field]!.text = val ?? '');
+    if (config == 'gender' || text.contains('جنس')) {
+      return _buildChoiceChips(field, ['ذكر', 'أنثى'], setModalState);
     }
 
-    if (text.contains('المستلزمات')) {
-      return _buildDropdownField(field, ['كفن كامل شامل', 'أدوات غسل فقط', 'لا أحتاج (متوفرة)', 'أحتاج متطوع فقط'], 'هل تحتاج مستلزمات؟', (val) => dynamicControllers[field]!.text = val ?? '');
+    if (config == 'selection') {
+      if (text.contains('مكان الغسل')) {
+        return _buildDropdownField(field, ['المنزل', 'المسجد', 'مغسلة المستشفى', 'أخرى'], 'اختر مكان الغسل...', (val) => dynamicControllers[field]!.text = val ?? '');
+      }
+      if (text.contains('المستلزمات')) {
+        return _buildDropdownField(field, ['كفن كامل شامل', 'أدوات غسل فقط', 'لا أحتاج (متوفرة)', 'أحتاج متطوع فقط'], 'هل تحتاج مستلزمات؟', (val) => dynamicControllers[field]!.text = val ?? '');
+      }
+      if (text.contains('نوع العمل')) {
+        return _buildDropdownField(field, ['بناء جديد', 'ترميم جزئي', 'صيانة كهرباء/سباكة', 'أخرى'], 'اختر نوع العمل...', (val) => dynamicControllers[field]!.text = val ?? '');
+      }
+      // Fallback selection if no specific logic
+      return _buildDropdownField(field, ['خيار 1', 'خيار 2'], 'اختر...', (val) => dynamicControllers[field]!.text = val ?? '');
     }
 
-    if (text.contains('عدد') || text.contains('كمية') || text.contains('مبلغ')) {
+    if (config == 'number' || text.contains('عدد') || text.contains('كمية') || text.contains('مبلغ')) {
       bool isAmount = text.contains('مبلغ');
       return TextField(
         controller: dynamicControllers[field],
@@ -353,6 +439,11 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       );
     }
 
+    // 2. المنطق الذكي المبني على الاسم (Fallback)
+    if (text.contains('التاريخ والوقت') || (text.contains('تاريخ') && text.contains('وقت'))) {
+      return _buildPickerField(field, false, false, true);
+    }
+    if (text.contains('تاريخ')) return _buildPickerField(field, true, false, false);
     if (text.contains('هاتف') || text.contains('جوال')) {
       return TextField(
         controller: dynamicControllers[field],
@@ -409,7 +500,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   Widget _buildDropdownField(String field, List<String> items, String hint, Function(String?) onChanged, {bool enabled = true}) {
     return DropdownButtonFormField<String>(
-      value: dynamicControllers[field]!.text.isEmpty ? null : dynamicControllers[field]!.text,
+      initialValue: dynamicControllers[field]!.text.isEmpty ? null : dynamicControllers[field]!.text,
       decoration: AppTheme.inputDecoration(hint, _getFieldIcon(field)),
       dropdownColor: Theme.of(context).colorScheme.surface,
       isExpanded: true,
@@ -527,7 +618,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
               ),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 30, 20, 20),
+                padding: const EdgeInsetsDirectional.fromSTEB(20, 30, 20, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -612,29 +703,52 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       if (controller.isLoadingServices.value) return const Center(child: Padding(padding: EdgeInsets.all(50.0), child: CircularProgressIndicator()));
       if (controller.availableServices.isEmpty) return AppTheme.emptyState('لا توجد خدمات متاحة حالياً');
 
-      if (isReordering) {
-        return ReorderableWrap(
-          spacing: 16,
-          runSpacing: 16,
-          onReorder: (oldIndex, newIndex) async {
-            final items = List<ServiceTypeModel>.from(controller.availableServices);
-            final item = items.removeAt(oldIndex);
-            items.insert(newIndex, item);
-            controller.availableServices.value = items;
+        if (isReordering) {
+          return ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            onReorder: (oldIndex, newIndex) async {
+              if (newIndex > oldIndex) {
+                newIndex -= 1;
+              }
+              final items = List<ServiceTypeModel>.from(controller.availableServices);
+              final item = items.removeAt(oldIndex);
+              items.insert(newIndex, item);
+              controller.availableServices.value = items;
 
-            // Update popularities in Firestore to maintain order
-            final batch = FirebaseFirestore.instance.batch();
-            for (int i = 0; i < items.length; i++) {
-              batch.update(
-                FirebaseFirestore.instance.collection('service_types').doc(items[i].id),
-                {'popularity': (items.length - i) * 10}
+              final batch = FirebaseFirestore.instance.batch();
+              for (int i = 0; i < items.length; i++) {
+                batch.update(
+                  FirebaseFirestore.instance.collection('service_types').doc(items[i].id),
+                  {'popularity': (items.length - i) * 10}
+                );
+              }
+              await batch.commit();
+            },
+            itemCount: controller.availableServices.length,
+            itemBuilder: (context, index) {
+              final service = controller.availableServices[index];
+              return Container(
+                key: ValueKey(service.id),
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  tileColor: Theme.of(context).cardColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: AppTheme.primaryGreen.withValues(alpha: 0.3)),
+                  ),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.15), shape: BoxShape.circle),
+                    child: Icon(AppConstants.getIconFromName(service.icon), color: AppTheme.primaryGreen),
+                  ),
+                  title: Text(service.name, style: TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
+                  trailing: const Icon(Icons.drag_indicator_rounded, color: AppTheme.primaryGreen),
+                ),
               );
-            }
-            await batch.commit();
-          },
-          children: controller.availableServices.map((service) => _buildServiceItem(service, true)).toList(),
-        );
-      }
+            },
+          );
+        }
 
       return GridView.builder(
         shrinkWrap: true,
@@ -659,39 +773,41 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   Widget _buildServiceItem(ServiceTypeModel service, bool isReorderMode) {
     final isSelected = selectedService?.id == service.id;
+    final serviceColor = AppConstants.getServiceColor(service.name);
+    
     return GestureDetector(
       key: ValueKey(service.id),
       onTap: () => _onServiceSelected(service),
       child: AnimatedContainer(
-        width: (MediaQuery.of(context).size.width - 72) / 3, // For ReorderableWrap
+        width: (MediaQuery.of(context).size.width - 72) / 3, 
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.05) : Theme.of(context).cardColor,
+          color: isSelected ? serviceColor.withValues(alpha: 0.08) : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(25),
           border: Border.all(
-            color: isSelected ? AppTheme.primaryGreen : (isReorderMode ? AppTheme.primaryGreen.withValues(alpha: 0.3) : Theme.of(context).colorScheme.outline.withValues(alpha: 0.05)),
+            color: isSelected ? serviceColor : (isReorderMode ? serviceColor.withValues(alpha: 0.3) : Theme.of(context).colorScheme.outline.withValues(alpha: 0.05)),
             width: isSelected || isReorderMode ? 2.5 : 1,
           ),
           boxShadow: isSelected 
-            ? [BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.15), blurRadius: 15, offset: const Offset(0, 8))]
+            ? [BoxShadow(color: serviceColor.withValues(alpha: 0.2), blurRadius: 15, offset: const Offset(0, 8))]
             : [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (isReorderMode)
-              const Icon(Icons.drag_indicator_rounded, color: AppTheme.primaryGreen, size: 18),
+              Icon(Icons.drag_indicator_rounded, color: serviceColor, size: 18),
             Container(
               padding: const EdgeInsets.all(14),
               margin: const EdgeInsets.only(top: 8),
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.4),
+                color: isSelected ? serviceColor.withValues(alpha: 0.15) : Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.4),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 AppConstants.getIconFromName(service.icon), 
-                color: isSelected ? AppTheme.primaryGreen : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                color: isSelected ? serviceColor : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                 size: 26,
               ),
             ),
@@ -707,7 +823,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                   fontSize: 11,
                   height: 1.3,
                   fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-                  color: isSelected ? AppTheme.primaryGreen : Theme.of(context).colorScheme.onSurface,
+                  color: isSelected ? serviceColor : Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),

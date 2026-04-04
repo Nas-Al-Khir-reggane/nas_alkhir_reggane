@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
@@ -22,6 +23,21 @@ class RequestDetailScreen extends StatelessWidget {
     if (args is ServiceRequestModel) return args;
     if (args is Map<String, dynamic>) return ServiceRequestModel.fromMap(args);
     throw Exception('Invalid request data');
+  }
+
+  Future<void> _openAttachment(String attachmentRef) async {
+    try {
+      final uri = attachmentRef.startsWith('http')
+          ? Uri.parse(attachmentRef)
+          : Uri.parse(await FirebaseStorage.instance.ref(attachmentRef).getDownloadURL());
+
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        Get.snackbar('تعذر فتح المرفق', 'تحقق من صلاحيات الوصول أو إعدادات الجهاز');
+      }
+    } catch (e) {
+      Get.snackbar('تعذر فتح المرفق', 'فشل في فتح الملف: $e');
+    }
   }
 
   @override
@@ -56,73 +72,104 @@ class RequestDetailScreen extends StatelessWidget {
             ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatusCard(req),
-            const SizedBox(height: 16),
-            _buildInfoCard(context, req),
-            const SizedBox(height: 20),
-            if (req.type == 'blood_donation' || req.typeName.contains('دم'))
-              _buildRespondersSection(context, req),
-            const SizedBox(height: 24),
-            Text('الإجراءات المتاحة', 
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
-            const SizedBox(height: 16),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.5,
-              children: [
-                if (req.type != 'blood_donation' && req.typeName != 'إغاثة بقطرة دم') ...[
-                  _buildActionButton(
-                    'إسناد لمتطوع',
-                    Icons.person_add_alt_1_outlined,
-                    AppTheme.primaryGreen,
-                    () => _showAssignWorkerDialog(context, req),
-                  ),
-                  _buildActionButton(
-                    'تخصيص سيارة',
-                    Icons.directions_car_filled_outlined,
-                    AppTheme.goldAccent,
-                    () => _showAssignVehicleDialog(context, req),
-                  ),
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance.collection(AppConstants.serviceRequestsCollection).doc(req.id).snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+             return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                   _buildStatusCard(req),
+                   const SizedBox(height: 16),
+                   _buildInfoCard(context, req),
                 ],
-                if (req.type == 'blood_donation' || req.typeName == 'إغاثة بقطرة دم')
-                  _buildActionButton(
-                    'نداء استغاثة',
-                    Icons.campaign_rounded,
-                    AppTheme.errorColor,
-                    () => _showBloodAlertConfirmation(context, req),
-                  ),
-                
-                _buildActionButton(
-                  'إتمام الطلب',
-                  Icons.check_circle_outline,
-                  AppTheme.successColor,
-                  () => _confirmStatusUpdate(req, 'completed', 'إتمام الطلب', 'هل أنت متأكد من تحديد هذا الطلب كمكتمل؟'),
-                ),
-                _buildActionButton(
-                  'إلغاء الطلب',
-                  Icons.highlight_off_rounded,
-                  AppTheme.errorColor,
-                  () => _confirmStatusUpdate(req, 'rejected', 'إلغاء الطلب', 'هل أنت متأكد من إلغاء هذا الطلب؟ سيتم نقله للمرفوضات.'),
-                ),
-                _buildActionButton(
-                  'حذف نهائي',
-                  Icons.delete_forever_rounded,
-                  AppTheme.errorColor,
-                  () => _showDeleteConfirmation(req),
+              ),
+            );
+          }
+
+          final liveData = snapshot.data!.data() as Map<String, dynamic>;
+          final liveReq = ServiceRequestModel.fromMap(liveData, id: snapshot.data!.id);
+          final String currentStatus = liveReq.status;
+          final String assignedDonorId = (liveData['assignedTo'] ?? '').toString();
+          final bool isCovered = assignedDonorId.isNotEmpty;
+          final bool isTerminal = currentStatus == 'completed' || currentStatus == 'rejected' || currentStatus == 'cancelled';
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildStatusCard(liveReq),
+                const SizedBox(height: 16),
+                _buildInfoCard(context, liveReq),
+                const SizedBox(height: 20),
+                if (liveReq.type == 'blood_donation' || liveReq.typeName.contains('دم'))
+                  _buildRespondersSection(context, liveReq),
+                const SizedBox(height: 24),
+                Text('الإجراءات المتاحة', 
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+                const SizedBox(height: 16),
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.5,
+                  children: [
+                    if (liveReq.type != 'blood_donation' && liveReq.typeName != 'إغاثة بقطرة دم') ...[
+                      _buildActionButton(
+                        'إسناد لمتطوع',
+                        Icons.person_add_alt_1_outlined,
+                        AppTheme.primaryGreen,
+                        isTerminal ? null : () => _showAssignWorkerDialog(context, liveReq),
+                      ),
+                      _buildActionButton(
+                        'تخصيص سيارة',
+                        Icons.directions_car_filled_outlined,
+                        AppTheme.goldAccent,
+                        isTerminal ? null : () => _showAssignVehicleDialog(context, liveReq),
+                      ),
+                    ],
+                    if (liveReq.type == 'blood_donation' || liveReq.typeName == 'إغاثة بقطرة دم')
+                      _buildActionButton(
+                        'نداء استغاثة',
+                        Icons.campaign_rounded,
+                        isCovered || isTerminal ? Colors.grey : AppTheme.errorColor,
+                        isCovered || isTerminal ? null : () => _showBloodAlertConfirmation(context, liveReq),
+                      ),
+                    
+                    _buildActionButton(
+                      currentStatus == 'completed' ? 'الطلب مكتمل' : 'إتمام الطلب',
+                      Icons.check_circle_outline,
+                      currentStatus == 'completed' ? Colors.grey : AppTheme.successColor,
+                      currentStatus == 'completed' ? null : () {
+                        if (liveReq.type == 'blood_donation' || liveReq.typeName.contains('دم')) {
+                          _confirmBloodDonationCompletion(liveReq.id);
+                        } else {
+                          _confirmStatusUpdate(liveReq, 'completed', 'إتمام الطلب', 'هل أنت متأكد من تحديد هذا الطلب كمكتمل؟');
+                        }
+                      },
+                    ),
+                    _buildActionButton(
+                      'إلغاء الطلب',
+                      Icons.highlight_off_rounded,
+                      isTerminal ? Colors.grey : AppTheme.errorColor,
+                      isTerminal ? null : () => _confirmStatusUpdate(liveReq, 'rejected', 'إلغاء الطلب', 'هل أنت متأكد من إلغاء هذا الطلب؟ سيتم نقله للمرفوضات.'),
+                    ),
+                    _buildActionButton(
+                      'حذف نهائي',
+                      Icons.delete_forever_rounded,
+                      AppTheme.errorColor,
+                      () => _showDeleteConfirmation(liveReq),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -166,7 +213,7 @@ class RequestDetailScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.75),
+              color: statusColor.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -202,9 +249,9 @@ class RequestDetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.75),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.75)),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
       child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
     );
@@ -218,10 +265,10 @@ class RequestDetailScreen extends StatelessWidget {
         children: [
           _buildInfoRow(AppConstants.getServiceIcon(req.typeName.isNotEmpty ? req.typeName : req.type), 'نوع الخدمة', 
             AppConstants.translateServiceType(req.typeName.isNotEmpty ? req.typeName : req.type)),
-          Divider(color: AppTheme.textHint.withValues(alpha: 0.75)),
+          Divider(color: AppTheme.textHint.withValues(alpha: 0.15)),
           
           StreamBuilder<DocumentSnapshot>(
-            stream: (!req.isGuest && req.requesterId.isNotEmpty)
+            stream: (req.requesterId.isNotEmpty)
                 ? FirebaseFirestore.instance.collection(AppConstants.usersCollection).doc(req.requesterId).snapshots()
                 : null,
             builder: (context, snapshot) {
@@ -243,7 +290,7 @@ class RequestDetailScreen extends StatelessWidget {
               }
 
               // معالجة حالة "قيد التحميل" فقط إذا لم تكن البيانات متوفرة في الطلب أصلاً
-              bool isStillLoading = !req.isGuest && 
+              bool isStillLoading = 
                                   req.requesterId.isNotEmpty && 
                                   snapshot.connectionState == ConnectionState.waiting &&
                                   name.isEmpty;
@@ -292,6 +339,14 @@ class RequestDetailScreen extends StatelessWidget {
           const Divider(color: Colors.white10),
           _buildInfoRow(Icons.description_outlined, 'الوصف', 
             req.description.isNotEmpty ? req.description : 'لا يوجد وصف إضافي'),
+
+          if (req.type == 'blood_donation' || req.typeName.contains('دم')) ...[
+            const Divider(color: Colors.white10),
+            _buildInfoRow(Icons.person_outline, 'اسم المريض', req.patientName.isNotEmpty ? req.patientName : (req.requesterName.isNotEmpty ? req.requesterName : 'غير محدد')),
+            _buildInfoRow(Icons.bloodtype_outlined, 'الفصيلة المطلوبة', req.bloodType.isNotEmpty ? req.bloodType : 'غير محدد'),
+            _buildInfoRow(Icons.local_hospital_outlined, 'المستشفى', req.hospital.isNotEmpty ? req.hospital : 'غير محدد'),
+            _buildInfoRow(Icons.phone_outlined, 'رقم التواصل للحالة', req.phone.isNotEmpty ? req.phone : 'غير محدد'),
+          ],
           
           if (req.assignedToName != null && req.assignedToName!.isNotEmpty) ...[
             const Divider(color: Colors.white10),
@@ -308,10 +363,39 @@ class RequestDetailScreen extends StatelessWidget {
               child: _buildInfoRow(Icons.info_outline, entry.key, entry.value.toString()),
             )),
           ],
+          
+          if (req.attachments.isNotEmpty) ...[
+            const Divider(color: Colors.white10),
+            const SizedBox(height: 8),
+            Text('المرفقات', style: TextStyle(color: AppTheme.primaryGreen.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: req.attachments.map((attachmentRef) => InkWell(
+                onTap: () => _openAttachment(attachmentRef),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8)
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.attachment, size: 16, color: AppTheme.primaryGreen),
+                      SizedBox(width: 4),
+                      Text('عرض المرفق', style: TextStyle(color: AppTheme.primaryGreen, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              )).toList(),
+            ),
+          ],
         ],
       ),
     );
-  }
+    }
 
   Widget _buildAssignedWorkerRow(ServiceRequestModel req) {
     return Padding(
@@ -352,7 +436,7 @@ class RequestDetailScreen extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppTheme.primaryGreen.withValues(alpha: 0.75), size: 22),
+          Icon(icon, color: AppTheme.primaryGreen.withValues(alpha: 0.15), size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -370,7 +454,8 @@ class RequestDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton(String label, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildActionButton(String label, IconData icon, Color color, VoidCallback? onTap) {
+    bool isDisabled = onTap == null;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -378,17 +463,17 @@ class RequestDetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.75),
+            color: isDisabled ? Colors.white.withValues(alpha: 0.05) : color.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withValues(alpha: 0.75)),
+            border: Border.all(color: isDisabled ? Colors.white.withValues(alpha: 0.05) : color.withValues(alpha: 0.15)),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: color, size: 26),
+              Icon(icon, color: isDisabled ? Colors.grey : color, size: 26),
               const SizedBox(height: 8),
               Text(label, textAlign: TextAlign.center, 
-                style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Tajawal')),
+                style: TextStyle(color: isDisabled ? Colors.grey : color, fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Tajawal')),
             ],
           ),
         ),
@@ -408,10 +493,77 @@ class RequestDetailScreen extends StatelessWidget {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
             onPressed: () {
-              adminController.updateRequestStatus(req.id, status, isGuest: req.isGuest);
+              adminController.updateRequestStatus(req.id, status);
               Get.back();
             },
             child: const Text('تأكيد', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmBloodDonationCompletion(String requestId) async {
+    final reqSnap = await FirebaseFirestore.instance
+        .collection(AppConstants.serviceRequestsCollection)
+        .doc(requestId)
+        .get();
+
+    if (!reqSnap.exists) {
+      Get.snackbar('تعذر إتمام الطلب', 'هذا الطلب غير موجود أو تم حذفه.');
+      return;
+    }
+
+    final data = reqSnap.data() as Map<String, dynamic>;
+    final donorId = (data['assignedTo'] ?? '').toString();
+    final donorName = (data['assignedToName'] ?? 'متبرع').toString();
+
+    if (donorId.isEmpty) {
+      Get.snackbar('تحذير', 'لا يمكن إتمام طلب الدم دون تعيين متبرع أولاً.');
+      return;
+    }
+
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('إتمام التبرع بالدم 🩸', style: TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold)),
+        content: Text('هل تتأكد من أن المتبرع ($donorName) قد أتم التبرع بنجاح؟\nسيتم إغلاق الطلب وبدء فترة النقاهة الطبية للمتبرع.', style: const TextStyle(fontFamily: 'Tajawal', height: 1.5)),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('تراجع')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.successColor),
+            onPressed: () {
+              adminController.markBloodDonationCompleted(
+                requestId: requestId,
+                donorId: donorId,
+                donorName: donorName,
+              );
+              Get.back();
+            },
+            child: const Text('تأكيد التبرع بنجاح', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmUnassignDonor(String requestId, String donorName) {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('فك إسناد المتبرع', style: TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold)),
+        content: Text('هل تريد فك إسناد المتبرع ($donorName) وإعادة الطلب إلى حالة الانتظار؟', style: const TextStyle(fontFamily: 'Tajawal')),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('تراجع')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
+            onPressed: () {
+              adminController.unassignConfirmedDonor(requestId: requestId);
+              Get.back();
+            },
+            child: const Text('تأكيد فك الإسناد', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -436,7 +588,7 @@ class RequestDetailScreen extends StatelessWidget {
       buttonColor: AppTheme.errorColor,
       onConfirm: () async {
         Get.back(); // إغلاق الدايالوج
-        await adminController.deleteRequest(req.id, isGuest: req.isGuest);
+        await adminController.deleteRequest(req.id);
         Get.back(); // العودة للشاشة السابقة
       },
       onCancel: () => Get.back(),
@@ -479,9 +631,27 @@ class RequestDetailScreen extends StatelessWidget {
                           backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
                           child: Text(worker['name'] != null ? worker['name'][0] : '؟', style: const TextStyle(color: AppTheme.primaryGreen)),
                         ),
-                        title: Text(worker['name'] ?? 'بدون اسم', style: TextStyle(color: AppTheme.textPrimary)),
+                        title: Text(worker['name'] ?? 'بدون اسم', 
+                          style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)),
+                        subtitle: Text(
+                          (worker['volunteerServices'] as List<dynamic>?)?.join(' - ') ?? 'لا يوجد تخصص محدد',
+                          style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.7), fontSize: 11),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.phone_forwarded_rounded, color: AppTheme.primaryGreen, size: 20),
+                          onPressed: () {
+                            final phone = worker['phone'];
+                            if (phone != null && phone.toString().isNotEmpty) {
+                              launchUrl(Uri.parse('tel:$phone'));
+                            } else {
+                              Get.snackbar('غير متوفر', 'لا يوجد رقم هاتف متاح لهذا المتطوع');
+                            }
+                          },
+                        ),
                         onTap: () {
-                          adminController.assignToWorker(req.id, snapshot.data!.docs[index].id, workerName: worker['name'], isGuest: req.isGuest);
+                          adminController.assignToWorker(req.id, snapshot.data!.docs[index].id, workerName: worker['name']);
                           Get.back();
                         },
                       );
@@ -532,7 +702,7 @@ class RequestDetailScreen extends StatelessWidget {
                         title: Text('${vehicle['brand'] ?? ''} - ${vehicle['model'] ?? ''}', style: TextStyle(color: AppTheme.textPrimary)),
                         subtitle: Text(vehicle['plateNumber'] ?? '', style: TextStyle(color: AppTheme.textSecondary)),
                         onTap: () {
-                          adminController.assignToVehicle(req.id, snapshot.data!.docs[index].id, isGuest: req.isGuest);
+                          adminController.assignToVehicle(req.id, snapshot.data!.docs[index].id);
                           Get.back();
                         },
                       );
@@ -548,9 +718,18 @@ class RequestDetailScreen extends StatelessWidget {
   }
 
   void _showBloodAlertConfirmation(BuildContext context, ServiceRequestModel req) {
-    final bloodType = req.details['فصيلة الدم'] ?? req.details['bloodType'] ?? 'غير محدد';
-    final hospital = req.details['المستشفى'] ?? req.details['hospital'] ?? 'غير محدد';
-    final phone = req.details['رقم التواصل'] ?? req.phone;
+    final bloodType = req.bloodType.isNotEmpty
+      ? req.bloodType
+      : (req.details['الفصيلة'] ?? req.details['فصيلة الدم'] ?? req.details['bloodType'] ?? 'غير محدد').toString();
+    final hospital = req.hospital.isNotEmpty
+      ? req.hospital
+      : (req.details['المستشفى'] ?? req.details['hospital'] ?? req.details['deliveryLocation'] ?? 'غير محدد').toString();
+    final phone = req.phone.isNotEmpty
+      ? req.phone
+      : (req.details['رقم الهاتف'] ?? req.details['رقم التواصل'] ?? req.details['phone'] ?? 'غير متوفر').toString();
+    final patientName = req.patientName.isNotEmpty
+      ? req.patientName
+      : (req.details['اسم المريض'] ?? req.requesterName).toString();
     
     // محاولة إيجاد الولاية المطابقة في الثوابت لتحديدها تلقائياً
     String? matchedWilaya = AppConstants.algeriaWilayas.firstWhere(
@@ -589,7 +768,7 @@ class RequestDetailScreen extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   Text('سيتم إرسال إشعار للمتبرعين المتوافقين مع فصيلة ($bloodType).', 
+                   Text('سيتم إرسال إشعار للمتبرعين المتوافقين مع فصيلة ($bloodType) لحالة: $patientName.', 
                     style: const TextStyle(fontFamily: 'Tajawal', fontSize: 13)),
                   const SizedBox(height: 16),
                   const Divider(color: Colors.white10),
@@ -649,7 +828,6 @@ class RequestDetailScreen extends StatelessWidget {
                       phone: phone.toString(),
                       targetWilaya: selectedWilaya == 'all' ? null : selectedWilaya,
                       targetCommune: selectedCommune == 'all' ? null : selectedCommune,
-                      isGuest: req.isGuest,
                     );
                 },
                 child: const Text('إرسال النداء', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -661,101 +839,142 @@ class RequestDetailScreen extends StatelessWidget {
     );
   }
   Widget _buildRespondersSection(BuildContext context, ServiceRequestModel req) {
-    final String collection = req.isGuest ? 'guest_requests' : AppConstants.serviceRequestsCollection;
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection(collection)
+          .collection(AppConstants.serviceRequestsCollection)
           .doc(req.id)
           .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData || !snapshot.data!.exists) return const SizedBox.shrink();
-        
+
         final data = snapshot.data!.data() as Map<String, dynamic>;
         final List<dynamic> responses = data['donorResponses'] ?? [];
-        
-        if (responses.isEmpty) return const SizedBox.shrink();
+        final String assignedDonorId = (data['assignedTo'] ?? '').toString();
+        final String assignedDonorName = (data['assignedToName'] ?? '').toString();
+        final String requestStatus = (data['status'] ?? '').toString();
+        final bool isTerminal = requestStatus == 'completed' || requestStatus == 'rejected' || requestStatus == 'cancelled';
+
+        if (responses.isEmpty && assignedDonorId.isEmpty) return const SizedBox.shrink();
 
         return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (assignedDonorId.isNotEmpty)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2)),
+                ),
+                child: Row(
                   children: [
-                    const Icon(Icons.volunteer_activism, color: AppTheme.errorColor, size: 20),
+                    const Icon(Icons.verified_user_rounded, color: AppTheme.primaryGreen, size: 20),
                     const SizedBox(width: 8),
-                    Text('المتبرعون المستجيبون (${responses.length})', 
-                      style: const TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.bold, fontSize: 14)),
+                    Expanded(
+                      child: Text(
+                        assignedDonorName.isNotEmpty
+                            ? 'المتبرع المعتمد حالياً: $assignedDonorName'
+                            : 'تم اعتماد متبرع لهذه الحالة',
+                        style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                    if (!isTerminal)
+                      IconButton(
+                        icon: const Icon(Icons.person_remove_alt_1_rounded, color: AppTheme.errorColor),
+                        tooltip: 'فك إسناد المتبرع',
+                        onPressed: () => _confirmUnassignDonor(
+                          req.id,
+                          assignedDonorName.isNotEmpty ? assignedDonorName : 'المتبرع الحالي',
+                        ),
+                      ),
                   ],
                 ),
-                const Divider(color: Colors.white10, height: 20),
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: responses.length,
-                  separatorBuilder: (context, index) => const Divider(color: Colors.white10, height: 16),
-                  itemBuilder: (context, index) {
-                    final res = responses[index] as Map<String, dynamic>;
-                    final name = res['name'] ?? 'متبرع';
-                    final phone = res['phone'] ?? '';
-                    final time = res['respondedAt'] != null 
-                        ? (res['respondedAt'] as Timestamp).toDate() 
-                        : DateTime.now();
+              ),
+            if (responses.isNotEmpty) ...[
+              Row(
+                children: [
+                  const Icon(Icons.volunteer_activism, color: AppTheme.errorColor, size: 20),
+                  const SizedBox(width: 8),
+                  Text('المتبرعون المستجيبون (${responses.length})',
+                      style: const TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.bold, fontSize: 14)),
+                ],
+              ),
+              const Divider(color: Colors.white10, height: 20),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: responses.length,
+                separatorBuilder: (context, index) => const Divider(color: Colors.white10, height: 16),
+                itemBuilder: (context, index) {
+                  final res = responses[index] as Map<String, dynamic>;
+                  final name = (res['userName'] ?? 'متبرع').toString();
+                  final phone = (res['userPhone'] ?? '').toString();
+                  final userId = (res['userId'] ?? '').toString();
+                  final dynamic respondedAt = res['respondedAt'];
+                  final time = respondedAt is Timestamp ? respondedAt.toDate() : DateTime.now();
+                  final isAssigned = assignedDonorId.isNotEmpty && assignedDonorId == userId;
 
-                    return Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 15,
-                          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15),
-                          child: Text(name[0], style: const TextStyle(color: AppTheme.errorColor, fontSize: 12, fontWeight: FontWeight.bold)),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(name, style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
-                              Text(intl.DateFormat('HH:mm - yyyy/MM/dd').format(time), 
+                  return Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 15,
+                        backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15),
+                        child: Text(name[0], style: const TextStyle(color: AppTheme.errorColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(name, style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
+                            Text(intl.DateFormat('HH:mm - yyyy/MM/dd').format(time),
                                 style: TextStyle(color: AppTheme.textSecondary, fontSize: 10)),
-                            ],
-                          ),
+                          ],
                         ),
-                        if (phone.isNotEmpty)
-                          IconButton(
-                            icon: const Icon(Icons.phone_outlined, color: AppTheme.primaryGreen, size: 18),
-                            onPressed: () => launchUrl(Uri.parse('tel:$phone')),
+                      ),
+                      if (phone.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.phone_outlined, color: AppTheme.primaryGreen, size: 18),
+                          onPressed: () => launchUrl(Uri.parse('tel:$phone')),
+                        ),
+                      const SizedBox(width: 4),
+                      if (isAssigned)
+                        const Icon(Icons.verified_user_rounded, color: AppTheme.primaryGreen, size: 24)
+                      else if (!isTerminal)
+                        IconButton(
+                          icon: Icon(
+                            Icons.check_circle_rounded, 
+                            color: assignedDonorId.isNotEmpty ? Colors.grey : AppTheme.primaryGreen
                           ),
-                        const SizedBox(width: 4),
-                        // زر تأكيد المتبرع
-                        if (req.assignedTo != res['userId'])
-                          IconButton(
-                            icon: const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen),
-                            tooltip: 'تأكيد هذا المتبرع',
-                            onPressed: () {
-                              Get.defaultDialog(
-                                title: 'تأكيد المتبرع',
-                                middleText: 'هل تريد إسناد هذه المهمة للمتبرع ($name) وتنبيهه؟',
-                                textCancel: 'تراجع',
-                                textConfirm: 'تأكيد',
-                                confirmTextColor: Colors.white,
-                                onConfirm: () {
-                                  adminController.confirmDonor(
-                                    requestId: req.id,
-                                    donorId: res['userId'],
-                                    donorName: name,
-                                    isGuest: req.isGuest,
-                                  );
-                                  Get.back();
-                                }
-                              );
-                            },
-                          )
-                        else
-                          const Icon(Icons.verified_user_rounded, color: AppTheme.primaryGreen, size: 24),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            );
+                          tooltip: assignedDonorId.isNotEmpty ? 'تم تأمين متبرع مسبقاً' : 'تأكيد هذا المتبرع',
+                          onPressed: assignedDonorId.isNotEmpty ? null : () {
+                            Get.defaultDialog(
+                              title: 'تأكيد المتبرع',
+                              middleText: 'هل تريد إسناد هذه المهمة للمتبرع ($name) وتنبيهه؟',
+                              textCancel: 'تراجع',
+                              textConfirm: 'تأكيد',
+                              confirmTextColor: Colors.white,
+                              onConfirm: () {
+                                adminController.confirmDonor(
+                                  requestId: req.id,
+                                  donorId: userId,
+                                  donorName: name,
+                                );
+                                Get.back();
+                              },
+                            );
+                          },
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ],
+        );
       },
     );
   }

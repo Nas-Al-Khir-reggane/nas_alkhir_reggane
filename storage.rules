@@ -1,0 +1,71 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ─── دوال مساعدة ────────────────────────────
+    function isLoggedIn() {
+      return request.auth != null;
+    }
+
+    function getRole() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isLoggedIn() && (getRole() == 'admin' || getRole() == 'superAdmin');
+    }
+
+    function isChatParticipant(chatId) {
+      return isLoggedIn() &&
+        request.auth.uid in firestore.get(/databases/(default)/documents/chats/$(chatId)).data.participants;
+    }
+
+    function canAccessServiceRequest(requestId) {
+      return isLoggedIn() && (
+        isAdmin() ||
+        firestore.get(/databases/(default)/documents/service_requests/$(requestId)).data.requesterId == request.auth.uid ||
+        firestore.get(/databases/(default)/documents/service_requests/$(requestId)).data.assignedTo == request.auth.uid
+      );
+    }
+
+    function isValidFile() {
+      return request.resource.size < 5 * 1024 * 1024 // أقل من 5 ميجابايت
+          && request.resource.contentType.matches('image/.*|application/pdf');
+    }
+
+    // ─── ملفات المستخدمين (صور الملف الشخصي) ──
+    match /users/{userId}/{allPaths=**} {
+      allow read:  if isLoggedIn() && (request.auth.uid == userId || isAdmin());
+      allow write: if isLoggedIn()
+                   && request.auth.uid == userId
+                   && isValidFile();
+    }
+
+    // ─── مرفقات طلبات الخدمة ──────────────────
+    // المسار الإلزامي: service_requests/{requestId}/{uploaderId}/{fileName}
+    match /service_requests/{requestId}/{uploaderId}/{fileName} {
+      allow read:  if canAccessServiceRequest(requestId);
+      allow write: if isLoggedIn()
+                   && request.auth.uid == uploaderId
+                   && canAccessServiceRequest(requestId)
+                   && isValidFile();
+    }
+
+    // ─── صور المشاريع ─────────────────────────
+    match /projects/{projectId}/{allPaths=**} {
+      allow read:  if true;
+      allow write: if isAdmin() && isValidFile();
+    }
+
+    // ─── صور الدردشة ──────────────────────────
+    match /chats/{chatId}/{allPaths=**} {
+      allow read:  if isAdmin() || isChatParticipant(chatId);
+      allow write: if (isAdmin() || isChatParticipant(chatId)) && isValidFile();
+    }
+
+    // ─── حظر كامل لكل ما لم يُذكر ────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

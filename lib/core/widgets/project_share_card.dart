@@ -24,10 +24,10 @@ class ProjectShareCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.backgroundColor,
         borderRadius: BorderRadius.circular(35),
-        border: Border.all(color: categoryColor.withValues(alpha: 0.75), width: 2.5),
+        border: Border.all(color: categoryColor.withValues(alpha: 0.15), width: 2.5),
         boxShadow: [
           BoxShadow(
-            color: categoryColor.withValues(alpha: 0.75),
+            color: categoryColor.withValues(alpha: 0.15),
             blurRadius: 40,
             spreadRadius: -10,
           )
@@ -44,7 +44,7 @@ class ProjectShareCard extends StatelessWidget {
               height: 150,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: categoryColor.withValues(alpha: 0.75),
+                color: categoryColor.withValues(alpha: 0.15),
               ),
             ),
           ),
@@ -62,7 +62,7 @@ class ProjectShareCard extends StatelessWidget {
                         colors: [AppTheme.primaryGreen, AppTheme.primaryGreen.withValues(alpha: 0.9)],
                       ),
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.75), blurRadius: 10)],
+                      boxShadow: [BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.15), blurRadius: 10)],
                     ),
                     child: const Icon(Icons.volunteer_activism, color: Colors.white, size: 26),
                   ),
@@ -90,7 +90,7 @@ class ProjectShareCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: categoryColor,
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: [BoxShadow(color: categoryColor.withValues(alpha: 0.75), blurRadius: 8)],
+                      boxShadow: [BoxShadow(color: categoryColor.withValues(alpha: 0.15), blurRadius: 8)],
                     ),
                     child: Text(
                       categoryName,
@@ -139,7 +139,7 @@ class ProjectShareCard extends StatelessWidget {
                     ],
                   ),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppTheme.textPrimary.withValues(alpha: 0.75)),
+                  border: Border.all(color: AppTheme.textPrimary.withValues(alpha: 0.15)),
                 ),
                 child: GoalGridProgress(
                   budget: project.budget,
@@ -160,7 +160,7 @@ class ProjectShareCard extends StatelessWidget {
                   'قال الله تعالى: {وَمَا تُنفِقُوا مِنْ خَيْرٍ فَإِنَّ اللَّهَ بِهِ عَلِيمٌ}',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: AppTheme.primaryGreen.withValues(alpha: 0.75),
+                    color: AppTheme.primaryGreen.withValues(alpha: 0.15),
                     fontSize: 12,
                     fontStyle: FontStyle.italic,
                     fontFamily: 'Tajawal',
@@ -179,9 +179,9 @@ class ProjectShareCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                       decoration: BoxDecoration(
-                        color: AppTheme.textPrimary.withValues(alpha: 0.75),
+                        color: AppTheme.textPrimary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppTheme.textPrimary.withValues(alpha: 0.75)),
+                        border: Border.all(color: AppTheme.textPrimary.withValues(alpha: 0.15)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,7 +215,7 @@ class ProjectShareCard extends StatelessWidget {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: [
-                            BoxShadow(color: categoryColor.withValues(alpha: 0.75), blurRadius: 20, spreadRadius: -5)
+                            BoxShadow(color: categoryColor.withValues(alpha: 0.15), blurRadius: 20, spreadRadius: -5)
                           ],
                         ),
                         child: QrImageView(

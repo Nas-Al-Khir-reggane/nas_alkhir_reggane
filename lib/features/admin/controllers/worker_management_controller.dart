@@ -8,7 +8,7 @@ import '../../../data/models/user_model.dart';
 class WorkerManagementController extends GetxController {
   // أدوار العمال
   static const List<Map<String, dynamic>> workerRoles = [
-    {'id': 'funeral_driver', 'name': 'سائق نقل جنازة', 'icon': Icons.airport_shuttle, 'color': Color(0xFF4A148C)},
+    {'id': 'funeral_driver', 'name': 'سائق نقل جنازة', 'icon': Icons.airport_shuttle, 'color': AppTheme.primaryGreen},
     {'id': 'field_worker', 'name': 'متطوع ميداني', 'icon': Icons.engineering, 'color': Color(0xFF1565C0)},
     {'id': 'coordinator', 'name': 'منسق', 'icon': Icons.manage_accounts, 'color': Color(0xFF00695C)},
     {'id': 'volunteer', 'name': 'متطوع', 'icon': Icons.volunteer_activism, 'color': Color(0xFF2E7D32)},

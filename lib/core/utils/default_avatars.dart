@@ -2,38 +2,36 @@ import 'dart:math';
 import '../../data/models/user_model.dart';
 
 class DefaultAvatars {
-  static List<String> getAvatarsForRole(UserRole role) {
+  static List<String> getAvatarsForRole(UserRole role, [String gender = 'ذكر']) {
     String prefix;
-    // سنستخدم بذور (seeds) تعطي نتائج رسمية أكثر لكل دور
     switch (role) {
       case UserRole.worker:
-        prefix = 'worker_pro';
+        prefix = 'worker';
         break;
       case UserRole.donor:
-        prefix = 'donor_neutral';
-        break;
-      case UserRole.beneficiary:
-        prefix = 'user_simple';
+        prefix = 'donor';
         break;
       case UserRole.superAdmin:
       case UserRole.admin:
-        prefix = 'admin_office';
+      case UserRole.chatModerator:
+        prefix = 'admin';
         break;
-      case UserRole.guest:
       default:
-        prefix = 'guest_user';
+        prefix = 'user';
         break;
     }
 
-    // استخدام نمط notionists الذي يعتبر أكثر رسمية واحترافية
+    String genderSuffix = gender == 'ذكر' ? 'male' : 'female';
+
+    // نستخدم نمط notionists ونقوم بتوليد 40 خياراً لكل دمج (دور + جنس)
     return List.generate(
-      10,
-      (index) => 'https://api.dicebear.com/9.x/notionists/png?seed=$prefix${index + 1}&backgroundColor=f8f9fa'
+      40,
+      (index) => 'https://api.dicebear.com/9.x/notionists/png?seed=${prefix}_${genderSuffix}_${index + 1}&backgroundColor=f8f9fa'
     );
   }
 
-  static String getRandomAvatar(UserRole role) {
-    final avatars = getAvatarsForRole(role);
+  static String getRandomAvatar(UserRole role, [String gender = 'ذكر']) {
+    final avatars = getAvatarsForRole(role, gender);
     return avatars[Random().nextInt(avatars.length)];
   }
 }

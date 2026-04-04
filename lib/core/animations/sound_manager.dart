@@ -1,9 +1,12 @@
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:get/get.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class SoundManager extends GetxController {
   static SoundManager get to => Get.find<SoundManager>();
+
+  final AudioPlayer _player = AudioPlayer();
   
   final _isMuted = false.obs;
   bool get isMuted => _isMuted.value;
@@ -11,7 +14,14 @@ class SoundManager extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _player.setReleaseMode(ReleaseMode.stop);
     _loadMutePreference();
+  }
+
+  @override
+  void onClose() {
+    _player.dispose();
+    super.onClose();
   }
 
   Future<void> _loadMutePreference() async {
@@ -33,71 +43,59 @@ class SoundManager extends GetxController {
   // 1. Click Sound (ضغطة زر)
   void playClick() {
     if (isMuted) return;
-    _playProgrammaticSound(frequency: 800, durationMs: 80);
+    _playAsset('click.wav');
     HapticFeedback.lightImpact();
   }
 
   // 2. Success Sound (عملية ناجحة)
   void playSuccess() {
     if (isMuted) return;
-    _playProgrammaticSequence([
-      {'freq': 523.25, 'dur': 100}, // C5
-      {'freq': 659.25, 'dur': 150}, // E5
-    ]);
+    _playAsset('success.wav');
     HapticFeedback.mediumImpact();
   }
 
   // 3. Error Sound (خطأ)
   void playError() {
     if (isMuted) return;
-    _playProgrammaticSound(frequency: 200, durationMs: 250, type: 'sawtooth');
+    _playAsset('notification.wav');
     HapticFeedback.heavyImpact();
   }
 
   // 4. Notification Sound (إشعار)
   void playNotification() {
     if (isMuted) return;
-    _playProgrammaticSound(frequency: 440, durationMs: 200); // A4
+    _playAsset('notification.wav');
     HapticFeedback.mediumImpact();
   }
 
-  // 5. Navigation Sound (تنقل)
+  // 5. Message Sound (رسالة جديدة)
+  void playMessage() {
+    if (isMuted) return;
+    _playAsset('new message.wav');
+    HapticFeedback.mediumImpact();
+  }
+
+  // 6. Navigation Sound (تنقل)
   void playNavigation() {
     if (isMuted) return;
-    _playProgrammaticSound(frequency: 600, durationMs: 150, type: 'sine');
+    _playAsset('click.wav');
     HapticFeedback.selectionClick();
   }
 
-  // 6. Toggle Sound (تشغيل/إيقاف)
+  // 7. Toggle Sound (تشغيل/إيقاف)
   void playToggle(bool isOn) {
     if (isMuted) return;
-    if (isOn) {
-      _playProgrammaticSound(frequency: 659.25, durationMs: 100); // E5
-    } else {
-      _playProgrammaticSound(frequency: 261.63, durationMs: 100); // C4
-    }
+    _playAsset(isOn ? 'success.wav' : 'click.wav');
     HapticFeedback.lightImpact();
   }
 
-  // --- البرمجة الصوتية ---
-  
-  void _playProgrammaticSound({
-    required double frequency, 
-    required int durationMs, 
-    String type = 'sine'
-  }) {
-    // Note: Since programmatic audio generation in Flutter Native without a plugin 
-    // is limited, we use the System Navigator sounds as a robust fallback.
-    // For Web, this will use the Web Audio API via JS interop (handled in the background).
-    
-    SystemSound.play(SystemSoundType.click);
+  Future<void> _playAsset(String fileName) async {
+    try {
+      await _player.stop();
+      await _player.play(AssetSource('sounds/$fileName'));
+    } catch (_) {
+      // Fallback keeps UX responsive if audio decoding fails on specific devices.
+      SystemSound.play(SystemSoundType.click);
+    }
   }
-
-  void _playProgrammaticSequence(List<Map<String, dynamic>> sequence) {
-    // Sequence playback logic
-    SystemSound.play(SystemSoundType.click);
-  }
-
-
 }
-

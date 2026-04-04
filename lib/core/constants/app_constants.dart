@@ -89,7 +89,7 @@ class AppConstants {
   }
 
   static const List<String> defaultServiceTypes = [
-    "نقل الجنائز", "تغسيل الموتى", "مساعدات غذائية", "مساعدات مالية", "مساعدة طبية", "تعليم وكفالة أيتام", "بناء وتعمير"
+    "نقل الجنائز", "تغسيل الموتى", "مساعدات غذائية", "مساعدات مالية", "مساعدة طبية", "تعليم وكفالة أيتام", "بناء وتعمير", "دار السبيل أدرار"
   ];
 
   static String translateServiceType(String type) {
@@ -133,48 +133,136 @@ class AppConstants {
     return EdgeInsets.symmetric(horizontal: getScreenPaddingValue(context));
   }
 
+  // ✨ مجموعة الألوان الاحترافية المختارة للخدمات الخيرية
+  static const List<Map<String, dynamic>> charityColors = [
+    {'name': 'أخضر التطوع', 'color': Color(0xFF2E7D32)},
+    {'name': 'أرجواني الجنائز', 'color': Color(0xFF512DA8)},
+    {'name': 'أزرق الرعاية', 'color': Color(0xFF1976D2)},
+    {'name': 'أحمر الطوارئ', 'color': Color(0xFFC62828)},
+    {'name': 'ذهبي الزكاة', 'color': Color(0xFFD4AF37)},
+    {'name': 'بني البناء', 'color': Color(0xFF795548)},
+    {'name': 'سماوي التعليم', 'color': Color(0xFF0097A7)},
+    {'name': 'أزرق السقيا', 'color': Color(0xFF0288D1)},
+    {'name': 'وردي الأيتام', 'color': Color(0xFFE91E63)},
+    {'name': 'رمادي السبيل', 'color': Color(0xFF455A64)},
+  ];
+
+  // ✨ مجموعة الأيقونات المختارة للأعمال الخيرية
+  static const List<Map<String, dynamic>> charityIcons = [
+    {'name': 'general', 'icon': Icons.category_rounded},
+    {'name': 'volunteer', 'icon': Icons.volunteer_activism_rounded},
+    {'name': 'shuttle', 'icon': Icons.airport_shuttle_rounded},
+    {'name': 'wash', 'icon': Icons.waves_rounded},
+    {'name': 'food', 'icon': Icons.shopping_basket_rounded},
+    {'name': 'medical', 'icon': Icons.medication_rounded},
+    {'name': 'hand', 'icon': Icons.pan_tool_rounded},
+    {'name': 'money', 'icon': Icons.payments_rounded},
+    {'name': 'home', 'icon': Icons.home_work_rounded},
+    {'name': 'book', 'icon': Icons.menu_book_rounded},
+    {'name': 'water', 'icon': Icons.water_drop_rounded},
+    {'name': 'blood', 'icon': Icons.bloodtype_rounded},
+    {'name': 'clean', 'icon': Icons.wash_rounded},
+    {'name': 'mosque', 'icon': Icons.mosque_rounded},
+    {'name': 'family', 'icon': Icons.family_restroom_rounded},
+    {'name': 'other', 'icon': Icons.more_horiz_rounded},
+  ];
+
+  static Color getServiceColor(String type) {
+    String t = type.toLowerCase().trim().replaceAll('_', ' ');
+    
+    if (t.contains('جناز') || t.contains('نقل') && t.contains('موتى') || t.contains('funeral') || t.contains('shuttle') || t.contains('دفن')) {
+      return const Color(0xFF512DA8); // Deep Purple
+    }
+    if (t.contains('تغسيل') || t.contains('غسل') || t.contains('ghusl') || t.contains('موتى')) {
+      return const Color(0xFF1976D2); // Blue
+    }
+    if (t.contains('غذاء') || t.contains('مئونة') || t.contains('إطعام') || t.contains('food') || t.contains('قفة') || t.contains('وجبة')) {
+      return const Color(0xFF2E7D32); // Dark Green
+    }
+    if (t.contains('طب') || t.contains('دواء') || t.contains('عملية') || t.contains('مرض') || t.contains('medical') || t.contains('صحة') || t.contains('علاج') || t.contains('دم') || t.contains('blood')) {
+      return const Color(0xFFC62828); // Red / Emergency
+    }
+    if (t.contains('مال') || t.contains('نقود') || t.contains('تفريج كربة') || t.contains('financial') || t.contains('دين')) {
+      return const Color(0xFFD4AF37); // Gold
+    }
+    if (t.contains('بناء') || t.contains('تعمير') || t.contains('ترميم') || t.contains('construction') || t.contains('مسجد') || t.contains('بيت') || t.contains('سكن')) {
+      return const Color(0xFF795548); // Brown
+    }
+    if (t.contains('علم') || t.contains('مدرسة') || t.contains('طالب') || t.contains('محفظة') || t.contains('education') || t.contains('دراسة')) {
+      return const Color(0xFF0097A7); // Cyan
+    }
+    if (t.contains('ماء') || t.contains('بئر') || t.contains('آبار') || t.contains('سقي') || t.contains('water')) {
+      return const Color(0xFF0288D1); // Light Blue
+    }
+    if (t.contains('يتيم') || t.contains('أيتام') || t.contains('كفالة') || t.contains('orphan')) {
+      return const Color(0xFFE91E63); // Pink
+    }
+    if (t.contains('سبيل') || t.contains('dar') || t.contains('sabil')) {
+      return const Color(0xFF455A64); // Dark Blue Grey
+    }
+    if (t.contains('طارئ') || t.contains('استعجال') || t.contains('emergency')) {
+      return const Color(0xFFC62828); // Bright Red
+    }
+
+    return const Color(0xFF607D8B); // Blue Grey (Default)
+  }
+
   static IconData getServiceIcon(String type) {
     String t = type.toLowerCase().trim().replaceAll('_', ' ');
     
-    if (t == 'نقل الجنازات' || t == 'نقل الجنائز' || t == ' funeral transport') {
+    if (t.contains('جناز') || t.contains('نقل') && t.contains('موتى') || t.contains('funeral') || t.contains('shuttle') || t.contains('دفن')) {
       return Icons.airport_shuttle_rounded;
     }
-    if (t == 'تغسيل الموتى' || t == 'funeral ghusl' || t == 'ghusl') {
+    if (t.contains('تغسيل') || t.contains('غسل') || t.contains('ghusl') || t.contains('موتى')) {
       return Icons.waves_rounded;
     }
-    if (t == 'مساعدات غذائية' || t == 'إطعام الطعام' || t == 'food aid' || t == 'food distribution') {
+    if (t.contains('غذاء') || t.contains('مئونة') || t.contains('إطعام') || t.contains('food') || t.contains('قفة') || t.contains('وجبة')) {
       return Icons.shopping_basket_rounded;
     }
-    if (t == 'مساعدة طبية' || t == 'الرعاية الطبية' || t == 'medical aid' || t == 'medical equipment' || t == 'patient transport' || t == 'نقل المرضى') {
+    if (t.contains('طب') || t.contains('دواء') || t.contains('عملية') || t.contains('مرض') || t.contains('medical') || t.contains('صحة') || t.contains('علاج')) {
       return Icons.medical_services_rounded;
     }
-    if (t == 'مساعدات مالية' || t == 'financial aid' || t == 'money' || t == 'تفريج كربة (مالي)') {
+    if (t.contains('مال') || t.contains('نقود') || t.contains('تفريج كربة') || t.contains('financial') || t.contains('دين')) {
       return Icons.payments_rounded;
     }
-    if (t == 'بناء وتعمير' || t == 'ترميم بيوت الله والفقراء' || t == 'construction' || t == 'housing') {
+    if (t.contains('بناء') || t.contains('تعمير') || t.contains('ترميم') || t.contains('construction') || t.contains('مسجد') || t.contains('بيت') || t.contains('سكن')) {
       return Icons.home_work_rounded;
     }
-    if (t == 'تعليم وكفالة أيتام' || t == 'تعليم وكفالة طالب' || t == 'education' || t == 'school bags' || t == 'الحقيبة المدرسية') {
+    if (t.contains('سبيل') || t.contains('دار') || t.contains('dar sabil')) {
+      return Icons.home_rounded;
+    }
+    if (t.contains('علم') || t.contains('مدرسة') || t.contains('طالب') || t.contains('محفظة') || t.contains('education') || t.contains('دخول مدرسي') || t.contains('دراسة')) {
       return Icons.menu_book_rounded;
     }
-    if (t == 'تبرع بالدم' || t == 'blood donation') {
+    if (t.contains('دم') || t.contains('blood')) {
       return Icons.bloodtype_rounded;
     }
-    if (t == 'سقي الماء' || t == 'حفر الآبار' || t == 'water supply' || t == 'water well') {
+    if (t.contains('ماء') || t.contains('بئر') || t.contains('آبار') || t.contains('سقي') || t.contains('water')) {
       return Icons.water_drop_rounded;
     }
-    if (t == 'كفالة أيتام' || t == 'orphan care') {
+    if (t.contains('يتيم') || t.contains('أيتام') || t.contains('كفالة') || t.contains('orphan') || t.contains('أرملة') || t.contains('أرامل')) {
       return Icons.child_care_rounded;
     }
-    if (t == 'حالة طارئة' || t == 'emergency') {
+    if (t.contains('طارئ') || t.contains('استعجال') || t.contains('emergency') || t.contains('إنقاذ')) {
       return Icons.emergency_rounded;
+    }
+    if (t.contains('زكاة') || t.contains('صدقة') || t.contains('تبرع') || t.contains('zakat')) {
+      return Icons.volunteer_activism_rounded;
+    }
+    if (t.contains('كسوة') || t.contains('لباس') || t.contains('عيد') || t.contains('ملابس') || t.contains('غطاء')) {
+      return Icons.checkroom_rounded;
+    }
+    if (t.contains('تجهيز') || t.contains('عروس') || t.contains('عرس') || t.contains('زواج') || t.contains('أثاث')) {
+      return Icons.chair_rounded;
     }
 
     return Icons.volunteer_activism_rounded;
   }
 
   static IconData getIconFromName(String iconName) {
-    switch (iconName) {
+    String t = iconName.toLowerCase().trim();
+    
+    switch (t) {
       case 'mosque': return Icons.mosque;
       case 'shopping_basket': return Icons.shopping_basket;
       case 'medication': return Icons.medication;
@@ -191,20 +279,43 @@ class AppConstants {
       case 'nightlight_round': return Icons.nightlight_round;
       case 'bloodtype': return Icons.bloodtype;
       case 'more_horiz': return Icons.more_horiz;
+      case 'home_rounded': return Icons.home_rounded;
+      case 'volunteer': return Icons.volunteer_activism_rounded;
+      case 'shuttle': return Icons.airport_shuttle_rounded;
+      case 'food': return Icons.shopping_basket_rounded;
+      case 'medical': return Icons.medication_rounded;
+      case 'hand': return Icons.pan_tool_rounded;
+      case 'money': return Icons.payments_rounded;
+      case 'home': return Icons.home_work_rounded;
+      case 'book': return Icons.menu_book_rounded;
+      case 'water': return Icons.water_drop_rounded;
+      case 'blood': return Icons.bloodtype_rounded;
+      case 'clean': return Icons.wash_rounded;
+      case 'family': return Icons.family_restroom_rounded;
       // Fallbacks
-      case 'medical': return Icons.medical_services_outlined;
-      case 'food': return Icons.restaurant;
       case 'transport': return Icons.local_shipping_outlined;
-      case 'blood': return Icons.bloodtype_outlined;
       case 'funeral': return Icons.airport_shuttle;
+      case 'airport_shuttle': return Icons.airport_shuttle;
+      case 'wash': return Icons.waves_rounded;
       case 'funeral_ghusl': return Icons.waves_rounded;
       case 'ghusl': return Icons.waves_rounded;
-      case 'money': return Icons.account_balance_wallet_outlined;
       case 'construction': return Icons.foundation_rounded;
       case 'housing': return Icons.home_repair_service_rounded;
       case 'other': return Icons.more_horiz;
-      default: return Icons.category_outlined;
     }
+
+    // Try finding by keyword logic if direct match fails
+    if (t.contains('جناز') || t.contains('funeral')) return Icons.airport_shuttle;
+    if (t.contains('غسل') || t.contains('ghusl')) return Icons.waves;
+    if (t.contains('طعام') || t.contains('غذاء') || t.contains('food')) return Icons.restaurant;
+    if (t.contains('طبي') || t.contains('صحة') || t.contains('medical')) return Icons.medical_services;
+    if (t.contains('مال') || t.contains('نقدي') || t.contains('money')) return Icons.payments;
+    if (t.contains('بناء') || t.contains('ترميم') || t.contains('construction')) return Icons.home_work;
+    if (t.contains('يتيم') || t.contains('كفالة') || t.contains('orphan')) return Icons.child_care;
+    if (t.contains('ماء') || t.contains('سقي') || t.contains('بئر')) return Icons.water_drop;
+    if (t.contains('علم') || t.contains('دراس') || t.contains('school')) return Icons.school;
+
+    return Icons.category_outlined;
   }
 
   static const String usersCollection = "users";
@@ -215,6 +326,8 @@ class AppConstants {
   static const String chatCollection = "chats";
   static const String serviceTypesCollection = "service_types";
   static const String taskTypesCollection = "task_types";
+  static const String strategicGoalsDoc = "app_config/strategic_goals";
+
 
   static String translateStatus(String status) {
     switch (status.toLowerCase().trim()) {
@@ -229,14 +342,14 @@ class AppConstants {
   }
 
   static const List<Map<String, dynamic>> projectCategories = [
-    {'id': 'construction', 'name': 'البناء والترميم', 'icon': Icons.construction, 'color': Color(0xFF5D4037)},
-    {'id': 'orphan', 'name': 'كفالة الأيتام والتعليم', 'icon': Icons.child_care, 'color': Color(0xFF1565C0)},
-    {'id': 'food', 'name': 'إطعام الطعام والطرود', 'icon': Icons.shopping_basket, 'color': Color(0xFF85C69B)},
-    {'id': 'water', 'name': 'سقي الماء وحفر الآبار', 'icon': Icons.water_drop, 'color': Color(0xFF0277BD)},
-    {'id': 'medical', 'name': 'مداواة المرضى والإسعاف', 'icon': Icons.healing, 'color': Color(0xFFC62828)},
+    {'id': 'construction', 'name': 'البناء والترميم', 'icon': Icons.construction, 'color': Color(0xFF8D6E63)},
+    {'id': 'orphan', 'name': 'كفالة الأيتام والتعليم', 'icon': Icons.child_care, 'color': Color(0xFF1976D2)},
+    {'id': 'food', 'name': 'إطعام الطعام والطرود', 'icon': Icons.shopping_basket, 'color': Color(0xFF66BB6A)},
+    {'id': 'water', 'name': 'سقي الماء وحفر الآبار', 'icon': Icons.water_drop, 'color': Color(0xFF0288D1)},
+    {'id': 'medical', 'name': 'مداواة المرضى والإسعاف', 'icon': Icons.healing, 'color': Color(0xFFD32F2F)},
     {'id': 'housing', 'name': 'تفريج كرب الأسر والبيوت', 'icon': Icons.home, 'color': Color(0xFF795548)},
-    {'id': 'funeral', 'name': 'نقل الجنائز (إكرام الموتى)', 'icon': Icons.airport_shuttle, 'color': Color(0xFF4527A0)},
+    {'id': 'funeral', 'name': 'نقل الجنائز (إكرام الموتى)', 'icon': Icons.airport_shuttle, 'color': Color(0xFF512DA8)},
     {'id': 'zakat', 'name': 'زكاة المال والصدقات', 'icon': Icons.savings, 'color': Color(0xFFD4AF37)},
-    {'id': 'general', 'name': 'أبواب الخير العامة', 'icon': Icons.volunteer_activism, 'color': Color(0xFF546E7A)},
+    {'id': 'general', 'name': 'أبواب الخير العامة', 'icon': Icons.volunteer_activism, 'color': Color(0xFF607D8B)},
   ];
 }

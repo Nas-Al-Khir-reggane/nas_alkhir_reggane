@@ -8,17 +8,15 @@ import 'request_detail_screen.dart';
 
 class AdminRequestLoader extends StatelessWidget {
   final String requestId;
-  final bool isGuest;
 
   const AdminRequestLoader({
     super.key, 
     required this.requestId, 
-    this.isGuest = false
   });
 
   @override
   Widget build(BuildContext context) {
-    final String collection = isGuest ? 'guest_requests' : AppConstants.serviceRequestsCollection;
+    final String collection = AppConstants.serviceRequestsCollection;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,

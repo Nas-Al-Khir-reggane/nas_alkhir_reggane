@@ -74,6 +74,7 @@ class ProjectController extends GetxController {
     bool isSubscription = false, 
     bool isMonthlyGoal = false, 
   }) async {
+    if (isLoading.value) return; // 🛡️ حماية الضغط المزدوج
     final data = {
       'name': name,
       'category': category,
@@ -114,8 +115,8 @@ class ProjectController extends GetxController {
       // إرسال إشعار عام للجميع بالمشروع الجديد
       await NotificationService.notifyAll(
         type: 'new_project',
-        title: '🌿 مشروع خيري جديد: $name',
-        body: 'ساهم معنا في [$name]. $description',
+        title: '🌿 باب جديد من أبواب الخير: $name',
+        body: 'أبشركم، تم إطلاق مشروع [$name]. فرصة جديدة لنضع بصمة أثر ونغرس غرساً يبقى أجرُه. ﴿وَافْعَلُوا الْخَيْرَ لَعَلَّكُمْ تُفْلِحُونَ﴾',
         data: {
           'projectId': docRef.id,
           'category': category,
@@ -140,6 +141,7 @@ class ProjectController extends GetxController {
   }
 
   Future<void> updateProject(String id, Map<String, dynamic> data) async {
+    if (isLoading.value) return; // 🛡️ حماية الضغط المزدوج
     final updateData = {...data, 'updatedAt': FieldValue.serverTimestamp()};
     if (!_connectivity.isOnline.value) {
       final queueData = Map<String, dynamic>.from(updateData);
@@ -151,6 +153,7 @@ class ProjectController extends GetxController {
       return;
     }
     try {
+      isLoading.value = true;
       await _repository.updateProject(id, updateData);
       Get.snackbar('✅ تم التحديث', 'تم حفظ التعديلات بنجاح',
           backgroundColor: AppTheme.successColor.withValues(alpha: 0.15),
@@ -158,18 +161,25 @@ class ProjectController extends GetxController {
           snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
       Get.snackbar('خطأ', 'فشل تحديث المشروع: $e');
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> toggleProjectStatus(String id, String currentStatus) async {
+    if (isLoading.value) return; // 🛡️ حماية الضغط المزدوج
     try {
+      isLoading.value = true;
       await _repository.toggleProjectStatus(id, currentStatus);
     } catch (e) {
       Get.snackbar('خطأ', 'فشل تغيير حالة المشروع: $e');
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> deleteProject(String id) async {
+    if (isLoading.value) return; // 🛡️ حماية الضغط المزدوج
     if (!_connectivity.isOnline.value) {
       await _queue.enqueue(collection: AppConstants.projectsCollection, operation: 'delete', data: {}, docId: id);
       Get.snackbar('💾 تم الحفظ', 'سيتم حذف المشروع عند استعادة الاتصال',
@@ -178,12 +188,16 @@ class ProjectController extends GetxController {
       return;
     }
     try {
+      isLoading.value = true;
       await _repository.deleteProject(id);
+      Get.back(); // الخروج التلقائي عند الحذف
       Get.snackbar('🗑️ تم الحذف', 'تم حذف المشروع',
           backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15),
           colorText: AppTheme.errorColor);
     } catch (e) {
       Get.snackbar('خطأ', 'فشل حذف المشروع: $e');
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -274,6 +288,13 @@ ${project.description}
     if (difference < 0) return "منتهي";
     if (difference == 0) return "اليوم";
     return "$difference يوم متبقي";
+  }
+
+  int daysLeftNum(DateTime? deadline) {
+    if (deadline == null) return 0;
+    final now = DateTime.now();
+    final difference = deadline.difference(now).inDays;
+    return difference > 0 ? difference : 0;
   }
 
   String timeAgo(DateTime? date) {

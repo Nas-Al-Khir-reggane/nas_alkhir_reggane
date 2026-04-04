@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -10,16 +11,23 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/routes/app_routes.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/animations/scroll_animations.dart';
 import '../controllers/donor_controller.dart';
 import '../../chat/controllers/chat_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
-import '../../chat/screens/chat_screen.dart';
 import 'donate_screen.dart';
 import 'my_subscriptions_screen.dart';
 import '../../../data/models/project_model.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/models/donation_model.dart';
 import '../../admin/controllers/project_controller.dart';
 import '../../../data/services/notification_service.dart';
+import '../../admin/controllers/admin_controller.dart';
+import '../../shared/widgets/strategic_goal_card.dart';
+
+import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/shimmer_loader.dart';
+import '../../../core/animations/sound_manager.dart';
 
 class DonorDashboard extends StatefulWidget {
   const DonorDashboard({super.key});
@@ -33,7 +41,62 @@ class _DonorDashboardState extends State<DonorDashboard> {
   final ProjectController projectController = Get.put(ProjectController());
   final AuthController authController = Get.find<AuthController>();
   final NotificationService notificationService = Get.find<NotificationService>();
+  final AdminController adminController = Get.put(AdminController());
+  late final Stream<QuerySnapshot> _adminsStream;
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _adminsStream = FirebaseFirestore.instance
+        .collection('users')
+      .where('role', whereIn: ['admin', 'superAdmin'])
+        .snapshots();
+  }
+
+  Future<void> _openProjectDetails({ProjectModel? project, String? projectId}) async {
+    if (project != null) {
+      Get.toNamed(AppRoutes.adminProjectDetail, arguments: project);
+      return;
+    }
+
+    final id = projectId;
+    if (id == null || id.isEmpty || id == 'general') {
+      Get.snackbar('تنبيه', 'هذا التبرع عام للجمعية ولا يرتبط بمشروع محدد');
+      return;
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('projects').doc(id).get();
+      if (!doc.exists) {
+        Get.snackbar('تنبيه', 'تعذر العثور على تفاصيل المشروع');
+        return;
+      }
+      final model = ProjectModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      Get.toNamed(AppRoutes.adminProjectDetail, arguments: model);
+    } catch (e) {
+      Get.snackbar('خطأ', 'تعذر فتح تفاصيل المشروع: $e');
+    }
+  }
+
+  Future<void> _openDirectAdminChat(UserModel admin) async {
+    final myId = authController.currentUser.value?.id ?? '';
+    if (myId.isEmpty || admin.id.isEmpty) {
+      Get.snackbar('تعذر فتح المحادثة', 'الرجاء إعادة تسجيل الدخول ثم المحاولة مرة أخرى');
+      return;
+    }
+
+    final sortedIds = [myId, admin.id]..sort();
+    final chatId = '${sortedIds[0]}_${sortedIds[1]}';
+
+    Get.toNamed(AppRoutes.chatPrivate, arguments: {
+      'targetUserId': admin.id,
+      'targetUserName': admin.name,
+      'userId': admin.id,
+      'userName': admin.name,
+      'chatId': chatId,
+    });
+  }
 
   Future<bool> _onWillPop() async {
     final result = await Get.dialog<bool>(
@@ -102,12 +165,15 @@ class _DonorDashboardState extends State<DonorDashboard> {
             color: Theme.of(context).cardColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             boxShadow: [
-              BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4))
+              BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 4))
             ],
           ),
           child: BottomNavigationBar(
             currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
+            onTap: (index) {
+              setState(() => _currentIndex = index);
+              SoundManager.to.playNavigation();
+            },
             backgroundColor: Colors.transparent,
             elevation: 0,
             selectedItemColor: Theme.of(context).colorScheme.primary,
@@ -160,124 +226,50 @@ class _DonorDashboardState extends State<DonorDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 40),
+          const SizedBox(height: 20),
           Row(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('أهلاً,',
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
-                  Obx(() => Text(
-                        donorController.donorName,
-                        style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700),
-                      )),
-                ],
-              ),
-              const Spacer(),
-              IconButton(
-                icon: Icon(Icons.person_outline, color: Theme.of(context).colorScheme.primary, size: 28),
-                onPressed: () => Get.toNamed('/profile'),
-              ),
-              GestureDetector(
-                onTap: () => donorController.showCertificate(),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.75)),
-                  ),
-                  padding: const EdgeInsets.all(10),
-                  child: Row(
-                    children: [
-                      Icon(Icons.card_membership, color: Theme.of(context).colorScheme.secondary, size: 18),
-                      const SizedBox(width: 6),
-                      Text('شهادتي',
-                          style: TextStyle(
-                              color: Theme.of(context).colorScheme.secondary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600)),
-                    ],
-                  ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('أهلاً بطلنا،', 
+                        style: GoogleFonts.tajawal(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w500)),
+                    Obx(() => Text(
+                          donorController.donorName,
+                          style: GoogleFonts.tajawal(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5),
+                        )),
+                  ],
                 ),
               ),
+              _buildDonorBadge(),
               const SizedBox(width: 8),
-              Obx(() => Stack(
-                children: [
-                   IconButton(
-                    icon: Icon(Icons.notifications_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                    onPressed: () => Get.toNamed('/notifications'),
-                  ),
-                  if (notificationService.unreadCount.value > 0)
-                    Positioned(
-                      right: 12,
-                      top: 12,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.error,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
-                        child: Text(
-                          notificationService.unreadCount.value.toString(),
-                          style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    )
-                ],
-              )),
+              _buildProfileIcon(),
             ],
           ),
+          const SizedBox(height: 24),
+          _buildImpactSummaryCard(),
           const SizedBox(height: 20),
           Obx(() {
             final activeReqId = authController.currentUser.value?.activeBloodRequestId;
-            final isGuestReq = authController.currentUser.value?.activeBloodRequestIsGuest ?? false;
-            
             if (activeReqId != null && activeReqId.isNotEmpty) {
               return Column(
                 children: [
-                  _buildLiveTrackingBanner(activeReqId, isGuestReq),
+                  _buildLiveTrackingBanner(activeReqId, false),
                   const SizedBox(height: 20),
                 ],
               );
             }
             return const SizedBox.shrink();
           }),
-          Row(
-            children: [
-              Expanded(
-                child: Obx(() => _buildDonorKPI(
-                      'أرواح أُنقذت',
-                      '${(authController.currentUser.value?.bloodDonationsCount ?? 0) * 3}',
-                      Icons.favorite_rounded,
-                      const LinearGradient(colors: [Colors.pinkAccent, Colors.pink]),
-                      onTap: () => Get.toNamed(AppRoutes.bloodDonorProfile),
-                    )),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Obx(() => _buildDonorKPI(
-                      'تبرعات الدم',
-                      '${authController.currentUser.value?.bloodDonationsCount ?? 0}',
-                      Icons.bloodtype_rounded,
-                      const LinearGradient(colors: [Colors.redAccent, Colors.red]),
-                      onTap: () => Get.toNamed(AppRoutes.bloodDonorProfile),
-                    )),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          const SizedBox(height: 24),
-          _buildBloodDonationServiceCard(),
+          const SizedBox(height: 12),
+          _buildStrategicChallengesSection(),
           const SizedBox(height: 24),
           _buildHealthTipsCarousel(),
-          const SizedBox(height: 24),
-          _buildAdminTeamSection(),
           const SizedBox(height: 24),
           Obx(() => donorController.donationsByProject.isNotEmpty
               ? Column(
@@ -290,7 +282,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                         decoration: BoxDecoration(
                           color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                          border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
                         ),
                         padding: const EdgeInsets.all(16),
                         child: Row(
@@ -350,8 +342,9 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                                       fontSize: 11),
                                                   maxLines: 1,
                                                   overflow: TextOverflow.ellipsis),
-                                              Text(
-                                                  '${projectController.formatNumber(item['total'] as num)} دج',
+                                              ScrollAnimations.numberCounter(
+                                                  value: item['total'] as num,
+                                                  suffix: ' دج',
                                                   style: TextStyle(
                                                       color: Theme.of(context).colorScheme.onSurface,
                                                       fontSize: 12,
@@ -381,7 +374,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
                   ),
                   padding: const EdgeInsets.all(30),
                   child: Column(
@@ -401,21 +394,14 @@ class _DonorDashboardState extends State<DonorDashboard> {
               : Column(
                   children: donorController.myDonations.take(5).map((donation) {
                     return GestureDetector(
-                      onTap: () {
-                        try {
-                          final project = donorController.activeProjects.firstWhere((p) => p.id == donation.projectId);
-                          Get.toNamed(AppRoutes.adminProjectDetail, arguments: project);
-                        } catch (e) {
-                          _showAllDonations();
-                        }
-                      },
+                      onTap: () => _openProjectDetails(projectId: donation.projectId),
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         decoration: BoxDecoration(
                           color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
-                            BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4))
+                            BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 4))
                           ],
                         ),
                         padding: const EdgeInsets.all(14),
@@ -425,7 +411,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                               decoration: BoxDecoration(
                                 color: donation.donorId == 'anonymous'
                                     ? Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15)
-                                    : Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                                    : Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               padding: const EdgeInsets.all(10),
@@ -450,9 +436,9 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                   Row(
                                     children: [
                                       Text(
-                                          donation.donorId == 'anonymous'
-                                              ? 'مجهول'
-                                              : _methodLabel(donation.method),
+                                          donation.isAnonymous
+                                            ? '${_methodLabel(donation.method)} • مجهول'
+                                            : _methodLabel(donation.method),
                                           style: TextStyle(
                                               color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                                       const SizedBox(width: 8),
@@ -460,7 +446,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                         width: 4,
                                         height: 4,
                                         decoration: BoxDecoration(
-                                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), shape: BoxShape.circle),
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15), shape: BoxShape.circle),
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
@@ -485,7 +471,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(donation.status, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 10)),
@@ -504,62 +490,54 @@ class _DonorDashboardState extends State<DonorDashboard> {
           Obx(() => donorController.donationsByProject.isEmpty
               ? const SizedBox.shrink()
               : Column(
-                  children: donorController.activeProjects
-                      .where((p) => donorController.donationsByProject
-                          .any((d) => d['projectId'] == p.id))
-                      .map((project) {
-                    final progress = project.progressPercentage / 100;
+                  children: donorController.donationsByProject.map((entry) {
+                    final projectId = (entry['projectId'] ?? '').toString();
+                    final projectName = (entry['projectName'] ?? 'مشروع سابق').toString();
+                    final myTotal = (entry['total'] as num?) ?? 0;
+                    final existingProject = donorController.activeProjects.firstWhereOrNull((p) => p.id == projectId);
+
                     return GestureDetector(
-                      onTap: () => Get.toNamed(AppRoutes.adminProjectDetail, arguments: project),
+                      onTap: () => _openProjectDetails(project: existingProject, projectId: projectId),
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
                           color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
                         ),
                         padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(project.name,
-                                      style: TextStyle(
-                                          color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
-                                ),
-                                Text('${project.progressPercentage.toInt()}%',
-                                    style: TextStyle(
-                                        color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700)),
-                              ],
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(Icons.folder_special_rounded, color: Theme.of(context).colorScheme.primary),
                             ),
-                            const SizedBox(height: 8),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: LinearProgressIndicator(
-                                value: progress,
-                                backgroundColor: Theme.of(context).colorScheme.surface,
-                                minHeight: 8,
-                                valueColor: AlwaysStoppedAnimation(
-                                  project.progressPercentage >= 80 ? Colors.green
-                                    : project.progressPercentage >= 50 ? Theme.of(context).colorScheme.primary
-                                    : project.progressPercentage >= 20 ? Colors.orange
-                                    : Theme.of(context).colorScheme.error,
-                                ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(projectName,
+                                      style: TextStyle(
+                                          color: Theme.of(context).colorScheme.onSurface,
+                                          fontWeight: FontWeight.w700),
+                                      overflow: TextOverflow.ellipsis),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    existingProject == null ? 'مشروع غير نشط حالياً' : 'اضغط لعرض التفاصيل',
+                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Text(
-                                    '${projectController.formatNumber(project.collected)} دج',
-                                    style: TextStyle(
-                                        color: Theme.of(context).colorScheme.primary, fontSize: 12)),
-                                const Spacer(),
-                                Text(
-                                    'من ${projectController.formatNumber(project.budget)} دج',
-                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
-                              ],
+                            const SizedBox(width: 8),
+                            Text(
+                              '${projectController.formatNumber(myTotal)} دج',
+                              style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700),
                             ),
                           ],
                         ),
@@ -573,162 +551,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
     );
   }
 
-  Widget _buildAdminTeamSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader('🛡️ تواصل مع الإدارة', 'عرض الكل', onTap: () => _showAdminsList()),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 110,
-          child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .where('role', whereIn: ['admin', 'superAdmin'])
-                .limit(5)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-              final admins = snapshot.data!.docs;
-              
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: admins.length,
-                itemBuilder: (context, index) {
-                  final data = admins[index].data() as Map<String, dynamic>;
-                  final admin = UserModel.fromMap(data, admins[index].id);
-                  return GestureDetector(
-                    onTap: () => Get.toNamed('/profile', arguments: admin),
-                    child: Container(
-                      width: 90,
-                      margin: const EdgeInsets.only(left: 12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75)),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircleAvatar(
-                            radius: 25,
-                            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                            backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty)
-                                ? CachedNetworkImageProvider(admin.profileImage!) as ImageProvider
-                                : null,
-                            child: (admin.profileImage == null || admin.profileImage!.isEmpty)
-                                ? Text(admin.name[0], style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold))
-                                : null,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(admin.name.split(' ')[0], 
-                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 11, fontWeight: FontWeight.w600),
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                          Text(admin.role == UserRole.superAdmin ? 'مدير عام' : 'مدير',
-                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 9)),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
 
-  void _showAdminsList() {
-    Get.bottomSheet(
-      DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        maxChildSize: 0.9,
-        minChildSize: 0.5,
-        expand: false,
-        builder: (context, scrollController) {
-          return Container(
-            decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(2)))),
-                const SizedBox(height: 20),
-                Text('الفريق الإداري', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('users')
-                        .where('role', whereIn: ['admin', 'superAdmin'])
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                      final admins = snapshot.data!.docs;
-                      return ListView.builder(
-                        controller: scrollController,
-                        itemCount: admins.length,
-                        itemBuilder: (context, index) {
-                          final admin = UserModel.fromMap(admins[index].data() as Map<String, dynamic>, admins[index].id);
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                              backgroundImage: (admin.profileImage != null && admin.profileImage!.isNotEmpty) ? CachedNetworkImageProvider(admin.profileImage!) as ImageProvider : null,
-                              child: (admin.profileImage == null || admin.profileImage!.isEmpty) ? Text(admin.name[0], style: TextStyle(color: Theme.of(context).colorScheme.primary)) : null,
-                            ),
-                            title: Text(admin.name, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
-                            subtitle: Text(admin.role == UserRole.superAdmin ? 'مدير عام' : 'مدير إداري', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 12)),
-                            trailing: IconButton(
-                              icon: Icon(Icons.chat_bubble_outline, color: Theme.of(context).colorScheme.primary),
-                              onPressed: () => Get.toNamed('/chat/private', arguments: {'userId': admin.id, 'userName': admin.name}),
-                            ),
-                            onTap: () => Get.toNamed('/profile', arguments: admin),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-      isScrollControlled: true,
-    );
-  }
-
-  Widget _buildDonorKPI(String label, String value, IconData icon, Gradient gradient, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: const EdgeInsets.all(8),
-              child: Icon(icon, color: Colors.white, size: 22),
-            ),
-            const SizedBox(height: 12),
-            Text(value,
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildSectionHeader(String title, String action, {VoidCallback? onTap}) {
     return Row(
@@ -749,7 +572,11 @@ class _DonorDashboardState extends State<DonorDashboard> {
   Widget _buildProjectsTab() {
     return Obx(() {
       if (donorController.activeProjects.isEmpty) {
-        return Center(child: Text('لا توجد مشاريع نشطة حالياً', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)));
+        return const PremiumEmptyState(
+          title: 'لا توجد مشاريع حالياً',
+          subtitle: 'لا توجد مشاريع نشطة حالياً، جزاك الله خيراً للبحث.',
+          icon: Icons.volunteer_activism_outlined,
+        );
       }
       return ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -762,120 +589,224 @@ class _DonorDashboardState extends State<DonorDashboard> {
     });
   }
 
-  Widget _buildBloodDonationServiceCard() {
+  Widget _buildProfileIcon() {
     return Obx(() {
       final user = authController.currentUser.value;
-      if (user == null) return const SizedBox.shrink();
-
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader('🩸 خدمة إغاثة بقطرة دم', ''),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(18),
+      return FadeInRight(
+        child: GestureDetector(
+          onTap: () => Get.toNamed(AppRoutes.profile),
+          child: Container(
+            padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.75)),
-              boxShadow: [
-                BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4))
-              ],
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                width: 2,
+              ),
             ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.errorColor.withValues(alpha: 0.75),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(Icons.bloodtype_rounded, color: AppTheme.errorColor),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                           Text('فصيلتي: ${user.bloodType ?? 'غير محدد'}', 
-                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 16)),
-                           Text(user.isDonorAvailable ? 'أنت جاهز للتبرع حالياً' : 'أنت في فترة الراحة الطبية', 
-                            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                    AppTheme.gradientButton(
-                      text: 'الملف الطبي',
-                      onPressed: () => Get.toNamed(AppRoutes.bloodDonorProfile),
-                    ),
-                  ],
-                ),
-                if (user.lastDonatedAt != null) ...[
-                   const Padding(
-                     padding: EdgeInsets.symmetric(vertical: 12),
-                     child: Divider(color: Colors.white10),
-                   ),
-                   Row(
-                     children: [
-                       const Icon(Icons.timer_outlined, color: Colors.orange, size: 18),
-                       const SizedBox(width: 8),
-                       _buildRestPeriodStatus(user),
-                     ],
-                   ),
-                ],
-              ],
+            child: CircleAvatar(
+              radius: 22,
+              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              backgroundImage: (user?.profileImage != null && user!.profileImage!.isNotEmpty)
+                  ? CachedNetworkImageProvider(user.profileImage!) as ImageProvider
+                  : null,
+              child: (user?.profileImage == null || user!.profileImage!.isEmpty)
+                  ? Icon(Icons.person_rounded, color: Theme.of(context).colorScheme.primary)
+                  : null,
             ),
           ),
-        ],
+        ),
       );
     });
   }
 
-  Widget _buildRestPeriodStatus(UserModel user) {
-    if (user.lastDonatedAt == null) return const SizedBox.shrink();
-    
-    final now = DateTime.now();
-    final difference = now.difference(user.lastDonatedAt!);
-    final daysPassed = difference.inDays;
-    final remaining = 30 - daysPassed;
+  Widget _buildDonorBadge() {
+    return Obx(() {
+      final user = authController.currentUser.value;
+      if (user == null) return const SizedBox.shrink();
+      
+      final bool isReady = user.canDonateBloodSmart;
+      final String bloodType = user.bloodType ?? '??';
 
-    if (remaining > 0) {
-      return Text('متبقي $remaining يوم على موعد تبرعك القادم', 
-        style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12));
-    } else {
-      return const Text('يمكنك التبرع الآن، جزاك الله خيراً', 
-        style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12));
-    }
+      return FadeInRight(
+        child: GestureDetector(
+          onTap: () => Get.toNamed(AppRoutes.bloodDonorProfile),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.errorColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.15)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(color: AppTheme.errorColor, shape: BoxShape.circle),
+                  child: Text(bloodType, 
+                    style: GoogleFonts.tajawal(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900)),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(isReady ? 'جاهز للتبرع' : 'فترة استراحة', 
+                      style: GoogleFonts.tajawal(color: isReady ? Colors.green : Colors.orange, fontSize: 10, fontWeight: FontWeight.w800)),
+                    Text('الملف الطبي ➔', 
+                      style: GoogleFonts.tajawal(color: Theme.of(context).colorScheme.primary, fontSize: 9, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildImpactSummaryCard() {
+    return Obx(() {
+      final user = authController.currentUser.value;
+      final int donationCount = user?.bloodDonationsCount ?? 0;
+      final double totalCash = donorController.totalDonated.value;
+      
+      return FadeInUp(
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFC62828), Color(0xFF880E4F)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFC62828).withValues(alpha: 0.25),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -20, top: -20,
+                child: Icon(Icons.favorite_rounded, size: 120, color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('أثرك المجتمعي التراكمي', 
+                        style: GoogleFonts.tajawal(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+                      GestureDetector(
+                        onTap: () => donorController.showCertificate(),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
+                          child: Text('شهادتي 🏅', style: GoogleFonts.tajawal(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(donationCount.toString(), 
+                        style: GoogleFonts.tajawal(color: Colors.white, fontSize: 44, fontWeight: FontWeight.w900, height: 1)),
+                      const SizedBox(width: 8),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Text('أرواح أُنقذت بفضل الله', 
+                          style: GoogleFonts.tajawal(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Container(height: 1, width: double.infinity, color: Colors.white12),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildImpactStat('إجمالي الصدقات', '${totalCash.toInt()} دج', Icons.volunteer_activism_rounded),
+                      _buildImpactStat('المشاريع المنفذة', donorController.donationsByProject.length.toString(), Icons.auto_awesome_rounded),
+                      _buildImpactStat('رتبة البطل', _getRank(donationCount), Icons.military_tech_rounded),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildImpactStat(String label, String value, IconData icon) {
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.white60, size: 20),
+          const SizedBox(height: 6),
+          Text(value, style: GoogleFonts.tajawal(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800), textAlign: TextAlign.center),
+          Text(label, style: GoogleFonts.tajawal(color: Colors.white38, fontSize: 9), textAlign: TextAlign.center),
+        ],
+      ),
+    );
+  }
+
+  String _getRank(int count) {
+    if (count >= 15) return 'بلاتيني 💎';
+    if (count >= 10) return 'ذهبي 🥇';
+    if (count >= 5) return 'فضي 🥈';
+    if (count >= 1) return 'برونزي 🥉';
+    return 'مبادر 🌱';
   }
 
   Widget _buildDonorProjectCard(ProjectModel project) {
     final cat = ProjectController.categories
         .firstWhere((c) => c['id'] == project.category, orElse: () => ProjectController.categories.last);
     final categoryColor = cat['color'] as Color;
-    final progress = (project.budget > 0)
-        ? (project.collected / project.budget).clamp(0.0, 1.0)
-        : 0.0;
-    final progressPercent = (progress * 100).toInt();
+    final progress = project.progressRatio;
+    final progressPercent = project.progressPercentage;
     final remaining = (project.budget - project.collected).clamp(0.0, double.infinity);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: categoryColor.withValues(alpha: 0.75), width: 1.5),
-      ),
-      child: Column(
-        children: [
-          // Header
+    return FadeInUp(
+      duration: const Duration(milliseconds: 500),
+      child: Container(
+        margin: const EdgeInsetsDirectional.only(bottom: 20),
+        decoration: AppTheme.glassDecoration.copyWith(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: categoryColor.withValues(alpha: 0.15), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: categoryColor.withValues(alpha: 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Column(
+              children: [
+                // Header
           GestureDetector(
-            onTap: () => Get.toNamed(AppRoutes.adminProjectDetail, arguments: project),
+            onTap: () => _openProjectDetails(project: project),
             child: Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: categoryColor.withValues(alpha: 0.75),
+                color: categoryColor.withValues(alpha: 0.15),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: Row(
@@ -883,9 +814,9 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   Container(
                     width: 52, height: 52,
                     decoration: BoxDecoration(
-                      color: categoryColor.withValues(alpha: 0.75),
+                      color: categoryColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: categoryColor.withValues(alpha: 0.75)),
+                      border: Border.all(color: categoryColor.withValues(alpha: 0.15)),
                     ),
                     child: Icon(cat['icon'] as IconData, color: categoryColor, size: 28),
                   ),
@@ -905,7 +836,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.amber.withValues(alpha: 0.75),
+                                  color: AppTheme.goldAccent.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Row(
@@ -930,7 +861,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(project.status, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 10)),
@@ -942,7 +873,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
 
           // Circular Progress + Stats
           GestureDetector(
-            onTap: () => Get.toNamed(AppRoutes.adminProjectDetail, arguments: project),
+            onTap: () => _openProjectDetails(project: project),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               child: Row(
@@ -955,7 +886,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text('$progressPercent%',
+                            Text('${progressPercent.toStringAsFixed(1)}%',
                                 style: TextStyle(color: categoryColor, fontWeight: FontWeight.w900, fontSize: 24, height: 1)),
                             Text('اكتمل', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
                           ],
@@ -995,7 +926,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   children: [
                     Text('شريط التقدم', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
                     const Spacer(),
-                    Text('$progressPercent%', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
+                    Text('${progressPercent.toStringAsFixed(1)}%', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -1012,6 +943,69 @@ class _DonorDashboardState extends State<DonorDashboard> {
             ),
           ),
 
+          // Personal Contribution Detail
+          Builder(builder: (ctx) {
+            final myContribData = donorController.donationsByProject
+                .firstWhereOrNull((d) => d['projectId'] == project.id);
+            final double myAmount = (myContribData?['total'] ?? 0.0).toDouble();
+            final double myPercent = project.collected > 0
+                ? (myAmount / project.collected * 100).clamp(0.0, 100.0)
+                : 0.0;
+            
+            if (myAmount <= 0) return const SizedBox.shrink();
+            
+            return Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(18, 16, 18, 0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: categoryColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: categoryColor.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: categoryColor.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.stars_rounded, color: categoryColor, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('إجمالي مساهمتك في هذا المشروع', 
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Text('${projectController.formatNumber(myAmount)} دج',
+                                  style: TextStyle(color: categoryColor, fontSize: 15, fontWeight: FontWeight.w900)),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: categoryColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text('%${myPercent.toStringAsFixed(1)}',
+                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+
           const SizedBox(height: 16),
           const Divider(height: 1),
 
@@ -1025,7 +1019,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                     onTap: () {
                       final shareText =
                           'مشروع: ${project.name}\n'
-                          'التقدم: $progressPercent%\n'
+                          'التقدم: ${progressPercent.toStringAsFixed(1)}%\n'
                           'جُمع: ${projectController.formatNumber(project.collected)} دج\n'
                           'الهدف: ${projectController.formatNumber(project.budget)} دج\n'
                           'انضم إلينا لدعم جمعية ناس الخير والتبرع لهذا المشروع.';
@@ -1036,7 +1030,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -1060,8 +1054,19 @@ class _DonorDashboardState extends State<DonorDashboard> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
+                        gradient: LinearGradient(
+                          colors: [Theme.of(context).colorScheme.primary, AppTheme.primaryGreenDark],
+                          begin: AlignmentDirectional.topStart,
+                          end: AlignmentDirectional.bottomEnd,
+                        ),
                         borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1081,6 +1086,9 @@ class _DonorDashboardState extends State<DonorDashboard> {
           ),
         ],
       ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1095,12 +1103,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
   }
 
   String _methodLabel(String method) {
-    switch (method) {
-      case 'cash': return 'نقدي';
-      case 'bank': return 'تحويل بنكي';
-      case 'online': return 'إلكتروني';
-      default: return method;
-    }
+    return DonationModel.methodLabel(method);
   }
 
   void _showAllDonations() {
@@ -1120,7 +1123,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(2)))),
+                Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(2)))),
                 Text('جميع تبرعاتي',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface)),
                 const SizedBox(height: 16),
@@ -1133,14 +1136,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                           itemBuilder: (context, index) {
                             final donation = donorController.myDonations[index];
                             return GestureDetector(
-                              onTap: () {
-                                try {
-                                  final project = donorController.activeProjects.firstWhere((p) => p.id == donation.projectId);
-                                  Get.toNamed(AppRoutes.adminProjectDetail, arguments: project);
-                                } catch (e) {
-                                  debugPrint('❌ [DonorDashboard] donation project navigation error: $e');
-                                }
-                              },
+                              onTap: () => _openProjectDetails(projectId: donation.projectId),
                               child: Container(
                                 margin: const EdgeInsets.only(bottom: 10),
                                 decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14)),
@@ -1148,7 +1144,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                 child: Row(
                                   children: [
                                     Container(
-                                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(10)),
+                                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
                                       padding: const EdgeInsets.all(10),
                                       child: Icon(Icons.volunteer_activism, color: Theme.of(context).colorScheme.primary, size: 20),
                                     ),
@@ -1169,7 +1165,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                                             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700)),
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(4)),
+                                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
                                           child: Text(donation.status, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 9)),
                                         ),
                                       ],
@@ -1196,7 +1192,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
       children: [
         const SizedBox(height: 50),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+          padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1207,47 +1203,6 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
             ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Donors group room
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: GestureDetector(
-            onTap: () => Get.to(() => const ChatScreen(
-                  isGroupChat: true,
-                  chatId: 'group_donors',
-                  groupName: 'غرفة المتبرعين',
-                )),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.people_alt_rounded, color: Theme.of(context).colorScheme.onPrimary, size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('غرفة المتبرعين',
-                            style: TextStyle(
-                                color: Theme.of(context).colorScheme.onPrimary,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15)),
-                        Text('انضم لمجتمع المتبرعين',
-                            style: TextStyle(
-                                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.75), fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.arrow_forward_ios, color: Theme.of(context).colorScheme.onPrimary, size: 16),
-                ],
-              ),
-            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -1262,16 +1217,10 @@ class _DonorDashboardState extends State<DonorDashboard> {
         const SizedBox(height: 8),
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .where('role', whereIn: ['admin', 'superAdmin'])
-                .where('isActive', isEqualTo: true)
-                .snapshots(),
+            stream: _adminsStream,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(
-                    child: CircularProgressIndicator(
-                        color: Theme.of(context).colorScheme.primary));
+                return const ShimmerList(count: 3, height: 80);
               }
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return Center(
@@ -1283,7 +1232,24 @@ class _DonorDashboardState extends State<DonorDashboard> {
               final admins = snapshot.data!.docs
                   .map((d) => UserModel.fromMap(
                       d.data() as Map<String, dynamic>, d.id))
+                  .where((u) => u.isActive)
+                  .where((u) => u.role == UserRole.admin || u.role == UserRole.superAdmin)
                   .toList();
+                  
+              // ترتيب: المدير العام أولاً ثم البقية أبجدياً
+              admins.sort((a, b) {
+                if (a.role == UserRole.superAdmin && b.role != UserRole.superAdmin) return -1;
+                if (a.role != UserRole.superAdmin && b.role == UserRole.superAdmin) return 1;
+                return a.name.compareTo(b.name);
+              });
+
+              if (admins.isEmpty) {
+                return Center(
+                  child: Text('لا يوجد مدراء متاحون حالياً',
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                );
+              }
               return ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: admins.length,
@@ -1294,7 +1260,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                     decoration: BoxDecoration(
                       color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                      border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
                     ),
                     child: ListTile(
                       contentPadding:
@@ -1329,17 +1295,13 @@ class _DonorDashboardState extends State<DonorDashboard> {
                       trailing: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Icon(Icons.chat_bubble_outline,
                             color: AppTheme.primaryGreen, size: 20),
                       ),
-                      onTap: () => Get.toNamed('/chat/private',
-                          arguments: {
-                            'userId': admin.id,
-                            'userName': admin.name
-                          }),
+                      onTap: () => _openDirectAdminChat(admin),
                     ),
                   );
                 },
@@ -1373,12 +1335,12 @@ class _DonorDashboardState extends State<DonorDashboard> {
             itemBuilder: (context, index) {
               return Container(
                 width: 250,
-                margin: const EdgeInsets.only(left: 12),
+                margin: const EdgeInsetsDirectional.only(start: 12),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75)),
+                  border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)),
                 ),
                 child: Row(
                   children: [
@@ -1402,13 +1364,28 @@ class _DonorDashboardState extends State<DonorDashboard> {
     );
   }
 
+  Widget _buildStrategicChallengesSection() {
+    return Obx(() {
+      if (adminController.activeGoals.isEmpty) return const SizedBox.shrink();
+      
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader('🎯 تحديات جمعية ناس الخير', ''),
+          const SizedBox(height: 12),
+          ...adminController.activeGoals.map((goal) => StrategicGoalCard(goal: goal)),
+        ],
+      );
+    });
+  }
+
   // ✨ زر التتبع الحي لطلب الدم
   Widget _buildLiveTrackingBanner(String requestId, bool isGuest) {
     return GestureDetector(
       onTap: () {
         Get.toNamed('/blood-emergency', arguments: {
            'requestId': requestId,
-           'isGuest': isGuest.toString(),
+            'isGuest': isGuest,
         });
       },
       child: FadeInDown(
@@ -1418,20 +1395,20 @@ class _DonorDashboardState extends State<DonorDashboard> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Colors.orangeAccent, Colors.deepOrange],
+              colors: [Colors.orangeAccent, AppTheme.urgentColor],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
-              BoxShadow(color: Colors.deepOrange.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4)),
+              BoxShadow(color: AppTheme.urgentColor.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 4)),
             ],
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.75), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
                 child: const Icon(Icons.directions_run_rounded, color: Colors.white, size: 28),
               ),
               const SizedBox(width: 16),
@@ -1507,4 +1484,3 @@ class _ArcProgressPainter extends CustomPainter {
   bool shouldRepaint(_ArcProgressPainter old) =>
       old.progress != progress || old.color != color;
 }
-

@@ -9,6 +9,7 @@ import '../../../data/models/donation_model.dart';
 import '../../../data/models/worker_update_model.dart';
 import '../controllers/project_controller.dart';
 import '../../donor/controllers/donor_controller.dart';
+import '../../../core/animations/scroll_animations.dart';
 import 'package:intl/intl.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:cached_network_image/cached_network_image.dart';
@@ -57,7 +58,7 @@ class ProjectDetailScreen extends StatelessWidget {
                           children: [
                             Container(
                               decoration: BoxDecoration(
-                                color: categoryColor.withValues(alpha: 0.75),
+                                color: categoryColor.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               padding: const EdgeInsets.all(14),
@@ -84,7 +85,7 @@ class ProjectDetailScreen extends StatelessWidget {
                                       const SizedBox(width: 8),
                                       Container(
                                         decoration: BoxDecoration(
-                                          color: categoryColor.withValues(alpha: 0.75),
+                                          color: categoryColor.withValues(alpha: 0.15),
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         padding: const EdgeInsets.symmetric(
@@ -156,8 +157,9 @@ class ProjectDetailScreen extends StatelessWidget {
                             children: [
                               Text('نسبة الإنجاز', style: TextStyle(color: AppTheme.textSecondary)),
                               const Spacer(),
-                              Text(
-                                '${project.progressPercentage.toInt()}%',
+                              ScrollAnimations.numberCounter(
+                                value: project.progressPercentage.toInt(),
+                                suffix: '%',
                                 style: const TextStyle(
                                   color: AppTheme.primaryGreen,
                                   fontSize: 22,
@@ -181,8 +183,9 @@ class ProjectDetailScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('المجموع', style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
-                                  Text(
-                                    '${projectController.formatNumber(project.collected)} دج',
+                                  ScrollAnimations.numberCounter(
+                                    value: project.collected,
+                                    suffix: ' دج',
                                     style: const TextStyle(
                                       color: AppTheme.primaryGreen,
                                       fontWeight: FontWeight.w700,
@@ -195,8 +198,9 @@ class ProjectDetailScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   Text('المتبقي', style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
-                                  Text(
-                                    '${projectController.formatNumber(project.budget - project.collected)} دج',
+                                  ScrollAnimations.numberCounter(
+                                    value: project.budget - project.collected,
+                                    suffix: ' دج',
                                     style: const TextStyle(
                                       color: AppTheme.warningColor,
                                       fontWeight: FontWeight.w700,
@@ -209,8 +213,9 @@ class ProjectDetailScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text('الهدف', style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
-                                  Text(
-                                    '${projectController.formatNumber(project.budget)} دج',
+                                  ScrollAnimations.numberCounter(
+                                    value: project.budget,
+                                    suffix: ' دج',
                                     style: TextStyle(
                                       color: AppTheme.textPrimary,
                                       fontWeight: FontWeight.w700,
@@ -236,10 +241,10 @@ class ProjectDetailScreen extends StatelessWidget {
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
                       children: [
-                        _buildStatCard('المتبرعون', project.donorsCount.toString(), Icons.people, AppTheme.primaryGreen),
-                        _buildStatCard('المتطوعون', project.assignedWorkers.length.toString(), Icons.engineering, Colors.blue),
-                        _buildStatCard('أيام متبقية', projectController.daysLeft(project.deadline), Icons.timer, AppTheme.warningColor),
-                        _buildStatCard('بداية المشروع', DateFormat('yyyy/MM/dd').format(project.createdAt), Icons.update, AppTheme.textSecondary),
+                        _buildStatCard('المتبرعون', project.donorsCount, Icons.people, AppTheme.primaryGreen),
+                        _buildStatCard('المتطوعون', project.assignedWorkers.length, Icons.engineering, Colors.blue),
+                        _buildStatCard('أيام متبقية', projectController.daysLeftNum(project.deadline), Icons.timer, AppTheme.warningColor, unit: 'يوم'),
+                        _buildStatCard('بداية المشروع', DateFormat('yyyy/MM/dd').format(project.createdAt), Icons.update, AppTheme.textSecondary, isNum: false),
                       ],
                     ),
 
@@ -362,8 +367,9 @@ class ProjectDetailScreen extends StatelessWidget {
                                   DateFormat('yyyy/MM/dd').format(donation.date),
                                   style: TextStyle(color: AppTheme.textHint, fontSize: 11),
                                 ),
-                                trailing: Text(
-                                  '${projectController.formatNumber(donation.amount)} دج',
+                                trailing: ScrollAnimations.numberCounter(
+                                  value: donation.amount,
+                                  suffix: ' دج',
                                   style: TextStyle(color: AppTheme.goldAccent, fontWeight: FontWeight.w700),
                                 ),
                               );
@@ -491,7 +497,7 @@ class ProjectDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(String label, dynamic value, IconData icon, Color color, {bool isNum = true, String unit = ''}) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -504,7 +510,7 @@ class ProjectDetailScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.75),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 20),
@@ -515,11 +521,18 @@ class ProjectDetailScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  value,
-                  style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 16),
-                  overflow: TextOverflow.ellipsis,
-                ),
+                if (isNum && value is num)
+                  ScrollAnimations.numberCounter(
+                    value: value,
+                    suffix: unit.isNotEmpty ? ' $unit' : '',
+                    style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 16),
+                  )
+                else
+                  Text(
+                    value.toString(),
+                    style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 16),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 Text(label, style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
               ],
             ),

@@ -46,7 +46,7 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              padding: const EdgeInsetsDirectional.fromSTEB(20, 20, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -69,14 +69,14 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
               ),
               child: TextField(
                 controller: _searchController,
                 style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
                 decoration: InputDecoration(
-                  hintText: 'بحث بالاسم أو الهاتف...',
+                  hintText: 'بحث بالاسم أو البريد الإلكتروني...',
                   hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
                   prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.primary),
                   suffixIcon: Row(
@@ -110,40 +110,83 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
             // Group chat button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: GestureDetector(
-                onTap: () => Get.to(() => const ChatScreen(isGroupChat: true)),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary]),
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), blurRadius: 10, offset: const Offset(0, 4))
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.groups_rounded, color: Colors.black, size: 24),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Get.to(() => const ChatScreen(isGroupChat: true, chatId: 'group_team', groupName: 'غرفة الفريق الجماعية')),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary]),
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: [
+                            BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 4))
+                          ],
+                        ),
+                        child: Row(
                           children: [
-                            Text('غرفة الفريق الجماعية',
-                                style: GoogleFonts.tajawal(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 15)),
-                            Text('الدردشة مع جميع أعضاء الفريق',
-                                style: GoogleFonts.tajawal(
-                                    color: Colors.black54, fontSize: 11)),
+                            const Icon(Icons.groups_rounded, color: Colors.black, size: 30),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('غرفة الفريق الجماعية',
+                                      style: GoogleFonts.tajawal(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 14)),
+                                  Text('لجميع الأعضاء',
+                                      style: GoogleFonts.tajawal(
+                                          color: Colors.black54, fontSize: 11)),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      const Icon(Icons.arrow_forward_ios, color: Colors.black54, size: 16),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  if (isAdmin)
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => Get.to(() => const ChatScreen(isGroupChat: true, chatId: 'group_management', groupName: 'غرفة الإدارة العليا')),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(colors: [Color(0xFFB8860B), Color(0xFFFFD700)]),
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(color: const Color(0xFFB8860B).withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 4))
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.admin_panel_settings_rounded, color: Colors.black, size: 30),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('الإدارة العليا',
+                                        style: GoogleFonts.tajawal(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 14)),
+                                    Text('خاصة بالمدراء',
+                                        style: GoogleFonts.tajawal(
+                                            color: Colors.black54, fontSize: 11)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
 
@@ -181,11 +224,11 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                             children: [
                               const Icon(Icons.error_outline, color: Colors.orange, size: 40),
                               const SizedBox(height: 12),
-                              Text('خطأ في جلب المحادثات: ${snapshot.error}', 
+                              const Text('تعذر تحميل المحادثات حالياً. يرجى إعادة المحاولة.', 
                                    textAlign: TextAlign.center,
-                                   style: const TextStyle(color: Colors.orange, fontSize: 12)),
+                                style: TextStyle(color: Colors.orange, fontSize: 12)),
                               const SizedBox(height: 8),
-                              const Text('قد يتطلب هذا إنشاء "Composite Index" في Firestore إذا لم يكن موجوداً.',
+                              const Text('إذا استمر الخلل، تحقق من إعدادات قاعدة البيانات والفهارس المطلوبة.',
                                    textAlign: TextAlign.center,
                                    style: TextStyle(color: Colors.grey, fontSize: 11)),
                             ],
@@ -294,12 +337,21 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                             const Divider(),
                           ],
                           if (privates.isNotEmpty) ...[
+                            if (_searchQuery.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                                child: Text('المحادثات الحالية',
+                                    style: GoogleFonts.tajawal(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: Theme.of(context).colorScheme.primary)),
+                              ),
                             ...privates.map((doc) => _buildConversationTile(context, doc.data() as Map<String, dynamic>, doc.id, currentUserId)),
                           ],
-                          if (guests.isEmpty && privates.isEmpty) ...[
-                            if (_searchQuery.isNotEmpty && !_showArchived)
+                          if (_searchQuery.isNotEmpty && !_showArchived && !_showDeleted) ...[
                               _buildUserSearch(_searchQuery, currentUserId)
-                            else
+                          ],
+                          if (guests.isEmpty && privates.isEmpty && _searchQuery.isEmpty) ...[
                               _buildEmpty(),
                           ]
                         ],
@@ -312,6 +364,7 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
       ),
     ),
     floatingActionButton: FloatingActionButton(
+      heroTag: 'admin_inbox_fab',
       onPressed: () => _showUserSelector(context, currentUserId),
       backgroundColor: Theme.of(context).colorScheme.primary,
       child: const Icon(Icons.add_comment_rounded, color: Colors.white),
@@ -347,15 +400,19 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
               const SizedBox(height: 16),
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('users').where('role', isNotEqualTo: 'admin').snapshots(),
+                  stream: FirebaseFirestore.instance.collection('users').snapshots(),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                     
                     final users = snapshot.data!.docs.where((doc) {
                       final data = doc.data() as Map<String, dynamic>;
                       final name = data['name']?.toString().toLowerCase() ?? '';
-                      final phone = data['phone']?.toString() ?? '';
-                      return name.contains(innerSearch) || phone.contains(innerSearch);
+                      final email = data['email']?.toString().toLowerCase() ?? '';
+                      
+                      // لا يظهر الشخص نفسه في القائمة
+                      if (doc.id == currentUserId) return false;
+
+                      return name.contains(innerSearch) || email.contains(innerSearch);
                     }).toList();
 
                     if (users.isEmpty) return Center(child: Text('لا يوجد نتائج', style: GoogleFonts.tajawal()));
@@ -365,8 +422,8 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                       itemBuilder: (context, index) {
                         final userData = users[index].data() as Map<String, dynamic>;
                         final userId = users[index].id;
-                        final String userPhone = userData['phone'] ?? '';
-                        final String userName = userData['name'] ?? (userPhone.isNotEmpty ? userPhone : 'مشارك');
+                        final String userEmail = userData['email'] ?? '';
+                        final String userName = userData['name'] ?? (userEmail.isNotEmpty ? userEmail.split('@').first : 'مشارك');
                         final avatar = userData['profileImage'];
 
                         return ListTile(
@@ -376,7 +433,7 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                             child: (avatar == null || avatar.isEmpty) ? Text(userName[0], style: TextStyle(color: Theme.of(context).colorScheme.primary)) : null,
                           ),
                           title: Text(userName, style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
-                          subtitle: Text(userPhone),
+                          subtitle: Text(userEmail.isNotEmpty ? userEmail : 'بدون بريد إلكتروني'),
                           trailing: Icon(Icons.chevron_right, color: Theme.of(context).colorScheme.primary),
                           onTap: () {
                             Get.back();
@@ -430,15 +487,15 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: hasUnread ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.75) : Theme.of(context).cardColor,
+            color: hasUnread ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15) : Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: hasUnread ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15) : Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+            border: Border.all(color: hasUnread ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15) : Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), shape: BoxShape.circle),
                 padding: const EdgeInsets.all(10),
                 child: Icon(Icons.support_agent, color: Theme.of(context).colorScheme.primary, size: 24),
               ),
@@ -456,7 +513,7 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                                     style: GoogleFonts.tajawal(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 14)),
                                 if (((data['pinnedBy'] as List?)?.contains(currentUserId)) ?? false)
                                    Padding(
-                                     padding: const EdgeInsets.only(right: 8),
+                                     padding: const EdgeInsetsDirectional.only(end: 8),
                                      child: Icon(Icons.push_pin, size: 12, color: Theme.of(context).colorScheme.primary),
                                    ),
                               ],
@@ -491,9 +548,9 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                           children: tags.map((t) => Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.75),
+                              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.75)),
+                              border: Border.all(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.15)),
                             ),
                             child: Text(t, style: GoogleFonts.tajawal(fontSize: 9, color: Theme.of(context).colorScheme.secondary)),
                           )).toList(),
@@ -572,13 +629,13 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: unread > 0
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.75)
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
               : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
               color: unread > 0
                   ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
-                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
         ),
         child: Row(
           children: [
@@ -621,7 +678,7 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                               nameWidget, // استخدام الحل المستند للبيانات الحقيقية
                               if (((data['pinnedBy'] as List?)?.contains(currentUserId)) ?? false)
                                 Padding(
-                                  padding: const EdgeInsets.only(right: 8),
+                                  padding: const EdgeInsetsDirectional.only(end: 8),
                                   child: Icon(Icons.push_pin, size: 12, color: Theme.of(context).colorScheme.primary),
                                 ),
                             ],
@@ -678,9 +735,9 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                         children: tags.map((t) => Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.75),
+                            color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.75)),
+                            border: Border.all(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.15)),
                           ),
                           child: Text(t, style: GoogleFonts.tajawal(fontSize: 9, color: Theme.of(context).colorScheme.secondary)),
                         )).toList(),
@@ -698,7 +755,7 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
 
   Widget _buildDismissBackground(bool isPrimary) {
     return Container(
-      alignment: isPrimary ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isPrimary ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: isPrimary ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.secondary,
@@ -799,7 +856,6 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
-          .where('role', isNotEqualTo: 'admin')
           .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
@@ -807,8 +863,9 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
         final users = snapshot.data!.docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
           final name = data['name']?.toString().toLowerCase() ?? '';
-          final phone = data['phone']?.toString() ?? '';
-          return name.contains(query) || phone.contains(query);
+          final email = data['email']?.toString().toLowerCase() ?? '';
+          if (doc.id == currentUserId) return false;
+          return name.contains(query) || email.contains(query);
         }).toList();
 
         if (users.isEmpty) return const SizedBox.shrink();
@@ -817,28 +874,53 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-              child: Text('بدء محادثة جديدة مع:',
-                  style: GoogleFonts.tajawal(fontSize: 12, color: Theme.of(context).colorScheme.primary)),
+              padding: const EdgeInsetsDirectional.only(top: 24, bottom: 8, start: 4, end: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.person_search_rounded, size: 18, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text('دليل المستخدمين المتاحين للتواصل',
+                      style: GoogleFonts.tajawal(fontSize: 14, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                ],
+              ),
             ),
             ...users.map((doc) {
               final userData = doc.data() as Map<String, dynamic>;
               final userId = doc.id;
-              final String userPhone = userData['phone'] ?? '';
-              final String userName = userData['name'] ?? (userPhone.isNotEmpty ? userPhone : 'مشارك');
+              final String userEmail = userData['email'] ?? '';
+              final String userName = userData['name'] ?? (userEmail.isNotEmpty ? userEmail.split('@').first : 'مشارك');
               
-              return ListTile(
-                leading: CircleAvatar(
-                  radius: 24,
-                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                  child: Text(userName[0], style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
                 ),
-                title: Text(userName, style: GoogleFonts.tajawal(fontSize: 14, fontWeight: FontWeight.bold)),
-                subtitle: Text(userData['phone'] ?? '', style: const TextStyle(fontSize: 12)),
-                onTap: () => Get.toNamed(AppRoutes.chatPrivate, arguments: {
-                  'targetUserId': userId,
-                  'targetUserName': userName,
-                }),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    radius: 22,
+                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                    backgroundImage: (userData['profileImage'] != null && userData['profileImage'].isNotEmpty) 
+                        ? CachedNetworkImageProvider(userData['profileImage']) as ImageProvider : null,
+                    child: (userData['profileImage'] == null || userData['profileImage'].isEmpty)
+                        ? Text(userName[0], style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)) : null,
+                  ),
+                  title: Text(userName, style: GoogleFonts.tajawal(fontSize: 14, fontWeight: FontWeight.bold)),
+                  subtitle: Text(userEmail.isNotEmpty ? userEmail : 'بدون بريد إلكتروني', style: const TextStyle(fontSize: 12)),
+                  trailing: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.maps_ugc_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
+                  ),
+                  onTap: () => Get.toNamed(AppRoutes.chatPrivate, arguments: {
+                    'targetUserId': userId,
+                    'targetUserName': userName,
+                  }),
+                ),
               );
             }),
           ],
@@ -907,7 +989,7 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.inbox_outlined,
-              size: 70, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75)),
+              size: 70, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15)),
           const SizedBox(height: 16),
           Text('لا توجد محادثات تؤدي لنتائج البحث',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),

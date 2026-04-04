@@ -63,28 +63,33 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          // خلفية زخرفية
+          // خلفية زخرفية هادئة جداً (Unified Look)
           Positioned(
-            top: -50,
-            right: -50,
+            top: -100,
+            right: -80,
             child: Container(
-              width: 300,
-              height: 300,
+              width: 350,
+              height: 350,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                gradient: RadialGradient(
+                  colors: [
+                    AppTheme.primaryGreen.withValues(alpha: 0.05),
+                    Colors.transparent,
+                  ],
+                ),
               ),
             ),
           ),
           Positioned(
-            bottom: -100,
-            left: -50,
+            bottom: -120,
+            left: -60,
             child: Container(
-              width: 200,
-              height: 200,
+              width: 250,
+              height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+                color: AppTheme.primaryGreen.withValues(alpha: 0.03),
               ),
             ),
           ),
@@ -98,16 +103,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   FadeInDown(
                     child: const AppLogo(size: 90),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   FadeInDown(
                     delay: const Duration(milliseconds: 200),
                     child: Text(
                       'جمعية ناس الخير رقان',
                       style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
                         color: Theme.of(context).colorScheme.onSurface,
                         fontFamily: 'Tajawal',
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ),
@@ -115,9 +121,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   FadeInDown(
                     delay: const Duration(milliseconds: 300),
                     child: Text(
-                      'مرحباً بك',
+                      'مرحباً بك مجدداً',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontFamily: 'Tajawal',
                       ),
@@ -130,15 +136,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
                         color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).shadowColor.withValues(alpha: 0.75),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.05)),
+                        boxShadow: AppTheme.cardShadow, // استخدام الظلال الموحدة والفاخرة
                       ),
                       child: Form(
                         key: _formKey,
@@ -149,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               Text(
                                 'تسجيل الدخول',
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w700,
                                   color: Theme.of(context).colorScheme.onSurface,
                                   fontFamily: 'Tajawal',
@@ -160,11 +160,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 controller: _emailController,
                                 keyboardType: TextInputType.emailAddress,
                                 autofillHints: const [AutofillHints.email],
-                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                                decoration: InputDecoration(
-                                  prefixIcon: Icon(Icons.email_outlined, color: Theme.of(context).colorScheme.primary),
-                                  labelText: 'البريد الإلكتروني',
-                                ),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
+                                decoration: AppTheme.inputDecoration('البريد الإلكتروني', Icons.email_outlined),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) return 'يرجى إدخال البريد الإلكتروني';
                                   if (!GetUtils.isEmail(value)) return 'البريد الإلكتروني غير صالح';
@@ -176,14 +173,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                 controller: _passwordController,
                                 obscureText: _obscurePassword,
                                 autofillHints: const [AutofillHints.password],
-                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                                decoration: InputDecoration(
-                                  prefixIcon: Icon(Icons.lock_outline, color: Theme.of(context).colorScheme.primary),
-                                  labelText: 'كلمة المرور',
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
+                                decoration: AppTheme.inputDecoration('كلمة المرور', Icons.lock_outline).copyWith(
                                   suffixIcon: IconButton(
                                     icon: Icon(
                                       _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                                      size: 20,
                                     ),
                                     onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                                   ),
@@ -197,40 +193,50 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(height: 8),
                               Row(
                                 children: [
-                                  Checkbox(
-                                    value: _rememberMe,
-                                    activeColor: Theme.of(context).colorScheme.primary,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _rememberMe = value ?? false;
-                                      });
-                                    },
+                                  SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: Checkbox(
+                                      value: _rememberMe,
+                                      activeColor: Theme.of(context).colorScheme.primary,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _rememberMe = value ?? false;
+                                        });
+                                      },
+                                    ),
                                   ),
+                                  const SizedBox(width: 8),
                                   Text(
                                     'تذكرني',
                                     style: TextStyle(
                                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                                       fontFamily: 'Tajawal',
+                                      fontSize: 13,
                                     ),
                                   ),
                                   const Spacer(),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: TextButton(
-                                      onPressed: _showForgotPasswordDialog,
-                                      child: Text('نسيت كلمة المرور؟', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+                                  TextButton(
+                                    onPressed: _showForgotPasswordDialog,
+                                    child: Text('نسيت كلمة المرور؟', 
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.primary,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      )
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 24),
                               Obx(() => authController.isLoading.value
                                   ? const Center(child: CircularProgressIndicator())
                                   : SizedBox(
                                       width: double.infinity,
                                       child: AppTheme.gradientButton(
                                         text: 'تسجيل الدخول',
-                                        icon: Icons.login,
+                                        icon: Icons.login_rounded,
                                         onPressed: () {
                                           if (_formKey.currentState!.validate()) {
                                             _saveCredentials();
@@ -249,7 +255,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 children: [
                                   Text(
                                     'ليس لديك حساب؟',
-                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal'),
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant, 
+                                      fontFamily: 'Tajawal',
+                                      fontSize: 13,
+                                    ),
                                   ),
                                   TextButton(
                                     onPressed: () => Get.toNamed('/register'),
@@ -259,6 +269,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         color: Theme.of(context).colorScheme.primary,
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'Tajawal',
+                                        fontSize: 13,
                                       ),
                                     ),
                                   ),
@@ -267,38 +278,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 600),
-                    child: OutlinedButton.icon(
-                      onPressed: () => Get.toNamed('/guest/request'),
-                      icon: const Icon(Icons.person_outline),
-                      label: const Text('طلب خدمة بدون تسجيل'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.primary,
-                        side: BorderSide(color: Theme.of(context).colorScheme.primary),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        textStyle: const TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 700),
-                    child: OutlinedButton.icon(
-                      onPressed: () => Get.toNamed('/guest/tracking'),
-                      icon: const Icon(Icons.track_changes_outlined),
-                      label: const Text('تتبع طلب زائر'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
-                        side: BorderSide(color: Theme.of(context).colorScheme.outline),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        textStyle: const TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -317,15 +296,35 @@ class _LoginScreenState extends State<LoginScreen> {
     Get.dialog(
       AlertDialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        title: Text('إعادة تعيين كلمة المرور', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
-        content: TextField(
-          controller: resetEmailController,
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-          keyboardType: TextInputType.emailAddress,
-          decoration: AppTheme.inputDecoration('البريد الإلكتروني', Icons.email_outlined),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text('إعادة تعيين كلمة المرور', 
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
+            fontFamily: 'Tajawal',
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          )
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('سنرسل لك رابطاً لتغيير كلمة المرور عبر البريد الإلكتروني.',
+              style: TextStyle(fontFamily: 'Tajawal', fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: resetEmailController,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
+              keyboardType: TextInputType.emailAddress,
+              decoration: AppTheme.inputDecoration('البريد الإلكتروني', Icons.email_outlined),
+            ),
+          ],
         ),
         actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
+          TextButton(
+            onPressed: () => Get.back(), 
+            child: Text('إلغاء', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))
+          ),
           AppTheme.gradientButton(
             text: 'إرسال الرابط',
             onPressed: () {
@@ -334,7 +333,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 authController.resetPassword(email);
                 Get.back();
               } else {
-                Get.snackbar('تنبيه', 'يرجى إدخال بريد إلكتروني صالح', backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.15));
+                Get.snackbar('تنبيه', 'يرجى إدخال بريد إلكتروني صالح', 
+                  backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.15),
+                  colorText: Theme.of(context).colorScheme.error,
+                );
               }
             },
           ),
@@ -343,4 +345,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

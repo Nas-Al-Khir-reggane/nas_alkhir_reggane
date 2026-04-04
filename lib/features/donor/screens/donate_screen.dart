@@ -105,8 +105,8 @@ class _DonateScreenState extends State<DonateScreen> {
                     name: project.name,
                     icon: cat['icon'],
                     color: cat['color'],
-                    progress: project.progressPercentage / 100,
-                    progressText: '${project.progressPercentage.toInt()}% مكتمل',
+                    progress: project.progressRatio,
+                    progressText: '${project.progressPercentage.toStringAsFixed(1)}% مكتمل',
                   );
                 }),
               ],
@@ -169,10 +169,10 @@ class _DonateScreenState extends State<DonateScreen> {
                   child: GestureDetector(
                     onTap: () => setState(() => selectedMethod = method['id'] as String),
                     child: Container(
-                      margin: const EdgeInsets.only(right: 8),
+                      margin: const EdgeInsetsDirectional.only(end: 8),
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.75) : AppTheme.cardColor,
+                        color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.cardColor,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                             color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder,
@@ -288,7 +288,7 @@ class _DonateScreenState extends State<DonateScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.75) : AppTheme.cardColor,
+          color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.cardColor,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
               color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder,
@@ -298,7 +298,7 @@ class _DonateScreenState extends State<DonateScreen> {
         child: Row(
           children: [
             Container(
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
               padding: const EdgeInsets.all(8),
               child: Icon(icon, color: color, size: 18),
             ),

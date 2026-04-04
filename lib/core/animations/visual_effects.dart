@@ -48,10 +48,10 @@ class VisualEffects {
         filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
         child: Container(
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.75),
+            color: color.withValues(alpha: 0.15),
             borderRadius: borderRadius,
             border: Border.all(
-              color: color.withValues(alpha: 0.75),
+              color: color.withValues(alpha: 0.15),
               width: 1.0,
             ),
           ),

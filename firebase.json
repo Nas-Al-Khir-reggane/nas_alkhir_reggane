@@ -1,1 +1,19 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"nas-al-kheir-app","appId":"1:197382034070:android:8a72a415ac4e82405768b7","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"nas-al-kheir-app","configurations":{"android":"1:197382034070:android:8a72a415ac4e82405768b7","ios":"1:197382034070:ios:0f53add86a41b0fa5768b7","macos":"1:197382034070:ios:0f53add86a41b0fa5768b7","web":"1:197382034070:web:7f45daf168efe78d5768b7","windows":"1:197382034070:web:50241b5a7a822ea65768b7"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "ness-alkheirapp",
+          "appId": "1:363230035601:android:ddc73f9642880a66a34930",
+          "fileOutput": "android/app/google-services.json"
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}

@@ -186,44 +186,89 @@ class DonorController extends GetxController {
     bool isRecurring = false,
     String? notes,
   }) async {
+    // ✅ التحقق من صحة المبلغ
+    if (amount <= 0) {
+      Get.snackbar('خطأ في المبلغ', 'يجب أن يكون المبلغ أكبر من الصفر',
+          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15));
+      return;
+    }
+
     isLoading.value = true;
     try {
       final dName = isAnonymous ? 'متبرع مجهول' : donorName;
+      final normalizedMethod = DonationModel.normalizeMethod(method);
       final donationData = {
-        'donorId': isAnonymous ? 'anonymous' : currentDonor.value?.id,
+        'donorId': currentDonor.value?.id,
         'donorName': dName,
         'amount': amount,
         'projectId': projectId,
         'projectName': projectName,
-        'method': method,
+        'method': normalizedMethod,
+        'paymentMethod': normalizedMethod,
         'isAnonymous': isAnonymous,
         'isRecurring': isRecurring,
         'status': 'pending',
         'notes': notes,
         'date': FieldValue.serverTimestamp(),
       };
-      final docRef = await FirebaseFirestore.instance.collection('donations').add(donationData);
-      
-      // إرسال إشعار للإدارة بوجود تبرع جديد
-      await NotificationService.notifyAllAdmins(
-        type: 'new_donation',
-        title: 'تبرع جديد 🎁',
-        body: 'قام $dName بالتبرع بمبلغ $amount د.ج لمشروع $projectName.',
-        data: {'donationId': docRef.id, 'projectId': projectId},
-      );
-      
+      final donationsRef = FirebaseFirestore.instance.collection('donations');
+      final docRef = donationsRef.doc();
+
       if (projectId != 'general') {
-        await FirebaseFirestore.instance.collection('projects').doc(projectId).update({
-          'collected': FieldValue.increment(amount),
-          'donorsCount': FieldValue.increment(1),
+        final projectRef = FirebaseFirestore.instance.collection('projects').doc(projectId);
+        await FirebaseFirestore.instance.runTransaction((tx) async {
+          final projectSnap = await tx.get(projectRef);
+          if (!projectSnap.exists) {
+            throw Exception('المشروع غير موجود');
+          }
+
+          final projectData = projectSnap.data() as Map<String, dynamic>;
+          if (projectData['status'] != 'active') {
+            throw Exception('هذا المشروع لم يعد يقبل تبرعات جديدة');
+          }
+
+          final currentCollected = (projectData['collected'] ?? 0).toDouble();
+          final budget = (projectData['budget'] ?? 0).toDouble();
+          final nextCollected = currentCollected + amount;
+
+          final Map<String, dynamic> projectUpdates = {
+            'collected': FieldValue.increment(amount),
+            'donorsCount': FieldValue.increment(1),
+          };
+
+          if (budget > 0 && nextCollected >= budget) {
+            projectUpdates['status'] = 'completed';
+            projectUpdates['completedAt'] = FieldValue.serverTimestamp();
+          }
+
+          tx.set(docRef, donationData);
+          tx.update(projectRef, projectUpdates);
         });
+      } else {
+        await docRef.set(donationData);
       }
+
+      // إرسال الإشعار بشكل غير حاجب حتى ينعكس أثر التبرع بصرياً فوراً.
+      unawaited(NotificationService.notifyAllAdmins(
+        type: 'new_donation',
+        title: '🌱 صدقة جديدة تزهر في بستان الخير',
+        body: 'أبشروا! جاد المتصدق $dName بمبلغ $amount د.ج لمشروع $projectName. ﴿وَمَا تُقَدِّمُوا لِأَنْفُسِكُمْ مِنْ خَيْرٍ تَجِدُوهُ عِنْدَ اللَّهِ هُوَ خَيْرًا وَأَعْظَمَ أَجْرًا﴾',
+        data: {'donationId': docRef.id, 'projectId': projectId},
+      ));
+
+      // تحديث إجمالي التبرعات العالمي (أفضل جهد دون تعطيل تجربة المتبرع).
+      unawaited(FirebaseFirestore.instance.collection('stats').doc('global').set({
+          'totalDonations': FieldValue.increment(amount),
+        }, SetOptions(merge: true)).catchError((error, stackTrace) {
+          debugPrint('Global stats update failed: $error');
+        }));
       
       Get.dialog(
         ThankYouDialog(name: dName, amount: amount, projectName: projectName),
       );
     } catch (e) {
-      Get.snackbar('خطأ', 'فشل في عملية التبرع: $e');
+      final message = e.toString().replaceFirst('Exception: ', '');
+      Get.snackbar('خطأ', 'فشل في عملية التبرع: $message');
     } finally {
       isLoading.value = false;
     }

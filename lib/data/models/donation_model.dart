@@ -29,7 +29,48 @@ class DonationModel {
     this.isAnonymous = false,
   });
 
+  static String normalizeMethod(String? rawMethod) {
+    final value = (rawMethod ?? '').trim().toLowerCase();
+    switch (value) {
+      case 'cash':
+      case 'نقد':
+      case 'نقدي':
+        return 'cash';
+      case 'bank':
+      case 'bank_transfer':
+      case 'transfer':
+      case 'wire':
+      case 'حوالة':
+      case 'تحويل':
+      case 'تحويل بنكي':
+        return 'bank';
+      case 'online':
+      case 'electronic':
+      case 'card':
+      case 'visa':
+      case 'الكتروني':
+      case 'إلكتروني':
+        return 'online';
+      default:
+        return 'cash';
+    }
+  }
+
+  static String methodLabel(String? rawMethod) {
+    switch (normalizeMethod(rawMethod)) {
+      case 'cash':
+        return 'نقدي';
+      case 'bank':
+        return 'تحويل بنكي';
+      case 'online':
+        return 'إلكتروني';
+      default:
+        return 'نقدي';
+    }
+  }
+
   Map<String, dynamic> toMap() {
+    final normalizedMethod = normalizeMethod(method);
     return {
       'id': id,
       'donorId': donorId,
@@ -37,7 +78,8 @@ class DonationModel {
       'amount': amount,
       'projectId': projectId,
       'projectName': projectName,
-      'method': method,
+      'method': normalizedMethod,
+      'paymentMethod': normalizedMethod,
       'status': status,
       'date': Timestamp.fromDate(date),
       'notes': notes,
@@ -54,7 +96,7 @@ class DonationModel {
       amount: (map['amount'] ?? 0.0).toDouble(),
       projectId: map['projectId'] ?? '',
       projectName: map['projectName'] ?? '',
-      method: map['method'] ?? '',
+        method: normalizeMethod(map['method'] ?? map['paymentMethod']),
       status: map['status'] ?? 'pending',
       date: map['date'] is Timestamp 
           ? (map['date'] as Timestamp).toDate() 

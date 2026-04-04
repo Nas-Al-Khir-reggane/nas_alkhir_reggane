@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 import 'package:get/get.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../controllers/admin_controller.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
@@ -61,6 +62,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final monthlyReqCount = controller.monthlyRequests.isEmpty ? 0 : controller.monthlyRequests.map((e) => e['count'] as int).fold(0, (a, b) => a + b);
       final activeProj = controller.activeProjects.value;
 
+      // Fetch all logs
+      final logsSnapshot = await FirebaseFirestore.instance
+          .collection('notifications')
+          .orderBy('createdAt', descending: true)
+          .get();
+      final logs = logsSnapshot.docs.map((e) => e.data()).toList();
+
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
@@ -108,7 +116,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ),
               ),
               pw.SizedBox(height: 30),
-              pw.Text("توزيع الخدمات:", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 30),
+              pw.Text("توزيع الخدمات:", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: const PdfColor(0, 0.5, 0.2))),
               pw.SizedBox(height: 10),
               pw.Table(
                 border: pw.TableBorder.all(color: PdfColors.grey300),
@@ -130,6 +139,85 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   ))
                 ]
               ),
+              if (controller.activeGoals.isNotEmpty) ...[
+                pw.SizedBox(height: 30),
+                pw.Text("الأهداف الإستراتيجية والتشغيلية:", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: const PdfColor(0, 0.5, 0.2))),
+                pw.SizedBox(height: 10),
+                ...controller.activeGoals.map((goal) => pw.Container(
+                  margin: const pw.EdgeInsets.only(bottom: 8),
+                  padding: const pw.EdgeInsets.all(10),
+                  decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6))),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(goal.title, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
+                      pw.SizedBox(height: 4),
+                      pw.Text("الهدف: ${goal.targetValue} | المُحقق: ${goal.currentValue} (${(goal.progressPercentage * 100).toStringAsFixed(1)}%)", style: pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+                    ]
+                  )
+                ))
+              ],
+              if (controller.activeProjectsList.isNotEmpty) ...[
+                pw.SizedBox(height: 30),
+                pw.Text("المشاريع القائمة وتفاصيلها المادية:", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: const PdfColor(0, 0.5, 0.2))),
+                pw.SizedBox(height: 10),
+                pw.Table(
+                  border: pw.TableBorder.all(color: PdfColors.grey300),
+                  children: [
+                    pw.TableRow(
+                      decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                      children: [
+                        pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text("اسم المشروع", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text("الميزانية المستهدفة", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text("المبلغ المجموع", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                      ]
+                    ),
+                    ...controller.activeProjectsList.map((p) => pw.TableRow(
+                      children: [
+                        pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(p.name)),
+                        pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text("${p.budget} دج")),
+                        pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text("${p.collected} دج", style: pw.TextStyle(color: const PdfColor(0, 0.5, 0)))),
+                      ]
+                    ))
+                  ]
+                ),
+              ],
+              pw.SizedBox(height: 40),
+              pw.Text("سجل النشاط العام (العمليات التفصيلية):", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: const PdfColor(0, 0.5, 0.2))),
+              pw.SizedBox(height: 10),
+              ...logs.map((log) {
+                final date = (log['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+                final dateStr = DateFormat('yyyy/MM/dd HH:mm').format(date);
+                final title = log['title'] ?? 'عملية';
+                final senderName = log['senderName'] ?? 'النظام';
+                final body = log['body'] ?? '';
+
+                return pw.Container(
+                  margin: const pw.EdgeInsets.only(bottom: 12),
+                  padding: const pw.EdgeInsets.all(12),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.grey50,
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                    border: pw.Border.all(color: PdfColors.grey300),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text(title, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
+                          pw.Text(dateStr, style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+                        ],
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text("بواسطة: $senderName", style: pw.TextStyle(fontSize: 12, color: const PdfColor(0, 0.4, 0.1))),
+                      pw.SizedBox(height: 6),
+                      pw.Text(body, style: pw.TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                );
+              }),
               pw.SizedBox(height: 40),
               pw.Divider(color: PdfColors.grey400),
               pw.SizedBox(height: 10),
@@ -170,8 +258,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
         decoration: BoxDecoration(
           color: AppTheme.surfaceColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.75)),
-          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.75), blurRadius: 15)],
+          border: Border.all(color: color.withValues(alpha: 0.15)),
+          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 15)],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,7 +267,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
               child: Icon(icon, color: color, size: 24),
             ),
             const Spacer(),
@@ -237,7 +325,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
       return Container(
         height: 250,
-        padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 24, 16, 16),
         decoration: AppTheme.glassDecoration,
         child: BarChart(
           BarChartData(
@@ -283,7 +371,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 barRods: [
                   BarChartRodData(
                     toY: (data[reverseIndex]['amount'] as num).toDouble(), 
-                    gradient: const LinearGradient(colors: [AppTheme.primaryGreen, Colors.teal], begin: Alignment.bottomCenter, end: Alignment.topCenter),
+                    gradient: const LinearGradient(colors: [AppTheme.primaryGreen, AppTheme.primaryGreen], begin: Alignment.bottomCenter, end: Alignment.topCenter),
                     width: 20,
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
                     backDrawRodData: BackgroundBarChartRodData(show: true, toY: maxYValue, color: AppTheme.backgroundColor),
@@ -364,7 +452,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.bar_chart_rounded, size: 50, color: AppTheme.textHint.withValues(alpha: 0.75)),
+            Icon(Icons.bar_chart_rounded, size: 50, color: AppTheme.textHint.withValues(alpha: 0.15)),
             const SizedBox(height: 10),
             Text('جاري جمع البيانات الكافية...', style: TextStyle(color: AppTheme.textHint, fontSize: 14, fontWeight: FontWeight.w500)),
           ],
@@ -375,76 +463,242 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FadeInDown(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text("نظرة عامة", style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(color: AppTheme.darkSurface, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppTheme.glassBorder)),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _filter,
-                                dropdownColor: AppTheme.backgroundColor,
-                                style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
-                                icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.primaryGreen, size: 18),
-                                items: const [
-                                  DropdownMenuItem(value: 'شهري', child: Text("شهري")),
-                                  DropdownMenuItem(value: 'سنوي', child: Text("سنوي")),
-                                ],
-                                onChanged: (val) => setState(() => _filter = val!),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTopDashboard(),
-                    const SizedBox(height: 30),
-                    FadeInUp(delay: const Duration(milliseconds: 200), child: _buildSectionTitle("حجم التبرعات المسجلة")),
-                    FadeInUp(delay: const Duration(milliseconds: 300), child: _buildBarChart()),
-                    const SizedBox(height: 30),
-                    FadeInUp(delay: const Duration(milliseconds: 400), child: _buildSectionTitle("الخدمات المقدمة (توزيع)")),
-                    FadeInUp(delay: const Duration(milliseconds: 500), child: _buildPieChart()),
-                    const SizedBox(height: 40),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: AppTheme.backgroundColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.darkSurface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppTheme.glassBorder),
+                ),
+                child: TabBar(
+                  indicator: BoxDecoration(
+                    color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.primaryGreen),
+                  ),
+                  labelColor: AppTheme.primaryGreen,
+                  unselectedLabelColor: AppTheme.textHint,
+                  tabs: const [
+                    Tab(child: Text("المخططات والإحصائيات", style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Tajawal'))),
+                    Tab(child: Text("سجل النشاطات المفصل", style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Tajawal'))),
                   ],
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _buildStatsTab(),
+                    _buildDetailedLogsTab(),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      floatingActionButton: FadeInUp(
-        delay: const Duration(milliseconds: 600),
-        child: FloatingActionButton.extended(
-          onPressed: _isGeneratingPdf ? null : _generateAndSharePdf,
-          backgroundColor: AppTheme.primaryGreen,
-          icon: _isGeneratingPdf 
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
-              : const Icon(Icons.picture_as_pdf_rounded, color: Colors.black),
-          label: const Text("استخراج التقرير", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+        floatingActionButton: FadeInUp(
+          delay: const Duration(milliseconds: 600),
+          child: FloatingActionButton.extended(
+            onPressed: _isGeneratingPdf ? null : _generateAndSharePdf,
+            backgroundColor: AppTheme.primaryGreen,
+            icon: _isGeneratingPdf 
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                : const Icon(Icons.picture_as_pdf_rounded, color: Colors.black),
+            label: const Text("استخراج التقرير", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+          ),
         ),
       ),
     );
   }
 
+  Widget _buildStatsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FadeInDown(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("نظرة عامة", style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(color: AppTheme.darkSurface, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppTheme.glassBorder)),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _filter,
+                      dropdownColor: AppTheme.backgroundColor,
+                      style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
+                      icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.primaryGreen, size: 18),
+                      items: const [
+                        DropdownMenuItem(value: 'شهري', child: Text("شهري")),
+                        DropdownMenuItem(value: 'سنوي', child: Text("سنوي")),
+                      ],
+                      onChanged: (val) => setState(() => _filter = val!),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildTopDashboard(),
+          const SizedBox(height: 30),
+          FadeInUp(delay: const Duration(milliseconds: 200), child: _buildSectionTitle("حجم التبرعات المسجلة")),
+          FadeInUp(delay: const Duration(milliseconds: 300), child: _buildBarChart()),
+          const SizedBox(height: 30),
+          FadeInUp(delay: const Duration(milliseconds: 400), child: _buildSectionTitle("الخدمات المقدمة (توزيع)")),
+          FadeInUp(delay: const Duration(milliseconds: 500), child: _buildPieChart()),
+          const SizedBox(height: 80),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailedLogsTab() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('notifications')
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen));
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text('حدث خطأ في تحميل السجل', style: TextStyle(color: AppTheme.errorColor)));
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return Center(child: Text('لا توجد نشاطات مسجلة', style: TextStyle(color: AppTheme.textHint)));
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.only(left: 20, right: 20, bottom: 80, top: 10),
+          itemCount: docs.length,
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            final date = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+            final title = data['title'] ?? 'عملية بالنظام';
+            final body = data['body'] ?? '';
+            final senderName = data['senderName'] ?? 'النظام';
+            
+            return FadeInUp(
+              delay: Duration(milliseconds: (index % 10) * 50),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.glassBorder),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: IntrinsicHeight(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        decoration: BoxDecoration(
+                          color: _getLogColor(data['type']),
+                          borderRadius: const BorderRadius.horizontal(right: Radius.circular(16)),
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: _getLogColor(data['type']).withValues(alpha: 0.15),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(_getLogIcon(data['type']), color: _getLogColor(data['type']), size: 20),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary)),
+                                        const SizedBox(height: 4),
+                                        Text('القائم بالعملية: $senderName', style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(DateFormat('dd/MM/yyyy').format(date), style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                                      Text(DateFormat('HH:mm').format(date), style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.backgroundColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppTheme.glassBorder),
+                                ),
+                                child: Text(body, style: TextStyle(color: AppTheme.textSecondary, fontSize: 14, height: 1.5)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Color _getLogColor(String? type) {
+    if (type == null) return AppTheme.primaryGreen;
+    if (type.contains('blood')) return AppTheme.errorColor;
+    if (type.contains('reject') || type.contains('cancel')) return AppTheme.errorColor;
+    if (type.contains('approve') || type.contains('accept')) return Colors.green;
+    if (type.contains('new')) return Colors.blue;
+    return AppTheme.primaryGreen;
+  }
+
+  IconData _getLogIcon(String? type) {
+    if (type == null) return Icons.event_note;
+    if (type.contains('blood')) return Icons.bloodtype;
+    if (type.contains('reject') || type.contains('cancel')) return Icons.cancel;
+    if (type.contains('approve') || type.contains('accept')) return Icons.check_circle;
+    if (type.contains('new_request')) return Icons.assignment_add;
+    if (type.contains('new_donation')) return Icons.volunteer_activism;
+    if (type.contains('update')) return Icons.update;
+    return Icons.notifications;
+  }
+
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 20, 20, 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -463,7 +717,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: AppTheme.primaryGreen.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
             child: const Icon(Icons.analytics_outlined, color: AppTheme.primaryGreen),
           ),
         ],

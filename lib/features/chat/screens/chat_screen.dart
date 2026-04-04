@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -17,13 +16,21 @@ import 'package:shimmer/shimmer.dart';
 import 'package:swipe_to/swipe_to.dart';
 import 'package:animate_do/animate_do.dart';
 
+import 'package:image_picker/image_picker.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/services/notification_service.dart';
+import '../../../data/services/cloudinary_service.dart';
 import '../../../data/models/chat_message_model.dart';
 import '../../../data/models/user_model.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/widgets/cached_image_widget.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/audio_player_widget.dart'; // We will create this
 
 class ChatScreen extends StatefulWidget {
   final bool isWorker;
@@ -61,104 +68,314 @@ class _ChatScreenState extends State<ChatScreen> {
   ChatMessageModel? _editingMessage;
   bool _isSearchMode = false;
   
-  late Stream<QuerySnapshot> _messagesStream;
+  Stream<QuerySnapshot> _messagesStream = const Stream.empty();
   Stream<DocumentSnapshot>? _chatDocStream;
   Stream<DocumentSnapshot>? _targetUserStream;
   
   bool _isCurrentlyTyping = false;
   bool _showSlashCommands = false;
   Timer? _typingTimer;
+  Timer? _presenceTimer;
+  Timer? _cacheDebounceTimer;
+  static const int _maxMessageKeys = 200;
   List<ChatMessageModel> _cachedMessages = [];
-  String _localGuestName = '';
-  String _localGuestPhone = '';
   
   static final Map<String, String> _bubbleAvatarCache = {};
+  final Map<String, UserRole?> _roleCache = <String, UserRole?>{};
   
   final Map<String, GlobalKey> _messageKeys = {};
   String? _highlightedMessageId;
+  bool _accessDenied = false;
+  String _accessDeniedMessage = '';
+  bool _privateStreamsBound = false;
+  bool _metadataSynced = false;
+
+  // Audio Recording State
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  bool _isRecording = false;
+  String? _recordingPath;
+  Timer? _recordingTimer;
+  int _recordingDurationSeconds = 0;
+  String _recordingDurationStr = '00:00';
 
   String get _effectiveUserId {
-    // 1. الأولوية للمستخدم المسجل في AuthController
     if (_authController.currentUser.value != null && _authController.currentUser.value!.id.isNotEmpty) {
       return _authController.currentUser.value!.id;
     }
-    
-    // 2. التحقق المباشر من FirebaseAuth (كطبقة حماية إضافية في حال تأخر AuthController)
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (firebaseUser != null) {
       return firebaseUser.uid;
     }
-    
-    // 3. العودة لمعرف الزائر فقط إذا لم يكن هناك مستخدم مسجل
-    if (widget.chatId != null && widget.chatId!.startsWith('guest_')) return widget.chatId!;
-    return 'guest_$_localGuestPhone'; 
+    return '';
   }
 
   String get _effectiveUserName {
-    // 1. الأولوية لاسم المستخدم في AuthController (بيانات كاملة من Firestore)
     final currentUser = _authController.currentUser.value;
     if (currentUser != null && currentUser.name.isNotEmpty) {
       return currentUser.name;
     }
-    
-    // 2. التحقق من اسم FirebaseAuth (قد يكون تم تعيينه أثناء التسجيل)
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (firebaseUser != null) {
       if (firebaseUser.displayName != null && firebaseUser.displayName!.isNotEmpty) {
         return firebaseUser.displayName!;
       }
-      
-      // 3. العودة لاسم الزائر إذا كانت المحادثة عبر رقم الهاتف (للضيوف)
-      if (_localGuestName.isNotEmpty && _localGuestName != 'زائر') return _localGuestName;
-
-      // 4. خيار أخير: الاسم المستخرج من البريد الإلكتروني
       if (firebaseUser.email != null && firebaseUser.email!.isNotEmpty) {
         final prefix = firebaseUser.email!.split('@')[0];
-        // محاولة تحويل النقاط أو الخطوط السفلية لمسافات لمظهر أفضل
         return prefix.replaceAll(RegExp(r'[._-]'), ' ');
       }
     }
-    
-    // 5. العودة لاسم افتراضي
-    if (widget.targetUserName != null && _effectiveUserId.startsWith('guest_')) return 'زائر';
-    
-    if (_effectiveUserId.startsWith('guest_')) {
-      return 'ضيف (${_effectiveUserId.replaceFirst('guest_', '')})';
-    }
-    
     return 'مشارك (${_effectiveUserId.isNotEmpty ? _effectiveUserId.substring(0, min(5, _effectiveUserId.length)) : "مجهول"})';
   }
 
 
   String? get _currentUserImage => _authController.currentUser.value?.profileImage;
 
+  bool _isAdminRole(UserRole? role) {
+    return role == UserRole.admin || role == UserRole.superAdmin;
+  }
+
+  bool _isGroupAllowedForRole(String groupId, UserRole? role) {
+    if (groupId == 'group_management') {
+      return _isAdminRole(role);
+    }
+    if (groupId == 'group_team') {
+      return role == UserRole.worker ||
+          role == UserRole.chatModerator ||
+          _isAdminRole(role);
+    }
+    return false;
+  }
+
+  UserRole? _parseUserRole(dynamic rawRole) {
+    if (rawRole == null) return null;
+    final roleName = rawRole.toString();
+    for (final role in UserRole.values) {
+      if (role.name == roleName) return role;
+    }
+    return null;
+  }
+
+  bool _canCurrentRoleMessageTargetRole({
+    required UserRole? myRole,
+    required UserRole? targetRole,
+  }) {
+    if (targetRole == null || myRole == null) return false;
+
+    if (_isAdminRole(myRole)) {
+      return true;
+    }
+
+    if (myRole == UserRole.worker ||
+        myRole == UserRole.chatModerator ||
+        myRole == UserRole.donor ||
+        myRole == UserRole.beneficiary) {
+      return _isAdminRole(targetRole);
+    }
+
+    return false;
+  }
+
+  Future<UserRole?> _fetchRoleForUser(String userId) async {
+    if (_roleCache.containsKey(userId)) {
+      return _roleCache[userId];
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      if (!doc.exists) {
+        _roleCache[userId] = null;
+        return null;
+      }
+      final data = doc.data() as Map<String, dynamic>;
+      final parsedRole = _parseUserRole(data['role']);
+      _roleCache[userId] = parsedRole;
+      return parsedRole;
+    } catch (_) {
+      _roleCache[userId] = null;
+      return null;
+    }
+  }
+
+  Future<bool> _canMessageTargetUser(String targetId) async {
+    final myRole = _authController.currentUser.value?.role;
+    if (_isAdminRole(myRole)) {
+      return true;
+    }
+    final targetRole = await _fetchRoleForUser(targetId);
+    return _canCurrentRoleMessageTargetRole(myRole: myRole, targetRole: targetRole);
+  }
+
+  void _denyChatAccess(String message) {
+    if (!mounted) return;
+    setState(() {
+      _accessDenied = true;
+      _accessDeniedMessage = message;
+    });
+    Get.snackbar(
+      'وصول مرفوض',
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red.withValues(alpha: 0.15),
+    );
+  }
+
+  Future<void> _validateDynamicChatAccessAndBootstrap() async {
+    if (_accessDenied) return;
+
+    if (!widget.isGroupChat && widget.targetUserId != null && widget.targetUserId!.isNotEmpty) {
+      final allowed = await _canMessageTargetUser(widget.targetUserId!);
+      if (!allowed) {
+        _denyChatAccess('هذا الدور يمكنه مراسلة الإدارة فقط في المحادثات الخاصة.');
+        return;
+      }
+
+      await _ensurePrivateChatDocument();
+      _bindPrivateStreamsIfNeeded();
+
+      _setChatPresence(true);
+      _presenceTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+        _setChatPresence(true);
+      });
+    }
+
+    await _syncMyMetadata();
+    await _markAsRead();
+    await _loadCachedMessages();
+  }
+
+  Map<String, dynamic> _privateBootstrapFields() {
+    if (widget.isGroupChat || widget.targetUserId == null || widget.targetUserId!.isEmpty) {
+      return <String, dynamic>{};
+    }
+
+    final targetId = widget.targetUserId!;
+    final participants = <String>[_effectiveUserId, targetId]..sort();
+    return <String, dynamic>{
+      'type': 'private',
+      'participants': participants,
+      'participantNames.$_effectiveUserId': _effectiveUserName,
+      'participantNames.$targetId': widget.targetUserName ?? 'مستخدم',
+      'participantAvatars.$_effectiveUserId': _currentUserImage ?? '',
+      'participantAvatars.$targetId': '',
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+  }
+
+  bool _sameParticipantSet(List<String> first, List<String> second) {
+    if (first.length != second.length) return false;
+    final a = [...first]..sort();
+    final b = [...second]..sort();
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  void _bindPrivateStreamsIfNeeded() {
+    if (_privateStreamsBound) return;
+
+    final chatId = _getChatId();
+    if (chatId == 'invalid_chat') return;
+
+    _privateStreamsBound = true;
+    if (!mounted) return;
+
+    setState(() {
+      _messagesStream = FirebaseFirestore.instance
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .orderBy('createdAt', descending: true)
+          .limit(50)
+          .snapshots();
+
+      _chatDocStream = FirebaseFirestore.instance.collection('chats').doc(chatId).snapshots();
+      if (widget.targetUserId != null && widget.targetUserId != 'system') {
+        _targetUserStream = FirebaseFirestore.instance.collection('users').doc(widget.targetUserId!).snapshots();
+      }
+    });
+  }
+
+  Future<void> _ensurePrivateChatDocument() async {
+    if (widget.isGroupChat || widget.targetUserId == null || widget.targetUserId!.isEmpty) return;
+
+    final chatId = _getChatId();
+    if (chatId == 'invalid_chat') return;
+
+    try {
+      final targetId = widget.targetUserId!;
+      final expectedParticipants = <String>[_effectiveUserId, targetId]..sort();
+      final chatRef = FirebaseFirestore.instance.collection('chats').doc(chatId);
+      final existing = await chatRef.get();
+
+      if (existing.exists) {
+        final existingData = existing.data() as Map<String, dynamic>;
+        final existingType = (existingData['type'] ?? '').toString();
+        if (existingType.isNotEmpty && existingType != 'private') {
+          _denyChatAccess('تعذر تهيئة المحادثة: نوع محادثة غير متوافق.');
+          return;
+        }
+
+        final existingParticipants = List<String>.from(existingData['participants'] ?? const <String>[]);
+        if (existingParticipants.isNotEmpty && !_sameParticipantSet(existingParticipants, expectedParticipants)) {
+          _denyChatAccess('تعذر تهيئة المحادثة: المشاركون لا يطابقون معرف المحادثة.');
+          return;
+        }
+      }
+
+      await chatRef.set({
+        ..._privateBootstrapFields(),
+        'unreadCount.$_effectiveUserId': 0,
+        'unreadCount.$targetId': 0,
+        'lastMessage': '',
+        'lastMessageAt': FieldValue.serverTimestamp(),
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('⚠️ Error ensuring private chat doc: $e');
+      _denyChatAccess('تعذر تهيئة المحادثة وفق الصلاحيات الحالية.');
+    }
+  }
+
   String _getChatId() {
-    // إذا كان الـ chatId محدد مسبقاً (مثل فتح محادثة موجودة)
-    if (widget.chatId != null && widget.chatId!.isNotEmpty) {
-      return widget.chatId!;
-    }
-    
-    // محادثة جماعية
-    if (widget.isGroupChat) {
-      return 'group_team';
-    }
-    
-    // التأكد من وجود targetUserId
-    final target = widget.targetUserId;
-    if (target == null || target.isEmpty) {
-      debugPrint('⚠️ خطأ: targetUserId فارغ');
-      return 'invalid_chat';
-    }
-    
-    // التأكد من وجود معرف المستخدم الحالي
+    final currentRole = _authController.currentUser.value?.role;
+
     if (_effectiveUserId.isEmpty) {
       debugPrint('⚠️ خطأ: _effectiveUserId فارغ');
       return 'invalid_chat';
     }
-    
-    // إنشاء chatId فريد بترتيب أبجدي
+
+    if (widget.isGroupChat) {
+      final requestedGroupId = (widget.chatId != null && widget.chatId!.isNotEmpty)
+          ? widget.chatId!
+          : 'group_team';
+      if (!_isGroupAllowedForRole(requestedGroupId, currentRole)) {
+        debugPrint('⚠️ وصول مرفوض للمجموعة: $requestedGroupId للدور: $currentRole');
+        return 'invalid_chat';
+      }
+      return requestedGroupId;
+    }
+
+    if (widget.chatId != null &&
+        widget.chatId!.isNotEmpty &&
+        widget.targetUserId == null &&
+        widget.chatId!.startsWith('guest_')) {
+      return _isAdminRole(currentRole) ? widget.chatId! : 'invalid_chat';
+    }
+
+    final target = widget.targetUserId;
+    if (target == null || target.isEmpty || target == _effectiveUserId || target == 'system') {
+      debugPrint('⚠️ خطأ: targetUserId فارغ');
+      return 'invalid_chat';
+    }
+
     final sorted = [_effectiveUserId, target]..sort();
     final generatedChatId = '${sorted[0]}_${sorted[1]}';
+
+    if (widget.chatId != null && widget.chatId!.isNotEmpty && widget.chatId! != generatedChatId) {
+      debugPrint('⚠️ محاولة تمرير chatId غير متوافق مع المشاركين');
+      return 'invalid_chat';
+    }
     
     debugPrint('✅ تم إنشاء chatId: $generatedChatId');
     return generatedChatId;
@@ -166,39 +383,48 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _markAsRead() async {
     final chatId = _getChatId();
-    if (chatId == 'invalid_chat') return;
-    
-    final isAdmin = _authController.currentUser.value?.role == UserRole.admin || _authController.currentUser.value?.role == UserRole.superAdmin;
-    
-    await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
-      'unreadCount': {
-        _effectiveUserId: 0,
-      },
-      if (isAdmin) 'guestUnreadCount': 0,
-      if (isAdmin) 'hasUnreadGuestMessage': false,
-    }, SetOptions(merge: true));
-  }
+    if (chatId == 'invalid_chat' || _effectiveUserId.isEmpty) return;
 
-  void _updateTypingStatus(bool isTyping) {
-    if (widget.isGroupChat || _effectiveUserId.isEmpty) return;
-    FirebaseFirestore.instance.collection('chats').doc(_getChatId()).set({
-      'typing': {
-        _effectiveUserId: isTyping,
-      }
-    }, SetOptions(merge: true));
-  }
+    final firebaseUid = FirebaseAuth.instance.currentUser?.uid;
+    if (firebaseUid != null && firebaseUid != _effectiveUserId) {
+      debugPrint('⚠️ Refused unread reset due to uid mismatch. effective=$_effectiveUserId firebase=$firebaseUid');
+      return;
+    }
+    
+    final isAdmin = _isAdminRole(_authController.currentUser.value?.role);
+    final isGuestChat = chatId.startsWith('guest_');
 
-  Future<void> _loadGuestIdentity() async {
-    if (_authController.currentUser.value == null) {
-      final prefs = await SharedPreferences.getInstance();
-      if (mounted) {
-        setState(() {
-          _localGuestName = prefs.getString('guest_name') ?? 'زائر';
-          _localGuestPhone = prefs.getString('guest_phone') ?? '';
-        });
-      }
+    try {
+      await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
+        ..._privateBootstrapFields(),
+        'unreadCount.$_effectiveUserId': 0,
+        if (isAdmin && isGuestChat) 'guestUnreadCount': 0,
+        if (isAdmin && isGuestChat) 'hasUnreadGuestMessage': false,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('⚠️ Error marking chat as read: $e');
     }
   }
+
+  Future<void> _updateTypingStatus(bool isTyping) async {
+    if (widget.isGroupChat || _effectiveUserId.isEmpty) return;
+
+    final chatId = _getChatId();
+    if (chatId == 'invalid_chat') return;
+
+    try {
+      await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
+        ..._privateBootstrapFields(),
+        'typing': {
+          _effectiveUserId: isTyping,
+        }
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('⚠️ Error updating typing state: $e');
+    }
+  }
+
+  // وظيفة جلب هوية الزائر تم حذفها
 
   Future<void> _syncMyMetadata() async {
     final chatId = _getChatId();
@@ -221,15 +447,12 @@ class _ChatScreenState extends State<ChatScreen> {
           'updatedAt': FieldValue.serverTimestamp(),
         };
 
-        // إذا كان الطرف الآخر زائراً، نحفظ بياناته أيضاً لتسهيل العرض في القوائم
-        if (id.startsWith('guest_')) {
-          updateData['guestName'] = name;
-          updateData['guestPhone'] = id.replaceFirst('guest_', '');
-          updateData['type'] = 'guest';
-          updateData['lastActivityAt'] = FieldValue.serverTimestamp();
-        }
+        // تم إزالة تحديث بيانات الزوار
 
-        await FirebaseFirestore.instance.collection('chats').doc(chatId).set(updateData, SetOptions(merge: true));
+        await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
+          ..._privateBootstrapFields(),
+          ...updateData,
+        }, SetOptions(merge: true));
         debugPrint('✅ Chat Metadata Synced for $name');
       } catch (e) {
         debugPrint('⚠️ Error syncing chat metadata: $e');
@@ -238,14 +461,15 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // مزامنة بيانات الطرف الآخر لتقديم واجهة أفضل للمديرين مستقبلاً
-  void _syncOtherParticipantMetadata(String realName, String profileImage) {
+  Future<void> _syncOtherParticipantMetadata(String realName, String profileImage) async {
     if (widget.isGroupChat) return;
     try {
       final chatId = _getChatId();
       if (chatId == 'invalid_chat') return;
 
       if (widget.targetUserId != null) {
-        FirebaseFirestore.instance.collection('chats').doc(chatId).set({
+        await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
+          ..._privateBootstrapFields(),
           'participantNames.${widget.targetUserId}': realName,
           'participantAvatars.${widget.targetUserId}': profileImage,
         }, SetOptions(merge: true));
@@ -258,24 +482,23 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _loadGuestIdentity();
-    _syncMyMetadata(); // مزامنة البيانات فور فتح الشاشة
     final chatId = _getChatId();
-    
-    _messagesStream = FirebaseFirestore.instance
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .orderBy('createdAt', descending: true)
-        .snapshots();
 
-    if (!widget.isGroupChat && widget.targetUserId != null) {
-      _chatDocStream = FirebaseFirestore.instance.collection('chats').doc(chatId).snapshots();
-      _targetUserStream = FirebaseFirestore.instance.collection('users').doc(widget.targetUserId!).snapshots();
+    if (chatId == 'invalid_chat') {
+      _denyChatAccess('هذا المسار غير مسموح حسب سياسة المراسلة المعتمدة.');
+    } else {
+      if (widget.isGroupChat) {
+        _messagesStream = FirebaseFirestore.instance
+            .collection('chats')
+            .doc(chatId)
+            .collection('messages')
+            .orderBy('createdAt', descending: true)
+            .limit(50)
+            .snapshots();
+      }
+
+      _validateDynamicChatAccessAndBootstrap();
     }
-
-    _markAsRead();
-    _loadCachedMessages();
 
     _scrollController.addListener(() {
       if (_scrollController.hasClients) {
@@ -295,12 +518,58 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     _typingTimer?.cancel();
+    _presenceTimer?.cancel();
+    _cacheDebounceTimer?.cancel();
+    if (!_accessDenied && !widget.isGroupChat && widget.targetUserId != null) {
+      _setChatPresence(false);
+    }
     _updateTypingStatus(false);
     _messageController.dispose();
     _searchController.dispose();
     _scrollController.dispose();
     _isTextEmpty.dispose();
     super.dispose();
+  }
+
+  Future<void> _setChatPresence(bool isActive) async {
+    if (widget.isGroupChat || _effectiveUserId.isEmpty) return;
+    final chatId = _getChatId();
+    if (chatId == 'invalid_chat') return;
+
+    try {
+      final payload = {
+        ..._privateBootstrapFields(),
+        'activeInChat.$_effectiveUserId': isActive,
+        'lastActivity.$_effectiveUserId': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      await FirebaseFirestore.instance.collection('chats').doc(chatId).set(payload, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('⚠️ Error updating chat presence: $e');
+    }
+  }
+
+  Future<bool> _isTargetUserActiveInThisChat(String chatId, String targetUserId) async {
+    try {
+      final chatDoc = await FirebaseFirestore.instance.collection('chats').doc(chatId).get();
+      if (!chatDoc.exists) return false;
+
+      final data = chatDoc.data() as Map<String, dynamic>;
+      final activeInChat = Map<String, dynamic>.from(data['activeInChat'] ?? {});
+      final isActive = activeInChat[targetUserId] == true;
+
+      Timestamp? lastActivityTs;
+      if (data['lastActivity'] is Map && data['lastActivity'][targetUserId] != null) {
+        lastActivityTs = data['lastActivity'][targetUserId] as Timestamp;
+      }
+
+      if (!isActive || lastActivityTs == null) return false;
+
+      final secondsSinceLastActivity = DateTime.now().difference(lastActivityTs.toDate()).inSeconds;
+      return secondsSinceLastActivity <= 45;
+    } catch (_) {
+      return false;
+    }
   }
 
   void _handleTyping(String val) {
@@ -377,6 +646,28 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_accessDenied) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: _buildAppBar(),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              _accessDeniedMessage.isNotEmpty
+                  ? _accessDeniedMessage
+                  : 'لا تملك صلاحية الوصول إلى هذه المحادثة.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
@@ -389,20 +680,30 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: StreamBuilder<QuerySnapshot>(
                   stream: _messagesStream,
                   builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'تعذر تحميل المحادثة بسبب الصلاحيات أو الاتصال.',
+                          style: TextStyle(color: Theme.of(context).colorScheme.error),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
+
                     List<ChatMessageModel> displayMessages = [];
-                    bool isUsingCache = false;
 
                     if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
                       if (_cachedMessages.isNotEmpty) {
                         displayMessages = _cachedMessages;
-                        isUsingCache = true;
                       } else {
                         return _buildSkeletonLoading();
                       }
                     } else if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
                       final messages = snapshot.data!.docs;
                       WidgetsBinding.instance.addPostFrameCallback((_) => _markMessagesAsRead(messages));
-                      _cacheMessages(messages);
+                      // Debounce cache writes: write to disk at most once every 3s, not on every snapshot
+                      _cacheDebounceTimer?.cancel();
+                      _cacheDebounceTimer = Timer(const Duration(seconds: 3), () => _cacheMessages(messages));
                       displayMessages = messages.map((d) {
                         final data = d.data() as Map<String, dynamic>;
                         data['id'] = d.id;
@@ -411,18 +712,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       if (_cachedMessages.isNotEmpty) {
                          displayMessages = _cachedMessages;
-                         isUsingCache = true;
                       } else {
-                         displayMessages = [
-                           ChatMessageModel(
-                             id: 'system_welcome',
-                             senderId: 'system',
-                             senderName: 'النظام الروبوتي',
-                             message: 'مرحباً بك! هذه رسالة آلية ترحيبية. فريق الدعم سيكون معك بأقرب وقت للمساعدة. يمكنك ترك تفاصيل استفسارك هنا.',
-                             createdAt: DateTime.now(),
-                             chatId: _getChatId(),
-                           )
-                         ];
+                         displayMessages = [];
                       }
                     }
 
@@ -440,6 +731,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: ListView.builder(
                         controller: _scrollController,
                         reverse: !_isSearchMode,
+                        physics: const BouncingScrollPhysics(), // تجربة تمرير أكثر سلاسة
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                         itemCount: filteredMessages.length,
                         itemBuilder: (context, index) {
@@ -450,16 +742,20 @@ class _ChatScreenState extends State<ChatScreen> {
 
                           if (message.id != null) {
                             _messageKeys.putIfAbsent(message.id!, () => GlobalKey());
+                            // Prevent unbounded growth: trim oldest half when exceeding limit
+                            if (_messageKeys.length > _maxMessageKeys) {
+                              final toRemove = _messageKeys.keys.take(_maxMessageKeys ~/ 2).toList();
+                              for (final k in toRemove) { _messageKeys.remove(k); }
+                            }
                           }
 
-                          return Opacity(
-                            opacity: isUsingCache ? 0.7 : 1.0,
-                            child: AnimatedContainer(
-                              duration: const Duration(seconds: 1),
-                              key: message.id != null ? _messageKeys[message.id!] : null,
-                              color: _highlightedMessageId == message.id ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.75) : Colors.transparent,
-                              child: _buildMessageBubble(message, previousMessage),
-                            ),
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 300), 
+                            key: message.id != null ? _messageKeys[message.id!] : ValueKey('msg_$index'),
+                            color: _highlightedMessageId == message.id 
+                                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1) 
+                                : Colors.transparent,
+                            child: _buildMessageBubble(message, previousMessage),
                           );
                         },
                       ),
@@ -516,7 +812,7 @@ class _ChatScreenState extends State<ChatScreen> {
         itemBuilder: (context, index) {
           final isMe = index % 2 == 0;
           return Align(
-            alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+            alignment: isMe ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
             child: Container(
               margin: const EdgeInsets.symmetric(vertical: 4),
               width: MediaQuery.of(context).size.width * (0.3 + (index % 5) * 0.1),
@@ -635,8 +931,11 @@ class _ChatScreenState extends State<ChatScreen> {
                         final realImage = data['profileImage']?.toString() ?? '';
                         if (realName.isNotEmpty) {
                           name = realName;
-                          // ترميم البيانات في الخلفية إذا كانت ناقصة في مستند المحادثة
-                          _syncOtherParticipantMetadata(realName, realImage);
+                          // ترميم البيانات في الخلفية مرة واحدة فقط لتجنب الكتابات المتكررة
+                          if (!_metadataSynced) {
+                            _metadataSynced = true;
+                            _syncOtherParticipantMetadata(realName, realImage);
+                          }
                         }
                       } else if (name == 'مشارك' || name == 'مستخدم') {
                          // إذا كان الاسم الحالي مجرد رمز، نحاول جلب رقم الهاتف من الـ ID إذا كان ضيفاً
@@ -671,7 +970,7 @@ class _ChatScreenState extends State<ChatScreen> {
       return Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
           shape: BoxShape.circle,
         ),
         child: Icon(Icons.groups_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
@@ -756,14 +1055,14 @@ class _ChatScreenState extends State<ChatScreen> {
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: isOnline ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+                color: isOnline ? Colors.green : Theme.of(context).colorScheme.onSurfaceVariant,
                 shape: BoxShape.circle,
               ),
             ),
             const SizedBox(width: 4),
             Text(
               statusText,
-              style: GoogleFonts.tajawal(fontSize: 12, color: isOnline ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant),
+              style: GoogleFonts.tajawal(fontSize: 12, color: isOnline ? Colors.green : Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ],
         );
@@ -884,18 +1183,19 @@ class _ChatScreenState extends State<ChatScreen> {
     if (message.isSystem) {
       return Center(
         child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 30),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          margin: const EdgeInsets.symmetric(vertical: 16, horizontal: 40),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.75),
-            borderRadius: BorderRadius.circular(15),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.05)),
           ),
           child: Text(
             message.message,
             textAlign: TextAlign.center,
             style: GoogleFonts.tajawal(
-              fontSize: 11,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 10.5,
+              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -904,7 +1204,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     
     final showTimeDivider = previousMessage == null ||
-        message.createdAt.difference(previousMessage.createdAt).inMinutes > 30 ||
+        message.createdAt.difference(previousMessage.createdAt).inMinutes > 60 ||
         message.createdAt.day != previousMessage.createdAt.day;
 
     return Column(
@@ -912,55 +1212,64 @@ class _ChatScreenState extends State<ChatScreen> {
         if (showTimeDivider)
           Center(
             child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 20),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              margin: const EdgeInsets.symmetric(vertical: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
-                color: Theme.of(context).cardColor.withValues(alpha: 0.75), 
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75))
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(30),
               ),
               child: Text(
                 _formatDividerDate(message.createdAt),
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6), 
+                  fontSize: 10, 
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
               ),
             ),
           ),
         SwipeTo(
           onRightSwipe: (details) {
-            HapticFeedback.lightImpact();
+            HapticFeedback.mediumImpact();
             setState(() => _replyingTo = message);
           },
           child: GestureDetector(
-            onLongPress: () => _showLongPressMenu(message),
+            onLongPress: () {
+              HapticFeedback.heavyImpact();
+              _showLongPressMenu(message);
+            },
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
               child: Row(
                 mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  if (!isMe) _buildBubbleAvatar(message.senderId, message.senderName, message.senderImage),
+                  if (!isMe) ...[
+                    _buildBubbleAvatar(message.senderId, message.senderName, message.senderImage),
+                    const SizedBox(width: 4),
+                  ],
                   Flexible(
                     child: Column(
                       crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                       children: [
                         if (!isMe)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 4, left: 12),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(message.senderName, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 11, fontWeight: FontWeight.w600)),
-                              ],
+                            padding: const EdgeInsetsDirectional.only(bottom: 6, start: 8),
+                            child: Text(
+                              message.senderName, 
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.primary, 
+                                fontSize: 11, 
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.2,
+                              )
                             ),
                           ),
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Container(
-                          key: _messageKeys.putIfAbsent(message.id!, () => GlobalKey()),
-                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+                        Container(
+                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
                           decoration: BoxDecoration(
-                            gradient: isMe ? LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary]) : null,
+                            gradient: isMe ? AppTheme.primaryGradient : null,
                             color: isMe ? null : Theme.of(context).cardColor,
                             borderRadius: BorderRadius.only(
                               topRight: const Radius.circular(22),
@@ -968,71 +1277,120 @@ class _ChatScreenState extends State<ChatScreen> {
                               bottomRight: Radius.circular(isMe ? 4 : 22),
                               bottomLeft: Radius.circular(isMe ? 22 : 4),
                             ),
+                            border: isMe ? null : Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.05), width: 0.5),
                             boxShadow: [
                               BoxShadow(
-                                color: isMe ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.75),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
+                                color: isMe 
+                                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12) 
+                                  : Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
                               )
                             ],
                           ),
-                          padding: message.imageUrl != null ? const EdgeInsets.all(4) : const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          child: Column(
-                            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                            children: [
-                              if (message.replyTo != null) _buildReplyInBubble(message.replyTo!, isMe),
-                              if (message.isDeleted)
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.block, size: 16, color: isMe ? Colors.black54 : Theme.of(context).colorScheme.onSurfaceVariant),
-                                    const SizedBox(width: 8),
-                                    Text('🚫 تم سحب هذه الرسالة', style: TextStyle(fontStyle: FontStyle.italic, color: isMe ? Colors.black54 : Theme.of(context).colorScheme.onSurfaceVariant)),
-                                  ],
-                                )
-                              else ...[
-                                if (message.imageUrl != null) _buildImageContent(message.imageUrl!),
-                                if (message.message.isNotEmpty)
-                                  MarkdownBody(
-                                    data: message.message,
-                                    styleSheet: MarkdownStyleSheet(
-                                      p: TextStyle(color: isMe ? Colors.black : Theme.of(context).colorScheme.onSurface, fontSize: 15, height: 1.4),
-                                    ),
-                                  ),
-                              ],
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    _formatTime(message.createdAt),
-                                    style: TextStyle(color: isMe ? Colors.black54 : Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 9, fontWeight: FontWeight.w500),
-                                  ),
-                                    if (showTicks) ...[
-                                      const SizedBox(width: 4),
-                                      Icon(
-                                        isRead ? Icons.done_all : Icons.done,
-                                        color: isRead ? Colors.blue : Colors.black26,
-                                        size: 15,
-                                      ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.only(
+                              topRight: const Radius.circular(22),
+                              topLeft: const Radius.circular(22),
+                              bottomRight: Radius.circular(isMe ? 4 : 22),
+                              bottomLeft: Radius.circular(isMe ? 22 : 4),
+                            ),
+                            child: Stack(
+                              children: [
+                                Padding(
+                                  padding: message.imageUrl != null 
+                                      ? const EdgeInsets.all(4) 
+                                      : const EdgeInsets.only(left: 14, right: 14, top: 12, bottom: 20),
+                                  child: Column(
+                                    crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (message.replyTo != null) _buildReplyInBubble(message.replyTo!, isMe),
+                                      if (message.isDeleted)
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.block_flipped, size: 14, color: isMe ? Colors.white70 : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'تم حذف هذه الرسالة', 
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontStyle: FontStyle.italic, 
+                                                color: isMe ? Colors.white70 : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)
+                                              )
+                                            ),
+                                          ],
+                                        )
+                                      else ...[
+                                        if (message.imageUrl != null) _buildImageContent(message.imageUrl!),
+                                        if (message.audioUrl != null) 
+                                          AudioPlayerWidget(
+                                            url: message.audioUrl!, 
+                                            duration: message.audioDuration,
+                                            isMe: isMe,
+                                          ),
+                                        if (message.message.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(bottom: 4),
+                                            child: MarkdownBody(
+                                              data: message.message,
+                                              styleSheet: MarkdownStyleSheet(
+                                                p: TextStyle(
+                                                  color: isMe ? Colors.white : Theme.of(context).colorScheme.onSurface, 
+                                                  fontSize: 15.5, 
+                                                  height: 1.45,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ],
-                                ],
-                              ),
-                            ],
+                                  ),
+                                ),
+                                // الوقت والحالة في الركن السفلي
+                                Positioned(
+                                  bottom: 6,
+                                  right: isMe ? 12 : null,
+                                  left: isMe ? null : 12,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        _formatTime(message.createdAt),
+                                        style: TextStyle(
+                                          color: isMe ? Colors.white.withValues(alpha: 0.6) : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5), 
+                                          fontSize: 9.5, 
+                                          fontWeight: FontWeight.w600
+                                        ),
+                                      ),
+                                      if (showTicks) ...[
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          isRead ? Icons.done_all_rounded : Icons.done_rounded,
+                                          color: isRead ? const Color(0xFF4FC3F7) : Colors.white.withValues(alpha: 0.4),
+                                          size: 13,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         if (message.reactions != null && message.reactions!.isNotEmpty)
-                          Positioned(
-                            bottom: -15,
-                            right: isMe ? 20 : null,
-                            left: isMe ? null : 20,
+                          Transform.translate(
+                            offset: const Offset(0, -8),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              margin: EdgeInsetsDirectional.only(start: isMe ? 0 : 12, end: isMe ? 12 : 0),
                               decoration: BoxDecoration(
                                 color: Theme.of(context).cardColor,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
-                                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: const Offset(0, 2))],
+                                borderRadius: BorderRadius.circular(15),
+                                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1), width: 0.5),
+                                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: const Offset(0, 3))],
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -1042,10 +1400,11 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                       ],
                     ),
+                  ),
+                  if (isMe) ...[
+                    const SizedBox(width: 4),
+                    _buildBubbleAvatar(_effectiveUserId, _effectiveUserName, _currentUserImage),
                   ],
-                ),
-              ),
-                  if (isMe) _buildBubbleAvatar(_effectiveUserId, _effectiveUserName, _currentUserImage),
                 ],
               ),
             ),
@@ -1056,6 +1415,11 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildBubbleAvatar(String userId, String name, String? image) {
+    if (userId == 'system') {
+      return _buildRawAvatar(userId, name, null);
+    }
+
+    // الأولوية للصورة الممررة مع الرسالة
     if (image != null && image.isNotEmpty) {
       return _buildRawAvatar(userId, name, image);
     }
@@ -1065,31 +1429,14 @@ class _ChatScreenState extends State<ChatScreen> {
       return _buildRawAvatar(userId, name, _currentUserImage);
     }
 
-    // للمستدخم الزائر (لا يملك صورة)
-    if (userId.startsWith('guest_')) {
-      return _buildRawAvatar(userId, name, null);
-    }
-
     // فحص الذاكرة المؤقتة (cache)
     if (_bubbleAvatarCache.containsKey(userId)) {
       return _buildRawAvatar(userId, name, _bubbleAvatarCache[userId]);
     }
 
-    // جلب الصورة ديناميكياً إذا كانت مفقودة في الرسائل القديمة
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('users').doc(userId).get(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done && snapshot.hasData && snapshot.data!.exists) {
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-          final fetchedImage = data['profileImage']?.toString() ?? '';
-          if (fetchedImage.isNotEmpty) {
-            _bubbleAvatarCache[userId] = fetchedImage;
-            return _buildRawAvatar(userId, name, fetchedImage);
-          }
-        }
-        return _buildRawAvatar(userId, name, null); // حرف الاسم الأول كبديل أخير
-      },
-    );
+    // إذا لم تتوفر الصورة، نعرض رمزاً مؤقتاً سريعاً بدلاً من FutureBuilder الثقيل
+    // سيتم تحديث الكاش لاحقاً أو عند وصول رسائل جديدة تحتوي على الصورة
+    return _buildRawAvatar(userId, name, null);
   }
 
   Widget _buildRawAvatar(String userId, String name, String? image) {
@@ -1112,7 +1459,7 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), width: 1),
+            border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), width: 1),
           ),
           child: CircleAvatar(
             radius: 22,
@@ -1181,7 +1528,7 @@ class _ChatScreenState extends State<ChatScreen> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isMe ? Colors.black.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.75),
+          color: isMe ? Colors.black.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(10),
           border: Border(right: BorderSide(color: isMe ? Colors.black45 : Theme.of(context).colorScheme.primary, width: 3)),
         ),
@@ -1199,146 +1546,131 @@ class _ChatScreenState extends State<ChatScreen> {
   void _showLongPressMenu(ChatMessageModel message) {
     HapticFeedback.heavyImpact();
     
-    // حساب موقع الرسالة لإظهار القوائم بالنسبة لها
-    final RenderBox? renderBox = _messageKeys[message.id]?.currentContext?.findRenderObject() as RenderBox?;
-    final position = renderBox?.localToGlobal(Offset.zero);
-    final size = renderBox?.size;
-
-    if (position == null || size == null) return;
-
-    // الثوابت للتصميم المدمج
-    const double emojiBarHeight = 55;
-    const double actionBarHeight = 70;
-    const double spacing = 8;
-    final double screenHeight = Get.height;
+    final isMe = message.senderId == _effectiveUserId || (_effectiveUserId.isEmpty && message.senderName == _effectiveUserName);
     
-    // حساب الإزاحة الذكية (Smart Shift) لتجنب الخروج عن الشاشة
-    double yOffset = 0;
-    double totalHeightNeeded = emojiBarHeight + size.height + actionBarHeight + (spacing * 2);
-    
-    // إذا كنت في أسفل الشاشة، ارفع المجموعة للأعلى
-    if (position.dy + size.height + actionBarHeight + spacing > screenHeight - 40) {
-      yOffset = (position.dy + size.height + actionBarHeight + spacing) - (screenHeight - 40);
-    }
-
     Get.dialog(
-      Scaffold(
-        backgroundColor: Colors.black.withValues(alpha: 0.15), // تعتيم خفيف جداً بدون Blur
-        body: GestureDetector(
-          onTap: () => Get.back(),
-          child: Stack(
+      GestureDetector(
+        onTap: () => Get.back(),
+        child: Material(
+          color: Colors.black.withValues(alpha: 0.6), // تظليل أغمق للتركيز
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 1. شريط التفاعلات الأفقي (فوق الرسالة)
-              Positioned(
-                top: position.dy - emojiBarHeight - spacing - yOffset,
-                left: 20,
-                right: 20,
-                child: Center(
-                  child: FadeInDown(
-                    duration: const Duration(milliseconds: 200),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 1)],
-                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ...['👍', '❤️', '😂', '😮', '😢', '🙏'].asMap().entries.map((entry) {
-                            return ZoomIn(
-                              delay: Duration(milliseconds: entry.key * 30),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(20),
-                                onTap: () { Get.back(); _addReaction(message, entry.value); },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                  child: Text(entry.value, style: const TextStyle(fontSize: 24)),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                          InkWell(
-                            onTap: () { Get.back(); _showFullEmojiPicker(message); },
-                            child: Container(
-                              margin: const EdgeInsets.only(left: 4),
-                              padding: const EdgeInsets.all(5),
-                              decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75), shape: BoxShape.circle),
-                              child: Icon(Icons.add, color: Theme.of(context).colorScheme.primary, size: 18),
+              // 1. شريط الرموز التعبيرية (Emoji Bar)
+              FadeInDown(
+                duration: const Duration(milliseconds: 200),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 15, spreadRadius: 1)],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ...['👍', '❤️', '😂', '😮', '😢', '🙏'].asMap().entries.map((entry) {
+                        return ZoomIn(
+                          delay: Duration(milliseconds: entry.key * 30),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () { Get.back(); _addReaction(message, entry.value); },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                              child: Text(entry.value, style: const TextStyle(fontSize: 24)),
                             ),
                           ),
-                        ],
+                        );
+                      }),
+                      InkWell(
+                        onTap: () { Get.back(); _showFullEmojiPicker(message); },
+                        child: Container(
+                          margin: const EdgeInsetsDirectional.only(start: 4),
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), shape: BoxShape.circle),
+                          child: Icon(Icons.add, color: Theme.of(context).colorScheme.primary, size: 18),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
 
-              // 2. شريط الإجراءات الأفقي المدمج (تحت الرسالة)
-              Positioned(
-                top: position.dy + size.height + spacing - yOffset,
-                left: 20,
-                right: 20,
-                child: Center(
-                  child: FadeInUp(
-                    duration: const Duration(milliseconds: 200),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 1)],
-                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildMiniHorizontalAction(
-                            Icons.reply_rounded, 
-                            'رد', 
-                            () { Get.back(); setState(() => _replyingTo = message); }
-                          ),
-                          _buildMiniDivider(),
-                          _buildMiniHorizontalAction(
-                            Icons.copy_rounded, 
-                            'نسخ', 
-                            () { 
-                              Get.back(); 
-                              Clipboard.setData(ClipboardData(text: message.message));
-                              Get.snackbar('نسخ', 'تم نسخ النص', snackPosition: SnackPosition.TOP, duration: const Duration(seconds: 1));
-                            }
-                          ),
-                          _buildMiniDivider(),
-                          if (message.senderId == _effectiveUserId) ...[
-                            _buildMiniHorizontalAction(
-                              Icons.edit_outlined, 
-                              'تعديل', 
-                              () { 
-                                Get.back(); 
-                                setState(() { _editingMessage = message; _messageController.text = message.message; }); 
-                              }
-                            ),
-                            _buildMiniDivider(),
-                          ],
-                          _buildMiniHorizontalAction(
-                            Icons.forward_rounded, 
-                            'توجيه', 
-                            () { Get.back(); _showForwardSelector(message); }
-                          ),
-                          if (message.senderId == _effectiveUserId || _authController.currentUser.value?.role == UserRole.admin) ...[
-                            _buildMiniDivider(),
-                            _buildMiniHorizontalAction(
-                              Icons.delete_outline_rounded, 
-                              'حذف', 
-                              () { Get.back(); if (message.id != null) _deleteMessage(message.id!); },
-                              color: Theme.of(context).colorScheme.error
-                            ),
-                          ],
-                        ],
-                      ),
+              // 2. معاينة الرسالة المختارة (توسيط كامل)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black26, blurRadius: 20, spreadRadius: 2)
+                      ],
                     ),
+                    child: _buildBubbleContentOnly(message, isMe),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // 3. شريط الإجراءات (Actions Bar)
+              FadeInUp(
+                duration: const Duration(milliseconds: 200),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 15, spreadRadius: 1)],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildMiniHorizontalAction(
+                        Icons.reply_rounded, 
+                        'رد', 
+                        () { Get.back(); setState(() => _replyingTo = message); }
+                      ),
+                      _buildMiniDivider(),
+                      _buildMiniHorizontalAction(
+                        Icons.copy_rounded, 
+                        'نسخ', 
+                        () { 
+                          Get.back(); 
+                          Clipboard.setData(ClipboardData(text: message.message));
+                          Get.snackbar('نسخ', 'تم نسخ النص', snackPosition: SnackPosition.TOP, duration: const Duration(seconds: 1));
+                        }
+                      ),
+                      _buildMiniDivider(),
+                      if (isMe) ...[
+                        _buildMiniHorizontalAction(
+                          Icons.edit_outlined, 
+                          'تعديل', 
+                          () { 
+                            Get.back(); 
+                            setState(() { _editingMessage = message; _messageController.text = message.message; }); 
+                          }
+                        ),
+                        _buildMiniDivider(),
+                      ],
+                      _buildMiniHorizontalAction(
+                        Icons.forward_rounded, 
+                        'توجيه', 
+                        () { Get.back(); _showForwardSelector(message); }
+                      ),
+                      if (isMe || _isAdminRole(_authController.currentUser.value?.role)) ...[
+                        _buildMiniDivider(),
+                        _buildMiniHorizontalAction(
+                          Icons.delete_outline_rounded, 
+                          'حذف', 
+                          () { Get.back(); if (message.id != null) _deleteMessage(message.id!); },
+                          color: Theme.of(context).colorScheme.error
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
@@ -1346,8 +1678,63 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ),
       ),
-      useSafeArea: false,
       barrierColor: Colors.transparent,
+      barrierDismissible: true,
+    );
+  }
+
+  // الجزء الجمالي لفقاعة الرسالة بدون الرو أو الأفاتار (للمعاينة فقط)
+  Widget _buildBubbleContentOnly(ChatMessageModel message, bool isMe) {
+    final isRead = message.isRead;
+    final showTicks = isMe && !message.isSystem;
+    
+    return Container(
+      constraints: BoxConstraints(maxWidth: Get.width * 0.75),
+      decoration: BoxDecoration(
+        gradient: isMe ? LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary]) : null,
+        color: isMe ? null : Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      padding: message.imageUrl != null ? const EdgeInsets.all(4) : const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          if (message.replyTo != null) _buildReplyInBubble(message.replyTo!, isMe),
+          if (message.isDeleted)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.block, size: 16, color: isMe ? Colors.black54 : Theme.of(context).colorScheme.onSurfaceVariant),
+                const SizedBox(width: 8),
+                const Text('🚫 رسالة مسحوبة', style: TextStyle(fontStyle: FontStyle.italic)),
+              ],
+            )
+          else ...[
+            if (message.imageUrl != null) _buildImageContent(message.imageUrl!),
+            if (message.message.isNotEmpty)
+              MarkdownBody(
+                data: message.message,
+                styleSheet: MarkdownStyleSheet(
+                  p: TextStyle(color: isMe ? Colors.black : Theme.of(context).colorScheme.onSurface, fontSize: 15),
+                ),
+              ),
+          ],
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _formatTime(message.createdAt),
+                style: TextStyle(color: isMe ? Colors.black54 : Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 9),
+              ),
+              if (showTicks) ...[
+                const SizedBox(width: 4),
+                Icon(isRead ? Icons.done_all : Icons.done, color: isRead ? Colors.blue : Colors.black26, size: 15),
+              ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1377,7 +1764,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMiniDivider() => Container(width: 1, height: 25, color: Colors.grey.withValues(alpha: 0.75));
+  Widget _buildMiniDivider() => Container(width: 1, height: 25, color: Colors.grey.withValues(alpha: 0.15));
 
 
 
@@ -1411,7 +1798,7 @@ class _ChatScreenState extends State<ChatScreen> {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.75),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 20,
               spreadRadius: 5,
             )
@@ -1424,12 +1811,12 @@ class _ChatScreenState extends State<ChatScreen> {
               width: 45, 
               height: 5, 
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75), 
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15), 
                 borderRadius: BorderRadius.circular(10)
               )
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              padding: const EdgeInsetsDirectional.fromSTEB(24, 24, 24, 16),
               child: Row(
                 children: [
                   Text(
@@ -1468,7 +1855,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Container(
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(15),
                     ),
                     child: Text(
@@ -1490,6 +1877,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _showForwardSelector(ChatMessageModel message) {
     String query = '';
+    final myRole = _authController.currentUser.value?.role;
     Get.bottomSheet(
       StatefulBuilder(
         builder: (context, setModalState) => Container(
@@ -1513,7 +1901,10 @@ class _ChatScreenState extends State<ChatScreen> {
                     final users = snapshot.data!.docs.where((doc) {
                       final d = doc.data() as Map<String, dynamic>;
                       final name = d['name']?.toString().toLowerCase() ?? '';
-                      return name.contains(query) && doc.id != _effectiveUserId;
+                      final targetRole = _parseUserRole(d['role']);
+                      return name.contains(query) &&
+                          doc.id != _effectiveUserId &&
+                          _canCurrentRoleMessageTargetRole(myRole: myRole, targetRole: targetRole);
                     }).toList();
 
                     return ListView.builder(
@@ -1543,7 +1934,23 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _forwardTo(String targetId, String? targetName, ChatMessageModel original) async {
+    if (_accessDenied) {
+      Get.snackbar('وصول مرفوض', 'لا يمكنك توجيه الرسائل من هذه المحادثة.');
+      return;
+    }
+
+    final canForward = await _canMessageTargetUser(targetId);
+    if (!canForward) {
+      Get.snackbar('وصول مرفوض', 'يمكنك التوجيه للإدارة فقط حسب صلاحيات حسابك.');
+      return;
+    }
+
     final chatId = _getChatIdFor(targetId);
+    if (chatId == 'invalid_chat') {
+      Get.snackbar('خطأ', 'تعذر إنشاء معرف المحادثة للمستلم المحدد.');
+      return;
+    }
+
     await FirebaseFirestore.instance.collection('chats').doc(chatId).collection('messages').add({
       'senderId': _effectiveUserId,
       'senderName': _effectiveUserName,
@@ -1582,7 +1989,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   String _getChatIdFor(String targetId) {
-    if (_effectiveUserId.startsWith('guest_')) return _effectiveUserId; // Guests can only chat in their own ID
+    if (_effectiveUserId.isEmpty || targetId.isEmpty || targetId == _effectiveUserId) {
+      return 'invalid_chat';
+    }
     final List<String> ids = [_effectiveUserId, targetId];
     ids.sort();
     return ids.join('_');
@@ -1628,6 +2037,38 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildInputArea() {
     final isAdminOrSupport = _authController.currentUser.value?.role == UserRole.admin || _authController.currentUser.value?.role == UserRole.superAdmin || _authController.currentUser.value?.role == UserRole.chatModerator;
+    
+    if (_isRecording) {
+      return Container(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 10, top: 10, left: 16, right: 16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), offset: const Offset(0, -2), blurRadius: 4)]
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.mic, color: Colors.red),
+            const SizedBox(width: 12),
+            Text(_recordingDurationStr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const Spacer(),
+            TextButton(
+              onPressed: _cancelRecording,
+              child: const Text('إلغاء', style: TextStyle(color: Colors.red)),
+            ),
+            const SizedBox(width: 12),
+            GestureDetector(
+              onTap: _stopRecording,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary, shape: BoxShape.circle),
+                child: const Icon(Icons.send_rounded, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1638,38 +2079,30 @@ class _ChatScreenState extends State<ChatScreen> {
           padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 10, top: 10, left: 12, right: 12),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface, 
-            boxShadow: [BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.75), offset: const Offset(0, -2), blurRadius: 4)]
+            boxShadow: [BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.15), offset: const Offset(0, -2), blurRadius: 4)]
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               GestureDetector(
-                onTap: () => Get.snackbar(
-                  'قريباً 🚀',
-                  'ميزة إرسال الصور ستتوفر في التحديث القادم',
-                  backgroundColor: Theme.of(context).cardColor.withValues(alpha: 0.15),
-                  colorText: Theme.of(context).colorScheme.onSurface,
-                  snackPosition: SnackPosition.TOP,
-                ),
+                onTap: () => _pickImage(ImageSource.gallery),
+                onLongPress: () => _pickImage(ImageSource.camera),
                 child: Container(
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75), shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1), shape: BoxShape.circle),
                   padding: const EdgeInsets.all(12),
-                  child: Icon(Icons.photo_camera, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 24),
+                  child: Icon(Icons.camera_alt_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
                 ),
               ),
               const SizedBox(width: 8),
               GestureDetector(
-                onTap: () => Get.snackbar(
-                  'قريباً 🎙️',
-                  'ميزة الرسائل الصوتية ستتوفر في التحديث القادم',
-                  backgroundColor: Theme.of(context).cardColor.withValues(alpha: 0.15),
-                  colorText: Theme.of(context).colorScheme.onSurface,
-                  snackPosition: SnackPosition.TOP,
-                ),
+                onLongPress: _startRecording,
+                onTap: () {
+                   Get.snackbar('نصيحة 💡', 'اضغط مطولاً لبدء تسجيل رسالة صوتية', snackPosition: SnackPosition.TOP);
+                },
                 child: Container(
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75), shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1), shape: BoxShape.circle),
                   padding: const EdgeInsets.all(12),
-                  child: Icon(Icons.mic_none_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 24),
+                  child: Icon(Icons.mic_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1678,7 +2111,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.75)),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
                   ),
                   child: TextField(
                     controller: _messageController,
@@ -1757,28 +2190,152 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildEditPreview() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75),
-      child: Row(
-        children: [
-          Icon(Icons.edit, size: 16, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 8),
-          const Expanded(child: Text('تعديل الرسالة...', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-          IconButton(
-            icon: const Icon(Icons.close, size: 18),
-            onPressed: () => setState(() {
-              _editingMessage = null;
-              _messageController.clear();
-            }),
-          ),
-        ],
+      color: Theme.of(context).colorScheme.surface,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border(right: const BorderSide(color: Colors.orange, width: 4)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.edit, size: 16, color: Colors.orange),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('تعديل الرسالة', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12)),
+                  Text(_editingMessage!.message, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.close, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              onPressed: () {
+                _messageController.clear();
+                setState(() => _editingMessage = null);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _sendMessage() async {
-    if (_messageController.text.trim().isEmpty && _selectedImage == null) return;
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        imageQuality: 70,
+        maxWidth: 1200,
+      );
+      
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+        });
+        // إرسال الصورة مباشرة بعد الاختيار لتجربة أكثر سلاسة (مثل واتساب)
+        _sendMessage();
+      }
+    } catch (e) {
+      _handleError('اختيار الصورة', e);
+    }
+  }
+
+  Future<void> _startRecording() async {
+    try {
+      if (await _audioRecorder.hasPermission()) {
+        final directory = await getApplicationDocumentsDirectory();
+        final path = p.join(directory.path, 'audio_${DateTime.now().millisecondsSinceEpoch}.m4a');
+        
+        await _audioRecorder.start(const RecordConfig(), path: path);
+        
+        setState(() {
+          _isRecording = true;
+          _recordingPath = path;
+          _recordingDurationSeconds = 0;
+          _recordingDurationStr = '00:00';
+        });
+
+        _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          setState(() {
+            _recordingDurationSeconds++;
+            _recordingDurationStr = _formatDuration(_recordingDurationSeconds);
+          });
+        });
+      }
+    } catch (e) {
+      _handleError('بدء التسجيل', e);
+    }
+  }
+
+  String _formatDuration(int seconds) {
+    final minutes = (seconds / 60).floor();
+    final remainingSeconds = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _stopRecording() async {
+    try {
+      _recordingTimer?.cancel();
+      final path = await _audioRecorder.stop();
+      
+      setState(() {
+        _isRecording = false;
+      });
+
+      if (path != null && _recordingDurationSeconds > 0) {
+        _sendMessage(audioPath: path, duration: _recordingDurationSeconds);
+      }
+    } catch (e) {
+      _handleError('إيقاف التسجيل', e);
+    }
+  }
+
+  Future<void> _cancelRecording() async {
+    try {
+      _recordingTimer?.cancel();
+      await _audioRecorder.stop();
+      if (_recordingPath != null) {
+        final file = File(_recordingPath!);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+      setState(() {
+        _isRecording = false;
+        _recordingDurationSeconds = 0;
+      });
+    } catch (e) {
+      debugPrint('⚠️ Error cancelling recording: $e');
+    }
+  }
+
+  Future<void> _sendMessage({String? audioPath, int? duration}) async {
+    if (_accessDenied) {
+      Get.snackbar('وصول مرفوض', _accessDeniedMessage.isNotEmpty ? _accessDeniedMessage : 'لا تملك صلاحية الإرسال في هذه المحادثة.');
+      return;
+    }
+
+    if (_messageController.text.trim().isEmpty && _selectedImage == null && audioPath == null) return;
 
     final chatId = _getChatId();
+
+    if (widget.isGroupChat && !_isGroupAllowedForRole(chatId, _authController.currentUser.value?.role)) {
+      _denyChatAccess('غير مسموح لك بالمحادثات الجماعية خارج نطاق دورك.');
+      return;
+    }
+
+    if (!widget.isGroupChat && widget.targetUserId != null && widget.targetUserId!.isNotEmpty) {
+      final canMessageTarget = await _canMessageTargetUser(widget.targetUserId!);
+      if (!canMessageTarget) {
+        _denyChatAccess('هذا الدور يمكنه مراسلة الإدارة فقط في المحادثات الخاصة.');
+        return;
+      }
+    }
     
     // منع الإرسال إذا كان chatId غير صحيح
     if (chatId == 'invalid_chat') {
@@ -1810,13 +2367,23 @@ class _ChatScreenState extends State<ChatScreen> {
       await messagesRef.doc(editingMessage.id).update({'message': text});
     } else {
       String? imageUrl;
-      if (_selectedImage != null) {
+      String? audioUrl;
+      int? audioDuration = duration;
+
+      if (_selectedImage != null || audioPath != null) {
         setState(() => _isUploading = true);
-        final ref = FirebaseStorage.instance.ref('chat_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
-        await ref.putFile(_selectedImage!);
-        imageUrl = await ref.getDownloadURL();
-        _selectedImage = null;
-        setState(() => _isUploading = false);
+        try {
+          if (_selectedImage != null) {
+            imageUrl = await CloudinaryService.uploadMedia(_selectedImage!);
+          } else if (audioPath != null) {
+            audioUrl = await CloudinaryService.uploadMedia(File(audioPath));
+          }
+        } catch (e) {
+          _handleError('رفع الوسائط', e);
+        } finally {
+          _selectedImage = null;
+          setState(() => _isUploading = false);
+        }
       }
 
       final String sendingName = _effectiveUserName;
@@ -1824,7 +2391,7 @@ class _ChatScreenState extends State<ChatScreen> {
       // تحديث بيانات المحادثة الرئيسية أولاً لضمان وجود الصلاحيات (Participants Array) قبل إرسال الرسالة
       try {
         await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
-          'lastMessage': imageUrl != null ? '📷 صورة' : text,
+          'lastMessage': imageUrl != null ? '📷 صورة' : (audioUrl != null ? '🎙️ رسالة صوتية' : text),
           'lastMessageAt': FieldValue.serverTimestamp(),
           'type': widget.isGroupChat ? 'group' : (chatId.startsWith('guest_') ? 'guest' : 'private'),
           'participants': FieldValue.arrayUnion([_effectiveUserId, if (widget.targetUserId != null) widget.targetUserId!]),
@@ -1842,6 +2409,8 @@ class _ChatScreenState extends State<ChatScreen> {
           'senderImage': _currentUserImage,
           'message': text,
           'imageUrl': imageUrl,
+          'audioUrl': audioUrl,
+          'audioDuration': audioDuration,
           'isRead': false,
           'readBy': [_effectiveUserId],
           'createdAt': FieldValue.serverTimestamp(),
@@ -1943,7 +2512,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (chatId == 'group_team') {
             await NotificationService.notifyAllAdmins(
               type: 'group_message',
-              title: 'رسالة في مجموعة الفريق 👥',
+              title: '💬 تفاعل جديد في مجموعة الفريق',
               body: '$senderDisplayName: $text',
               data: notificationData,
               excludeUserId: _effectiveUserId,
@@ -1954,7 +2523,7 @@ class _ChatScreenState extends State<ChatScreen> {
         else if (isSenderGuest) {
           await NotificationService.notifyAllAdmins(
             type: 'guest_message',
-            title: 'رسالة جديدة من زائر 💬',
+            title: '📩 رسالة من زائر محتاج',
             body: '$senderDisplayName: $text',
             data: notificationData,
             excludeUserId: _effectiveUserId,
@@ -1962,11 +2531,17 @@ class _ChatScreenState extends State<ChatScreen> {
         } 
         // 4. المحادثات الخاصة الموجهة (للمستقبل فقط)
         else if (widget.targetUserId != null && !isReceiverGuest) {
+          final targetIsOnScreen = await _isTargetUserActiveInThisChat(chatId, widget.targetUserId!);
+          if (targetIsOnScreen) {
+            debugPrint('🔕 Skip push notification: target user is active in this chat screen');
+            return;
+          }
+
           // تأكيد إضافي: لا ترسل إشعاراً لجميع المدراء إذا كانت المحادثة خاصة
           await NotificationService.sendNotification(
             userId: widget.targetUserId!,
             type: 'new_message',
-            title: 'رسالة من $senderDisplayName 💬',
+            title: '💬 رسالة من $senderDisplayName',
             body: text,
             data: notificationData,
           );
@@ -2029,6 +2604,8 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _markMessagesAsRead(List<QueryDocumentSnapshot> docs) async {
+    if (_accessDenied || _effectiveUserId.isEmpty) return;
+
     final unread = docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
       final readBy = (data['readBy'] as List?)?.map((e) => e.toString()).toList() ?? [];
@@ -2044,10 +2621,17 @@ class _ChatScreenState extends State<ChatScreen> {
         'isRead': true,
       });
     }
-    await batch.commit();
+    try {
+      await batch.commit();
+      await _markAsRead();
+    } catch (e) {
+      debugPrint('⚠️ Error marking messages as read: $e');
+    }
   }
 
   void _showMembersSheet() {
+    final myRole = _authController.currentUser.value?.role;
+
     Get.bottomSheet(
       DraggableScrollableSheet(
         initialChildSize: 0.7,
@@ -2070,7 +2654,11 @@ class _ChatScreenState extends State<ChatScreen> {
                     stream: FirebaseFirestore.instance.collection('users').where('role', whereIn: ['admin', 'superAdmin', 'worker', 'chatModerator']).snapshots(),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                      final workers = snapshot.data!.docs.map((doc) => UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
+                      final workers = snapshot.data!.docs
+                          .map((doc) => UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+                          .where((user) => user.id != _effectiveUserId)
+                          .where((user) => _canCurrentRoleMessageTargetRole(myRole: myRole, targetRole: user.role))
+                          .toList();
                       
                       return ListView.builder(
                         itemCount: workers.length,
@@ -2084,7 +2672,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                             title: Text(worker.name, style: GoogleFonts.tajawal(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
                             subtitle: Text(worker.role.displayName, style: GoogleFonts.tajawal(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                            trailing: worker.id == _effectiveUserId ? null : IconButton(
+                            trailing: IconButton(
                               icon: Icon(Icons.chat_bubble_outline, color: Theme.of(context).colorScheme.primary, size: 24),
                               onPressed: () {
                                 Get.back();

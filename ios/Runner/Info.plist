@@ -49,6 +49,10 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -66,5 +70,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>نحتاج للوصول إلى الميكروفون لتسجيل الرسائل الصوتية.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>نحتاج للوصول إلى الكاميرا لالتقاط صور وإرسالها في الدردشة.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>نحتاج للوصول إلى معرض الصور لاختيار صور وإرسالها في الدردشة.</string>
 </dict>
 </plist>

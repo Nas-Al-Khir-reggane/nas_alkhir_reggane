@@ -93,7 +93,7 @@ class WorkerDetailScreen extends StatelessWidget {
                                   const SizedBox(height: 4),
                                   Container(
                                     decoration: BoxDecoration(
-                                        color: roleColor.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(10)),
+                                        color: roleColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     child: Text(roleName,
                                         style: TextStyle(color: roleColor, fontWeight: FontWeight.w600, fontSize: 12)),
@@ -168,7 +168,7 @@ class WorkerDetailScreen extends StatelessWidget {
                     _buildPerformanceStat('المهام المنجزة', worker.completedTasks.toString(), Icons.task_alt, AppTheme.successColor),
                     _buildPerformanceStat('نسبة الإنجاز', '${completionRate.toStringAsFixed(1)}%', Icons.trending_up, AppTheme.primaryGreen),
                     if (worker.workerRole == 'funeral_driver')
-                      _buildPerformanceStat('إجمالي الرحلات', worker.totalTrips.toString(), Icons.airport_shuttle, const Color(0xFF4A148C)),
+                      _buildPerformanceStat('إجمالي الرحلات', worker.totalTrips.toString(), Icons.airport_shuttle, AppTheme.primaryGreen),
                     _buildPerformanceStat('مدة العضوية', _getMembershipDuration(worker.createdAt), Icons.calendar_month, AppTheme.goldAccent),
                   ],
                 ),
@@ -197,7 +197,7 @@ class WorkerDetailScreen extends StatelessWidget {
                                   5,
                                   (index) => Icon(
                                         index < worker.rating.floor() ? Icons.star : Icons.star_border,
-                                        color: Colors.amber,
+                                        color: AppTheme.goldAccent,
                                         size: 22,
                                       ))),
                           const SizedBox(height: 4),
@@ -305,7 +305,7 @@ class WorkerDetailScreen extends StatelessWidget {
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                               leading: Container(
                                 decoration: BoxDecoration(
-                                    color: AppTheme.primaryGreen.withValues(alpha: 0.75),
+                                    color: AppTheme.primaryGreen.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(10)),
                                 padding: const EdgeInsets.all(8),
                                 child: const Icon(Icons.assignment, color: AppTheme.primaryGreen, size: 18),
@@ -351,7 +351,7 @@ class WorkerDetailScreen extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
             padding: const EdgeInsets.all(10),
             child: Icon(icon, color: color, size: 22),
           ),
@@ -434,7 +434,7 @@ class WorkerDetailScreen extends StatelessWidget {
                     onTap: () => setDialogState(() => selectedRating = star.toDouble()),
                     child: Icon(
                       star <= selectedRating ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
+                      color: AppTheme.goldAccent,
                       size: 36,
                     ),
                   );

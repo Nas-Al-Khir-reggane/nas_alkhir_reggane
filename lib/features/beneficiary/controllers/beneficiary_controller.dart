@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../data/services/cloudinary_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -83,47 +85,106 @@ class BeneficiaryController extends GetxController {
     });
   }
 
-  Future<void> submitRequest(Map<String, dynamic> data) async {
+
+  Future<List<String>> uploadAttachments({
+    required String requestId,
+    required String requesterId,
+    required List<File> files,
+  }) async {
+    final List<String> urls = [];
+
+    for (var i = 0; i < files.length; i++) {
+      final file = files[i];
+      // السماح بملفات أكبر قليلاً لـ Cloudinary إذا أردت، لكن سنبقي على الفلتر الحالي كحد أدنى
+      if (await file.length() > 5 * 1024 * 1024) {
+        Get.snackbar('حجم الملف', 'حجم الملف يجب أن لا يتجاوز 5 ميغابايت');
+        continue;
+      }
+
+      try {
+        final result = await CloudinaryService.uploadMedia(file);
+        if (result != null) {
+          urls.add(result);
+        }
+      } catch (e) {
+        if (kDebugMode) print('Upload error: $e');
+      }
+    }
+
+    return urls;
+  }
+
+  Future<void> submitRequest(Map<String, dynamic> data, {List<File> attachments = const []}) async {
     final hasActive = myRequests.any(
       (r) => r.status == 'pending' || r.status == 'in_progress',
     );
     if (hasActive) {
-      Get.snackbar(
-        'تنبيه',
-        'لديك طلب نشط بالفعل، يرجى الانتظار حتى معالجته',
-        backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15),
-        colorText: AppTheme.textPrimary,
+      Get.defaultDialog(
+        title: 'عذراً لا يمكن تقديم الطلب',
+        content: const Text(
+          'لديك طلب نشط حالياً قيد المعالجة. يرجى الانتظار حتى يتم إغلاقه أو إكماله من قبل الإدارة لتتمكن من تقديم طلب جديد.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontFamily: 'Tajawal', fontSize: 14),
+        ),
+        titleStyle: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
+        textConfirm: 'حسناً',
+        confirmTextColor: Colors.white,
+        buttonColor: Colors.red,
+        onConfirm: () => Get.back(),
+        radius: 12,
       );
       return;
     }
 
     isLoading.value = true;
     try {
-      final user = currentBeneficiary.value;
-      final fallbackName = (user != null) ? user.email.split('@').first : 'مدير';
+      final authController = Get.find<AuthController>();
+      final user = currentBeneficiary.value ?? authController.currentUser.value;
+      
+      if (user == null || user.id.isEmpty) {
+        Get.snackbar("خطأ المصادقة", "لم يتم العثور على هوية المستخدم. الرجاء تسجيل الدخول مجدداً.");
+        isLoading.value = false;
+        return;
+      }
+
+      final fallbackName = user.email.split('@').first.isNotEmpty ? user.email.split('@').first : 'مستفيد';
+      
+      if (!_connectivity.isOnline.value && attachments.isNotEmpty) {
+        Get.snackbar(
+          'المرفقات تحتاج اتصالاً',
+          'يرجى الاتصال بالإنترنت أولاً لإرفاق الملفات بشكل آمن',
+          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15),
+          colorText: AppTheme.warningColor,
+        );
+        isLoading.value = false;
+        return;
+      }
+
+      final details = Map<String, dynamic>.from(data['details'] ?? const {});
+
       final requestData = {
         ...data,
-        'requesterId': user?.id ?? Get.find<AuthController>().currentUser.value?.id ?? '',
+        'requesterId': user.id,
         'requesterName': (data['beneficiaryName'] != null && data['beneficiaryName'].toString().isNotEmpty) 
             ? data['beneficiaryName'] 
-            : ((user != null && user.name.isNotEmpty) ? user.name : fallbackName),
-        'phone': data['beneficiaryPhone'] ?? user?.phone ?? '',
-        'wilaya': user?.wilaya ?? '',
-        'commune': user?.commune ?? '',
-        'address': data['beneficiaryAddress'] ?? user?.address ?? '',
+            : (user.name.isNotEmpty ? user.name : fallbackName),
+        'phone': data['beneficiaryPhone'] ?? details['رقم الهاتف'] ?? details['رقم هاتف التواصل'] ?? details['phone'] ?? user.phone,
+        'wilaya': user.wilaya,
+        'commune': user.commune,
+        'address': data['beneficiaryAddress'] ?? user.address,
         'status': 'pending',
+        'attachments': <String>[],
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
       if (data['type'] == 'blood_donation' || data['type'] == 'blood_emergency') {
-        final details = data['details'] ?? {};
-        requestData['bloodType'] = details['الفصيلة'] ?? details['bloodType'] ?? '';
-        requestData['hospital'] = details['المستشفى'] ?? details['hospital'] ?? '';
+        requestData['bloodType'] = details['الفصيلة'] ?? details['فصيلة الدم'] ?? details['bloodType'] ?? '';
+        requestData['hospital'] = details['المستشفى'] ?? details['hospital'] ?? details['deliveryLocation'] ?? '';
+        requestData['patientName'] = details['اسم المريض'] ?? details['المريض'] ?? requestData['requesterName'] ?? '';
       }
 
       if (data['type'] == 'funeral_ghusl') {
-        final details = data['details'] ?? {};
         requestData['deceasedGender'] = details['جنس المتوفى'] ?? details['gender'] ?? '';
         requestData['washingLocation'] = details['مكان الغسل'] ?? details['location'] ?? '';
         requestData['supplies'] = details['المستلزمات'] ?? details['supplies'] ?? '';
@@ -153,9 +214,20 @@ class BeneficiaryController extends GetxController {
           borderRadius: 16,
         );
       } else {
-        final docRef = await FirebaseFirestore.instance
-            .collection('service_requests')
-            .add(requestData);
+        final docRef = FirebaseFirestore.instance.collection('service_requests').doc();
+        await docRef.set(requestData);
+
+        if (attachments.isNotEmpty) {
+          final attachmentPaths = await uploadAttachments(
+            requestId: docRef.id,
+            requesterId: user.id,
+            files: attachments,
+          );
+          await docRef.update({
+            'attachments': attachmentPaths,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
 
         await FirebaseFirestore.instance
             .collection('service_types')
@@ -189,14 +261,54 @@ class BeneficiaryController extends GetxController {
 
   Future<void> rateService(String requestId, int rating, String comment) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('service_requests')
-          .doc(requestId)
-          .update({
-        'rating': rating,
-        'ratingComment': comment,
-        'ratedAt': FieldValue.serverTimestamp(),
+      final firestore = FirebaseFirestore.instance;
+      final requestRef = firestore.collection('service_requests').doc(requestId);
+
+      await firestore.runTransaction((tx) async {
+        final requestSnap = await tx.get(requestRef);
+        if (!requestSnap.exists) {
+          throw Exception('الطلب غير موجود');
+        }
+
+        final requestData = requestSnap.data() as Map<String, dynamic>;
+        if (requestData['rating'] != null) {
+          throw Exception('تم تقييم هذا الطلب مسبقاً');
+        }
+
+        tx.update(requestRef, {
+          'rating': rating,
+          'ratingComment': comment,
+          'ratedAt': FieldValue.serverTimestamp(),
+        });
+
+        final assignedWorkerId = (requestData['assignedTo'] ?? '').toString();
+        if (assignedWorkerId.isEmpty) {
+          return;
+        }
+
+        final workerRef = firestore.collection('users').doc(assignedWorkerId);
+        final workerSnap = await tx.get(workerRef);
+        if (!workerSnap.exists) {
+          return;
+        }
+
+        final workerData = workerSnap.data() as Map<String, dynamic>;
+        if ((workerData['role'] ?? '').toString() != UserRole.worker.name) {
+          return;
+        }
+
+        final currentAvg = ((workerData['rating'] ?? 0) as num).toDouble();
+        final currentCount = ((workerData['ratingCount'] ?? 0) as num).toInt();
+        final nextCount = currentCount + 1;
+        final nextAvg = ((currentAvg * currentCount) + rating) / nextCount;
+
+        tx.update(workerRef, {
+          'rating': nextAvg,
+          'ratingCount': nextCount,
+          'lastActivity': FieldValue.serverTimestamp(),
+        });
       });
+
       Get.back();
       Get.snackbar('شكراً', 'تم تقييم الخدمة بنجاح');
       
@@ -204,8 +316,8 @@ class BeneficiaryController extends GetxController {
       try {
         await NotificationService.notifyAllAdmins(
           type: 'service_rating',
-          title: '⭐ تقييم جديد ($rating/5)',
-          body: comment.isNotEmpty ? 'تعليق: $comment' : 'تم استلام تقييم جديد لطلب منجز',
+          title: '✨ تقييم وعلامة رضا للعمل ($rating/5)',
+          body: comment.isNotEmpty ? 'ثناء ودعاء: $comment' : 'الحمد لله، تم إنجاز الطلب وتقييمه بنجاح. بارك الله في جهودكم.',
           data: {
             'requestId': requestId,
             'collection': 'service_requests',
@@ -224,8 +336,8 @@ class BeneficiaryController extends GetxController {
       // استخدام الدالة المركزية لضمان وصول الإشعار لكل المدراء بما فيهم المدير العام
       await NotificationService.notifyAllAdmins(
         type: 'new_request',
-        title: '🔔 طلب خدمة جديد',
-        body: 'طلب جديد ينتظر المعالجة',
+        title: '🚨 فرصة لكسب الأجر!',
+        body: 'طلب جديد للإغاثة ينتظر المعالجة. بادر بقضائها، فصنائع المعروف تقي مصارع السوء.',
         data: {
           'requestId': requestId,
           'collection': 'service_requests',
@@ -244,4 +356,3 @@ class BeneficiaryController extends GetxController {
     super.onClose();
   }
 }
-

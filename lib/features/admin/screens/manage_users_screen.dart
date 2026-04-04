@@ -8,6 +8,7 @@ import '../../../data/models/user_model.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/animations/scroll_animations.dart';
 
 class ManageUsersScreen extends StatefulWidget {
   const ManageUsersScreen({super.key});
@@ -51,6 +52,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         child: Column(
           children: [
             _buildHeader(),
+            _buildUserCounter(),
             _buildCustomToggle(),
             if (_currentIndex == 1) ...[
               _buildSearchBar(),
@@ -68,7 +70,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 20, 20, 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -92,12 +94,89 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.primaryGreen.withValues(alpha: 0.75),
+              color: AppTheme.primaryGreen.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.people_alt_rounded, color: AppTheme.primaryGreen),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUserCounter() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+      child: FadeInDown(
+        duration: const Duration(milliseconds: 600),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.glassBorder),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryGreen.withValues(alpha: 0.05),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              )
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Icon(Icons.person_add_alt_1_rounded, color: AppTheme.primaryGreen, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('إجمالي المشتركين في التطبيق حالياً', 
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontFamily: 'Tajawal')),
+                    const SizedBox(height: 4),
+                    Obx(() => ScrollAnimations.numberCounter(
+                      value: _adminCtl.totalRegisteredUsers.value,
+                      suffix: ' مسجل',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary, 
+                        fontSize: 24, 
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'Outfit',
+                      ),
+                    )),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(color: AppTheme.primaryGreen, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text('مباشر', 
+                      style: TextStyle(color: AppTheme.primaryGreen, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -159,7 +238,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 5, 20, 10),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 5, 20, 10),
       child: FadeInDown(
         duration: const Duration(milliseconds: 300),
         child: TextField(
@@ -252,7 +331,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   Widget _buildExpertiseFilterChip(String label, String? expertise) {
     bool isSelected = _selectedExpertise == expertise;
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsetsDirectional.only(end: 8),
       child: ChoiceChip(
         label: Text(label, style: TextStyle(color: isSelected ? Colors.white : AppTheme.textSecondary, fontSize: 11)),
         selected: isSelected,
@@ -267,7 +346,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   Widget _buildGenderFilterChip(String label, String? gender) {
     bool isSelected = _selectedGenderFilter == gender;
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsetsDirectional.only(end: 8),
       child: ChoiceChip(
         label: Text(label, style: TextStyle(color: isSelected ? Colors.black : AppTheme.textSecondary, fontSize: 12)),
         selected: isSelected,
@@ -282,7 +361,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   Widget _buildServiceFilterChip(String label, String? serviceId, IconData icon) {
     bool isSelected = _selectedService == serviceId;
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsetsDirectional.only(end: 8),
       child: ChoiceChip(
         avatar: Icon(icon, size: 14, color: isSelected ? Colors.black : AppTheme.primaryGreen),
         label: Text(label, style: TextStyle(color: isSelected ? Colors.black : AppTheme.textSecondary, fontSize: 12)),
@@ -298,7 +377,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   Widget _buildFilterChip(String label, String? type) {
     bool isSelected = _selectedBloodType == type;
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsetsDirectional.only(end: 8),
       child: ChoiceChip(
         label: Text(label, style: TextStyle(
           color: isSelected ? Colors.black : AppTheme.textSecondary,
@@ -337,7 +416,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           itemBuilder: (context, index) {
             var data = docs[index].data() as Map<String, dynamic>;
             UserModel user = UserModel.fromMap(data, docs[index].id);
-            UserRole selectedRole = user.role == UserRole.guest ? UserRole.beneficiary : user.role;
+            UserRole selectedRole = user.role;
 
             return FadeInUp(
               delay: Duration(milliseconds: 100 * (index % 5)),
@@ -369,11 +448,13 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                         padding: EdgeInsets.symmetric(vertical: 12),
                         child: Divider(color: AppTheme.glassBorder, height: 1),
                       ),
-                      _buildUserInfoRow(Icons.phone_outlined, "الهاتف", user.phone),
-                      const SizedBox(height: 8),
-                      _buildUserInfoRow(Icons.location_on_outlined, "الولاية", user.wilaya),
-                      const SizedBox(height: 8),
-                      _buildUserInfoRow(Icons.map_outlined, "البلدية", user.commune),
+                      if (_adminCtl.currentUser?.role == UserRole.superAdmin) ...[
+                        _buildUserInfoRow(Icons.phone_outlined, "الهاتف", user.phone),
+                        const SizedBox(height: 8),
+                        _buildUserInfoRow(Icons.location_on_outlined, "الولاية", user.wilaya),
+                        const SizedBox(height: 8),
+                        _buildUserInfoRow(Icons.map_outlined, "البلدية", user.commune),
+                      ],
                       const SizedBox(height: 16),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -489,14 +570,16 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                               Icon(Icons.badge_outlined, color: AppTheme.primaryGreen, size: 14),
                               const SizedBox(width: 4),
                               Text(user.role.displayName, style: TextStyle(color: AppTheme.primaryGreen, fontSize: 11, fontWeight: FontWeight.bold)),
-                              if (user.bloodType != null) ...[
+                              if (isSuperAdmin && user.bloodType != null) ...[
                                 const SizedBox(width: 8),
                                 _buildBloodTypeBadge(user),
                               ],
-                              const SizedBox(width: 8),
-                              Icon(Icons.phone_outlined, color: AppTheme.textHint, size: 14),
-                              const SizedBox(width: 4),
-                              Text(user.phone, style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                              if (isSuperAdmin) ...[
+                                const SizedBox(width: 8),
+                                Icon(Icons.phone_outlined, color: AppTheme.textHint, size: 14),
+                                const SizedBox(width: 4),
+                                Text(user.phone, style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                              ],
                             ],
                           )
                         ],
@@ -534,7 +617,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.group_off_outlined, size: 80, color: AppTheme.textHint.withValues(alpha: 0.75)),
+            Icon(Icons.group_off_outlined, size: 80, color: AppTheme.textHint.withValues(alpha: 0.15)),
             const SizedBox(height: 16),
             Text(message, style: TextStyle(color: AppTheme.textHint, fontSize: 15)),
           ],
@@ -547,7 +630,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.75), width: 2),
+        border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.15), width: 2),
       ),
       child: CircleAvatar(
         radius: 22,
@@ -563,9 +646,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.75),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.75)),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
       child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
     );
@@ -585,9 +668,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.75),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.75)),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -624,8 +707,8 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           decoration: BoxDecoration(
             color: AppTheme.surfaceColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-            border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.75), width: 1.5),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.75), blurRadius: 20)],
+            border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.15), width: 1.5),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 20)],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -646,7 +729,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                     dropdownColor: AppTheme.surfaceColor,
                     value: selectedRole,
                     style: TextStyle(color: AppTheme.textPrimary),
-                    items: UserRole.values.where((r) => r != UserRole.guest).map((role) {
+                    items: UserRole.values.map((role) {
                       if (role == UserRole.superAdmin && _adminCtl.currentUser?.role != UserRole.superAdmin) return null;
                       return DropdownMenuItem(value: role, child: Text(role.displayName));
                     }).whereType<DropdownMenuItem<UserRole>>().toList(),
@@ -698,54 +781,60 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           color: AppTheme.surfaceColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildAvatar(user),
-            const SizedBox(height: 16),
-            Text(user.name, style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 24),
-            _buildUserInfoRow(Icons.phone_outlined, "رقم الهاتف", user.phone),
-            const SizedBox(height: 12),
-            _buildUserInfoRow(Icons.location_on_outlined, "الولاية", user.wilaya),
-            const SizedBox(height: 12),
-            _buildUserInfoRow(Icons.map_outlined, "البلدية", user.commune),
-            const SizedBox(height: 12),
-            _buildUserInfoRow(Icons.home_outlined, "العنوان", user.address),
-            const SizedBox(height: 12),
-            _buildUserInfoRow(Icons.badge_outlined, "الرتبة", user.role.displayName),
-            const SizedBox(height: 12),
-            _buildUserInfoRow(Icons.male_rounded, "الجنس", user.gender),
-            const SizedBox(height: 12),
-            _buildUserInfoRow(Icons.bloodtype_outlined, "فصيلة الدم", user.bloodType ?? "غير محدد"),
-            if (user.role == UserRole.worker) ...[
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildAvatar(user),
               const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 8),
-              _buildUserInfoRow(Icons.volunteer_activism, "التخصصات", user.volunteerServices.join(' - ')),
-              if (user.volunteerServices.contains('funeral_ghusl')) ...[
+              Text(user.name, style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              if (_adminCtl.currentUser?.role == UserRole.superAdmin) ...[
+                _buildUserInfoRow(Icons.phone_outlined, "رقم الهاتف", user.phone),
                 const SizedBox(height: 12),
-                _buildUserInfoRow(Icons.star_rounded, "خبرة التغسيل", user.ghuslExpertise == 'expert' ? 'خبير / قائد' : 'مساعد / متدرب'),
-              ],
-              if (user.otherServices != null && user.otherServices!.isNotEmpty) ...[
+                _buildUserInfoRow(Icons.location_on_outlined, "الولاية", user.wilaya),
                 const SizedBox(height: 12),
-                _buildUserInfoRow(Icons.add_task_rounded, "خدمات أخرى", user.otherServices!),
+                _buildUserInfoRow(Icons.map_outlined, "البلدية", user.commune),
+                const SizedBox(height: 12),
+                _buildUserInfoRow(Icons.home_outlined, "العنوان", user.address),
+                const SizedBox(height: 12),
               ],
-            ],
-            const SizedBox(height: 30),
-            SizedBox(
-              width: double.infinity,
-              child: AppTheme.gradientButton(
-                text: "إغلاق",
-                icon: Icons.close,
-                onPressed: () => Get.back(),
+              _buildUserInfoRow(Icons.badge_outlined, "الرتبة", user.role.displayName),
+              const SizedBox(height: 12),
+              _buildUserInfoRow(Icons.male_rounded, "الجنس", user.gender),
+              if (_adminCtl.currentUser?.role == UserRole.superAdmin) ...[
+                const SizedBox(height: 12),
+                _buildUserInfoRow(Icons.bloodtype_outlined, "فصيلة الدم", user.bloodType ?? "غير محدد"),
+              ],
+              if (user.role == UserRole.worker) ...[
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                _buildUserInfoRow(Icons.volunteer_activism, "التخصصات", user.volunteerServices.join(' - ')),
+                if (user.volunteerServices.contains('funeral_ghusl')) ...[
+                  const SizedBox(height: 12),
+                  _buildUserInfoRow(Icons.star_rounded, "خبرة التغسيل", user.ghuslExpertise == 'expert' ? 'خبير / قائد' : 'مساعد / متدرب'),
+                ],
+                if (user.otherServices != null && user.otherServices!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _buildUserInfoRow(Icons.add_task_rounded, "خدمات أخرى", user.otherServices!),
+                ],
+              ],
+              const SizedBox(height: 30),
+              SizedBox(
+                width: double.infinity,
+                child: AppTheme.gradientButton(
+                  text: "إغلاق",
+                  icon: Icons.close,
+                  onPressed: () => Get.back(),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
     );
   }
 }
-

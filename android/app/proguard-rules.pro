@@ -1,19 +1,23 @@
-# 1. Firebase Rules (مهم جداً لاتصال قاعدة البيانات)
+# 1. Firebase Rules
 -keepattributes Signature
 -keepattributes *Annotation*
 -keep class com.google.firebase.** { *; }
 
-# 2. Google Maps (لضمان ظهور الخرائط بشكل صحيح)
+# 2. Google Maps
 -keep class com.google.android.gms.maps.** { *; }
 -keep class com.google.android.gms.common.** { *; }
 
-# 3. GetX & Models (لكي لا تضيع بيانات المستخدم عند تحويلها من Firestore)
--keep class com.nasalkheir.nas_al_kheir.models.** { *; }
+# 3. GetX & Models
+-keep class com.nasalkheir.nas_alkheir_app.data.models.** { *; }
 -keepclassmembers class * {
   @com.google.gson.annotations.SerializedName <fields>;
 }
 
-# 4. Flutter Internal Rules
+# 4. Flutter Local Notifications (ضروري جداً لعمل الإشعارات في الخلفية)
+-keep class com.dexterous.flutterlocalnotifications.** { *; }
+-keep class com.google.firebase.messaging.** { *; }
+
+# 5. Flutter Internal Rules
 -keep class io.flutter.app.** { *; }
 -keep class io.flutter.plugin.** { *; }
 -keep class io.flutter.util.** { *; }
@@ -23,6 +27,4 @@
 
 # تجاهل الأخطاء المتعلقة بمكتبات Play Core المفقودة
 -dontwarn com.google.android.play.core.**
-
-# قواعد إضافية لضمان عدم توقف البناء بسبب مكتبات أندرويد الداخلية
 -dontwarn io.flutter.embedding.engine.deferredcomponents.**

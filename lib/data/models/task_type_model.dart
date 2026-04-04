@@ -2,12 +2,14 @@ class TaskTypeModel {
   final String id;
   final String name;
   final String description;
+  final String icon;
   final bool isActive;
 
   TaskTypeModel({
     required this.id,
     required this.name,
     required this.description,
+    this.icon = 'volunteer',
     this.isActive = true,
   });
 
@@ -16,6 +18,7 @@ class TaskTypeModel {
       'id': id,
       'name': name,
       'description': description,
+      'icon': icon,
       'isActive': isActive,
     };
   }
@@ -25,8 +28,8 @@ class TaskTypeModel {
       id: id ?? map['id'] ?? '',
       name: map['name'] ?? '',
       description: map['description'] ?? '',
+      icon: map['icon'] ?? 'volunteer',
       isActive: map['isActive'] ?? true,
     );
   }
 }
-

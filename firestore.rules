@@ -2,80 +2,377 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // دالة للتحقق من تسجيل الدخول
+    // ─── دوال مساعدة ───────────────────────────────────────────
     function isLoggedIn() {
       return request.auth != null;
     }
 
-    // دالة للتحقق من دور المستخدم (تستخدم فقط بعد إنشاء الحساب)
     function getRole() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
-    // --- قواعد مجموعة المستخدمين ---
-    match /users/{userId} {
-      allow read: if isLoggedIn();
-      allow create: if isLoggedIn() && request.auth.uid == userId;
-      allow update: if isLoggedIn() && (request.auth.uid == userId || getRole() == 'super_admin');
-      allow delete: if isLoggedIn() && getRole() == 'super_admin';
+    function isAdmin() {
+      return isLoggedIn() && getRole() in ['admin', 'superAdmin', 'superadmin'];
     }
 
-    // --- قواعد الإشعارات (تعديل: السماح للجميع بالإرسال لتصل للمدير) ---
-    match /notifications/{notifId} {
-      allow read: if isLoggedIn() && (
-        resource.data.userId == request.auth.uid ||
-        (resource.data.targetRole == 'admin' && (getRole() == 'admin' || getRole() == 'superAdmin' || getRole() == 'super_admin'))
+    function isSuperAdmin() {
+      return isLoggedIn() && getRole() in ['superAdmin', 'superadmin'];
+    }
+
+    function isOwner(uid) {
+      return isLoggedIn() && request.auth.uid == uid;
+    }
+
+    function ownerSafeUserUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'name',
+        'phone',
+        'wilaya',
+        'commune',
+        'address',
+        'profileImage',
+        'bloodType',
+        'receiveBloodAlerts',
+        'isDonorAvailable',
+        'isAvailable',
+        'lastActivity',
+        'fcmToken',
+        'lastTokenUpdate',
+        'userId',
+        'notes',
+        'activeBloodRequestId',
+      ]);
+    }
+
+    function workerSafeRequestUpdate() {
+      return resource.data.assignedTo == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'updatedAt',
+          'completedAt',
+        ]);
+    }
+
+    function requesterSafeRequestUpdate() {
+      return resource.data.requesterId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'rating',
+          'ratingComment',
+          'ratedAt',
+          'updatedAt',
+        ]);
+    }
+
+    function donorSafeRequestResponseUpdate() {
+      return isLoggedIn() &&
+        resource.data.status in ['pending', 'in_progress'] &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'donorResponses',
+          'assignedTo',
+          'status',
+          'updatedAt',
+        ]);
+    }
+
+    function getUserRoleById(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.role;
+    }
+
+    function isAdminRoleName(roleName) {
+      return roleName in ['admin', 'superAdmin', 'superadmin'];
+    }
+
+    function isAdminUser(uid) {
+      return isAdminRoleName(getUserRoleById(uid));
+    }
+
+    function hasTwoParticipants(data) {
+      return data.participants is list &&
+        data.participants.size() == 2 &&
+        data.participants[0] != data.participants[1];
+    }
+
+    function isValidPrivateChatId(chatId, data) {
+      return hasTwoParticipants(data) && (
+        chatId == data.participants[0] + '_' + data.participants[1] ||
+        chatId == data.participants[1] + '_' + data.participants[0]
       );
-      allow write: if true;
     }
 
-    // --- قواعد أنواع الخدمات (إضافة: للجميع لرؤية الأيقونات وزيادة الشعبية) ---
+    function privateCounterpartyIsAdmin(data) {
+      return hasTwoParticipants(data) && (
+        (data.participants[0] == request.auth.uid && isAdminUser(data.participants[1])) ||
+        (data.participants[1] == request.auth.uid && isAdminUser(data.participants[0]))
+      );
+    }
+
+    function canAccessGroupChatData(chatId, data) {
+      return data.type == 'group' &&
+        data.participants is list &&
+        request.auth.uid in data.participants &&
+        (
+          (chatId == 'group_team' && getRole() in ['worker', 'chatModerator', 'admin', 'superAdmin']) ||
+          (chatId == 'group_management' && isAdmin())
+        );
+    }
+
+    function canAccessPrivateChatData(data) {
+      return data.type == 'private' &&
+        hasTwoParticipants(data) &&
+        request.auth.uid in data.participants &&
+        (
+          isAdmin() ||
+          (
+            getRole() in ['worker', 'chatModerator', 'donor', 'beneficiary'] &&
+            privateCounterpartyIsAdmin(data)
+          )
+        );
+    }
+
+    function canAccessChatData(chatId, data) {
+      return isLoggedIn() && (
+        isAdmin() ||
+        canAccessPrivateChatData(data) ||
+        canAccessGroupChatData(chatId, data)
+      );
+    }
+
+    function canCreatePrivateChat(chatId, data) {
+      return data.type == 'private' &&
+        hasTwoParticipants(data) &&
+        request.auth.uid in data.participants &&
+        isValidPrivateChatId(chatId, data) &&
+        (
+          getRole() in ['worker', 'chatModerator', 'donor', 'beneficiary'] &&
+          privateCounterpartyIsAdmin(data)
+        );
+    }
+
+    function canCreateGroupChat(chatId, data) {
+      return data.type == 'group' &&
+        data.participants is list &&
+        request.auth.uid in data.participants &&
+        chatId == 'group_team' &&
+        getRole() in ['worker', 'chatModerator'];
+    }
+
+    function canAccessExistingChat(chatId) {
+      return canAccessChatData(chatId, resource.data);
+    }
+
+    function canReadChatData(data) {
+      return isLoggedIn() && (
+        isAdmin() ||
+        (data.participants is list && request.auth.uid in data.participants)
+      );
+    }
+
+    function canReadExistingChat(chatId) {
+      return canReadChatData(resource.data);
+    }
+
+    function canReadChatById(chatId) {
+      return canReadChatData(get(/databases/$(database)/documents/chats/$(chatId)).data);
+    }
+
+    function canAccessChatById(chatId) {
+      return canAccessChatData(chatId, get(/databases/$(database)/documents/chats/$(chatId)).data);
+    }
+
+    function nonAdminChatUpdateSafe(chatId) {
+      return canAccessChatData(chatId, request.resource.data) &&
+        request.resource.data.type == resource.data.type &&
+        request.resource.data.participants is list &&
+        resource.data.participants is list &&
+        request.resource.data.participants.size() == resource.data.participants.size() &&
+        request.resource.data.participants.hasAll(resource.data.participants);
+    }
+
+    // ─── المستخدمون ───────────────────────────────────────────
+    match /users/{userId} {
+      allow read:   if isOwner(userId) || isAdmin() || (isLoggedIn() && resource.data.role in ['admin', 'superAdmin', 'superadmin']);
+      allow create: if isOwner(userId) &&
+        request.resource.data.role in ['beneficiary', 'worker', 'donor', 'chatModerator'] &&
+        request.resource.data.isApproved == false;
+      allow update: if isSuperAdmin() || 
+                       (isAdmin() && resource.data.role != 'superAdmin' && resource.data.role != 'superadmin' && request.resource.data.role != 'superAdmin' && request.resource.data.role != 'superadmin') || 
+                       (isOwner(userId) && ownerSafeUserUpdate());
+      allow delete: if isSuperAdmin();
+    }
+
+    // ─── الإشعارات ──────────────────────────────────────────
+    match /notifications/{notifId} {
+      allow read:  if isLoggedIn() && (
+        resource.data.userId       == request.auth.uid ||
+        resource.data.targetUserId == request.auth.uid ||
+        resource.data.targetRole   == 'all' ||
+        resource.data.targetRole   == getRole() ||
+        isAdmin()
+      );
+      allow create: if isLoggedIn();
+      allow update: if isLoggedIn() && (
+        resource.data.userId       == request.auth.uid ||
+        resource.data.targetUserId == request.auth.uid ||
+        isAdmin() ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ─── أنواع الخدمات ────────────────────────────────────
     match /service_types/{typeId} {
-      allow read: if true;
-      allow update: if true;
-      allow write: if isLoggedIn() && getRole() == 'super_admin';
+      allow read:   if true;
+      allow create, update: if isAdmin();
+      allow delete: if isSuperAdmin();
     }
 
-    // --- قواعد طلبات الزوار (إضافة: للسماح بإرسال الطلبات) ---
-    match /guest_requests/{requestId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isLoggedIn() && getRole() == 'super_admin';
-    }
+    // ─── طلبات الخدمة ────────────────────────────────────
+    match /service_requests/{reqId} {
+      allow read: if isLoggedIn() && (
+        resource.data.requesterId == request.auth.uid ||
+        resource.data.assignedTo  == request.auth.uid ||
+        isAdmin() ||
+        resource.data.type in ['blood_donation', 'blood_emergency']
+      );
+      allow create: if isLoggedIn();
+      allow update: if isLoggedIn() && (
+        isAdmin() ||
+        workerSafeRequestUpdate() ||
+        requesterSafeRequestUpdate() ||
+        donorSafeRequestResponseUpdate()
+      );
+      allow delete: if isSuperAdmin();
 
-    // --- قواعد المشاريع (إضافة: للجميع للرؤية) ---
-    match /projects/{projectId} {
-      allow read: if true;
-      allow write: if isLoggedIn() && getRole() == 'super_admin';
-    }
-
-    // --- قواعد الدردشة ---
-    match /chats/{chatId} {
-      // السماح بالقراءة للمشاركين أو المسجلين أو إذا كانت محادثة زائر
-      allow read: if isLoggedIn() || chatId.startsWith('guest_');
-
-      // السماح بالإنشاء والتحيث (للمسجلين أو للزوار في محادثاتهم)
-      allow create, update: if isLoggedIn() || chatId.startsWith('guest_');
-
-      // السماح بالحذف للسوبر أدمن فقط
-      allow delete: if isLoggedIn() && getRole() == 'super_admin';
-
-      // قواعد الرسائل الفرعية
-      match /messages/{messageId} {
-        // السماح بالقراءة لأي مستخدم مسجل أو زائر في محادثة زائر
-        allow read: if isLoggedIn() || get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'guest';
-
-        // السماح بالكتابة للمسجلين أو الزوار في محادثة زائر
-        allow create: if isLoggedIn() || get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'guest';
-
-        // السماح بالتحديث والحذف للمسجلين فقط
-        allow update, delete: if isLoggedIn();
+      // يسمح للمتطوع المسند إليه الطلب أو المدير بإضافة تحديثات
+      match /updates/{updateId} {
+        allow read: if isLoggedIn() && (
+          get(/databases/$(database)/documents/service_requests/$(reqId)).data.requesterId == request.auth.uid ||
+          get(/databases/$(database)/documents/service_requests/$(reqId)).data.assignedTo == request.auth.uid ||
+          isAdmin()
+        );
+        allow create: if isLoggedIn() && (
+          get(/databases/$(database)/documents/service_requests/$(reqId)).data.assignedTo == request.auth.uid ||
+          isAdmin()
+        );
       }
     }
 
-    // --- السماح بالوصول لباقي المجموعات للأعضاء المسجلين ---
-    match /{path=**} {
-      allow read, write: if isLoggedIn();
+    // ─── التبرعات ─────────────────────────────────────────
+    match /donations/{donId} {
+      allow read:          if isLoggedIn() && (
+        resource.data.donorId == request.auth.uid || isAdmin()
+      );
+      allow create:        if isLoggedIn();
+      allow update:        if isAdmin();
+      allow delete:        if isSuperAdmin();
+    }
+
+    // ─── المشاريع ─────────────────────────────────────────
+    match /projects/{projectId} {
+      allow read:          if true;
+      allow create:        if isAdmin();
+      allow delete:        if isSuperAdmin();
+      allow update:        if isAdmin() || (isLoggedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['collected', 'donorsCount', 'status', 'completedAt']));
+
+      match /updates/{updateId} {
+        allow read:   if true;
+        allow create: if isLoggedIn();
+        allow update: if isAdmin();
+        allow delete: if isSuperAdmin();
+      }
+    }
+
+    // ─── الدردشة ──────────────────────────────────────────
+    match /chats/{chatId} {
+      allow read:         if isLoggedIn() && (
+        isAdmin() ||
+        (resource.data.participants is list && request.auth.uid in resource.data.participants)
+      );
+      allow create:       if isLoggedIn() && (
+        isAdmin() ||
+        canCreatePrivateChat(chatId, request.resource.data) ||
+        canCreateGroupChat(chatId, request.resource.data)
+      );
+      allow update:       if isAdmin() ||
+        (canAccessExistingChat(chatId) && nonAdminChatUpdateSafe(chatId)) ||
+        canCreatePrivateChat(chatId, request.resource.data);
+      allow delete:       if isSuperAdmin();
+
+      match /messages/{messageId} {
+        allow read:          if canReadChatById(chatId);
+        allow create:        if canAccessChatById(chatId) &&
+          request.resource.data.senderId == request.auth.uid &&
+          request.resource.data.chatId == chatId;
+        allow update:        if isLoggedIn() && (
+          isAdmin() ||
+          (
+            canAccessChatById(chatId) &&
+            request.resource.data.senderId == resource.data.senderId &&
+            request.resource.data.chatId == chatId &&
+            (
+              resource.data.senderId == request.auth.uid ||
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy', 'isRead'])
+            )
+          )
+        );
+        allow delete:        if isLoggedIn() && (
+          isAdmin() ||
+          (resource.data.senderId == request.auth.uid && canAccessChatById(chatId))
+        );
+      }
+    }
+
+    // ─── إعدادات التطبيق والسيارات والمهام المخصصة ────────────
+    match /app_config/{docId} {
+      allow read:  if isLoggedIn();
+      allow create, update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /vehicles/{docId} {
+      allow read:  if isLoggedIn();
+      allow create, update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /task_types/{docId} {
+      allow read:  if isLoggedIn();
+      allow create, update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /blood_requests/{docId} {
+      allow read:  if isAdmin() || (isLoggedIn() && resource.data.requesterId == request.auth.uid);
+      allow create: if isLoggedIn() && (
+        isAdmin() || request.resource.data.requesterId == request.auth.uid
+      );
+      allow update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // ─── الإحصائيات والتحديثات المباشرة ──────────────────────
+    match /stats/{statId} {
+      allow read, list: if isLoggedIn();
+      allow create, update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /worker_updates/{updateId} {
+      allow read, list: if isLoggedIn();
+      allow create: if isLoggedIn() && (getRole() == 'worker' || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    // ─── البث العام التفاعلي (Broadcasts) ───────────────────
+    match /broadcasts/{broadcastId} {
+      allow read:   if isLoggedIn();
+      allow create, delete: if isSuperAdmin();
+      allow update: if isSuperAdmin() || 
+        (isLoggedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount', 'viewedByUserIds']));
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

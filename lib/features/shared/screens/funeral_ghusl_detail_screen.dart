@@ -119,7 +119,7 @@ class _FuneralGhuslDetailScreenState extends State<FuneralGhuslDetailScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: AppTheme.glassDecoration.copyWith(
-          border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.75), width: 1.5)
+          border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.15), width: 1.5)
         ),
         child: Column(
           children: [
@@ -159,7 +159,7 @@ class _FuneralGhuslDetailScreenState extends State<FuneralGhuslDetailScreen> {
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.75))),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.15))),
       child: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
     );
   }
@@ -204,7 +204,7 @@ class _FuneralGhuslDetailScreenState extends State<FuneralGhuslDetailScreen> {
     if (isAlreadyTaken) {
       return Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(15)),
+        decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(15)),
         child: const Text('نشكر رغبتك في التطوع، المهمة جاري تنفيذها من قبل متطوع آخر.', 
           textAlign: TextAlign.center, style: TextStyle(color: Colors.blue, fontSize: 12)),
       );

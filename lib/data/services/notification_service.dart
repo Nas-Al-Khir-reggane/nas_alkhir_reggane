@@ -9,17 +9,44 @@ import 'dart:async';
 import 'dart:io';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
-import '../../../core/animations/sound_manager.dart';
 import '../../features/auth/controllers/auth_controller.dart';
 import '../models/user_model.dart';
 import '../../firebase_options.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+
+const String _notificationChannelId = 'nas_alkhair_v2';
+const String _notificationChannelName = 'جمعية ناس الخير';
+
+const String _chatChannelId = 'nas_alkhair_chats';
+const String _chatChannelName = 'رسائل المحادثات';
 
 class NotificationService extends GetxController {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+  static const String _notificationSoundName = 'notification';
+  static const String _chatSoundName = 'new_message';
+
   final RxInt unreadCount = 0.obs;
   final List<StreamSubscription> _subscriptions = [];
-  final Set<String> _processedIds = {}; // 🆕 تتبع معرفات التنبيهات المعالجة في الجلسة لمنع التكرار
-  DateTime _sessionStartTime = DateTime.now().subtract(const Duration(seconds: 30)); // تقليل المدة الابتدائية
+  final Set<String> _processedIds = {}; 
+  final Set<String> _processedNotificationKeys = {}; 
+  DateTime _sessionStartTime = DateTime.now().subtract(const Duration(seconds: 15));
+
+  static UserRole? _currentUserRole() {
+    try {
+      return Get.find<AuthController>().currentUser.value?.role;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static bool _isAdminRole(UserRole? role) {
+    return role == UserRole.admin || role == UserRole.superAdmin;
+  }
+
+  static String? _roleTarget(UserRole? role) {
+    return role?.name;
+  }
 
   @override
   void onInit() {
@@ -27,8 +54,6 @@ class NotificationService extends GetxController {
     
     final AuthController authController = Get.find<AuthController>();
 
-    // الاشتراك الذكي: لا نعيد تشغيل المستمعين إلا إذا تغير المعرف أو الرتبة فعلياً
-    // هذا يمنع التكرار اللانهائي الناتج عن تحديث النبضة القلبية (Heartbeat) في AuthController
     String? lastUid;
     UserRole? lastRole;
 
@@ -56,7 +81,7 @@ class NotificationService extends GetxController {
 
   void _initListeners() {
     debugPrint('📡 NotificationService: Re-initializing Listeners...');
-    _sessionStartTime = DateTime.now().subtract(const Duration(seconds: 5)); // تحديث وقت الجلسة عند كل إعادة تشغيل
+    _sessionStartTime = DateTime.now().subtract(const Duration(seconds: 5)); 
     _startListeningToUnreadCount();
     _startListeningToNewNotifications();
   }
@@ -66,29 +91,87 @@ class NotificationService extends GetxController {
       sub.cancel();
     }
     _subscriptions.clear();
-    _processedIds.clear(); // 🆕 تصفير المعرفات عند تبديل المستخدم أو تسجيل الخروج
+    _processedIds.clear(); 
+    _processedNotificationKeys.clear();
   }
 
   void _startListeningToUnreadCount() {
+    _startListeningToUnreadCountWithFallback();
+  }
+
+  void _startListeningToUnreadCountWithFallback({bool includeRoleTarget = true}) {
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return;
 
     final AuthController authController = Get.find<AuthController>();
-    final isAdmin = authController.currentUser.value?.role == UserRole.admin || 
-                    authController.currentUser.value?.role == UserRole.superAdmin;
+    final role = authController.currentUser.value?.role;
+    final roleTarget = _roleTarget(role);
 
-    final sub = FirebaseFirestore.instance
-        .collection('notifications')
-        .where(isAdmin 
-          ? Filter.or(Filter('userId', isEqualTo: userId), Filter('targetRole', isEqualTo: 'admin'), Filter('targetRole', isEqualTo: 'all'))
-          : Filter.or(Filter('userId', isEqualTo: userId), Filter('targetRole', isEqualTo: 'all')))
+    Query unreadQuery = FirebaseFirestore.instance.collection('notifications');
+    final List<Filter> audienceFilters = <Filter>[
+      Filter('userId', isEqualTo: userId),
+      Filter('targetUserId', isEqualTo: userId),
+      Filter('targetRole', isEqualTo: 'all'),
+    ];
+
+    if (includeRoleTarget) {
+      if (role == UserRole.superAdmin) {
+        audienceFilters.add(Filter('targetRole', isEqualTo: 'superAdmin'));
+        audienceFilters.add(Filter('targetRole', isEqualTo: 'admin'));
+      } else if (roleTarget != null && roleTarget.isNotEmpty) {
+        audienceFilters.add(Filter('targetRole', isEqualTo: roleTarget));
+      }
+    }
+
+    if (audienceFilters.length == 3) {
+      unreadQuery = unreadQuery.where(
+        Filter.or(audienceFilters[0], audienceFilters[1], audienceFilters[2]),
+      );
+    } else if (audienceFilters.length == 4) {
+      unreadQuery = unreadQuery.where(
+        Filter.or(audienceFilters[0], audienceFilters[1], audienceFilters[2], audienceFilters[3]),
+      );
+    } else {
+      unreadQuery = unreadQuery.where(
+        Filter.or(
+          audienceFilters[0],
+          audienceFilters[1],
+          audienceFilters[2],
+          audienceFilters[3],
+          audienceFilters[4],
+        ),
+      );
+    }
+
+    final sub = unreadQuery
         .where('isRead', isEqualTo: false)
         .snapshots()
         .listen((snapshot) {
-      unreadCount.value = snapshot.docs.length;
+      final visibleCount = snapshot.docs.where((doc) {
+        final data = doc.data() as Map<String, dynamic>? ?? const <String, dynamic>{};
+        final excludedUserId = data['excludeUserId']?.toString();
+        return excludedUserId == null || excludedUserId.isEmpty || excludedUserId != userId;
+      }).length;
+      unreadCount.value = visibleCount;
     }, onError: (error) {
       debugPrint('❌ Firestore Unread Error: $error');
-      Future.delayed(const Duration(seconds: 10), () => _startListeningToUnreadCount());
+
+      final message = error.toString().toLowerCase();
+      final isPermissionDenied = message.contains('permission-denied') || message.contains('insufficient permissions');
+
+      if (isPermissionDenied && includeRoleTarget) {
+        debugPrint('⚠️ Falling back to unread query without role-target filter due to permissions.');
+        Future.delayed(
+          const Duration(seconds: 1),
+          () => _startListeningToUnreadCountWithFallback(includeRoleTarget: false),
+        );
+        return;
+      }
+
+      Future.delayed(
+        const Duration(seconds: 10),
+        () => _startListeningToUnreadCountWithFallback(includeRoleTarget: includeRoleTarget),
+      );
     });
     _subscriptions.add(sub);
   }
@@ -98,10 +181,10 @@ class NotificationService extends GetxController {
     if (userId == null) return;
 
     final AuthController authController = Get.find<AuthController>();
-    final isAdmin = authController.currentUser.value?.role == UserRole.admin || 
-                    authController.currentUser.value?.role == UserRole.superAdmin;
+    final role = authController.currentUser.value?.role;
+    final roleTarget = _roleTarget(role);
+    final isAdmin = role == UserRole.admin || role == UserRole.superAdmin;
 
-    // 1. الإشعارات الشخصية
     _listenToStream(FirebaseFirestore.instance
         .collection('notifications')
         .where('userId', isEqualTo: userId)
@@ -109,7 +192,6 @@ class NotificationService extends GetxController {
         .orderBy('createdAt', descending: true)
         .limit(1));
 
-    // 2. إشعارات المدراء (فقط للمدراء)
     if (isAdmin) {
       _listenToStream(FirebaseFirestore.instance
           .collection('notifications')
@@ -117,9 +199,22 @@ class NotificationService extends GetxController {
           .where('isRead', isEqualTo: false)
           .orderBy('createdAt', descending: true)
           .limit(1));
+
+      _listenToStream(FirebaseFirestore.instance
+          .collection('notifications')
+          .where('targetRole', isEqualTo: 'superAdmin')
+          .where('isRead', isEqualTo: false)
+          .orderBy('createdAt', descending: true)
+          .limit(1));
+    } else if (roleTarget != null && roleTarget.isNotEmpty) {
+      _listenToStream(FirebaseFirestore.instance
+          .collection('notifications')
+          .where('targetRole', isEqualTo: roleTarget)
+          .where('isRead', isEqualTo: false)
+          .orderBy('createdAt', descending: true)
+          .limit(1));
     }
 
-    // 3. الإشعارات العامة للجميع (مشاريع جديدة، إعلانات)
     _listenToStream(FirebaseFirestore.instance
         .collection('notifications')
         .where('targetRole', isEqualTo: 'all')
@@ -131,24 +226,38 @@ class NotificationService extends GetxController {
 
   void _listenToStream(Query query) {
     final subscription = query.snapshots().listen((snapshot) {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
       for (var change in snapshot.docChanges) {
         if (change.type == DocumentChangeType.added) {
           final docId = change.doc.id;
+
+          if (change.doc.metadata.hasPendingWrites) {
+            continue;
+          }
           
-          // 🆕 منع تكرار معالجة نفس التنبيه في نفس الجلسة
-          if (_processedIds.contains(docId)) {
+          final data = change.doc.data() as Map<String, dynamic>;
+          final excludedUserId = data['excludeUserId']?.toString();
+          if (userId != null && excludedUserId != null && excludedUserId == userId) {
             continue;
           }
 
-          final data = change.doc.data() as Map<String, dynamic>;
           final Timestamp? createdAt = data['createdAt'] as Timestamp?;
+          if (createdAt == null) {
+            continue;
+          }
+          final dedupeKey = '$docId:${createdAt.millisecondsSinceEpoch}';
+
+          if (_processedIds.contains(docId) || _processedNotificationKeys.contains(dedupeKey)) {
+            continue;
+          }
           
-          if (createdAt != null && createdAt.toDate().isBefore(_sessionStartTime)) {
+          if (createdAt.toDate().isBefore(_sessionStartTime)) {
             continue;
           }
 
           debugPrint('🔔 New Notification: ${data['title']} (ID: $docId)');
-          _processedIds.add(docId); // تعليم التنبيه كمعالج
+          _processedIds.add(docId);
+          _processedNotificationKeys.add(dedupeKey);
           _processNotificationData(data);
         }
       }
@@ -161,69 +270,112 @@ class NotificationService extends GetxController {
 
   void _processNotificationData(Map<String, dynamic> data) {
     String payload = data['type'] ?? '';
-    
+    final String type = data['type']?.toString() ?? '';
+
     final String? chatId = data['chatId'] ?? data['data']?['chatId'];
     final String? senderName = data['senderName'] ?? data['data']?['senderName'];
     final String? senderId = data['senderId'] ?? data['data']?['senderId'];
+    final String? requestId = data['requestId'] ?? data['data']?['requestId'];
+    final String? donationId = data['donationId'] ?? data['data']?['donationId'];
 
     if (chatId != null) {
       payload = 'chatId:$chatId,userName:${senderName ?? ""},targetUserId:${senderId ?? ""}';
-    } else if (data['type'] == 'blood_emergency' || data['type'] == 'blood_encouragement') {
+    } else if (type == 'blood_emergency' || type == 'blood_encouragement') {
       final String? bloodType = data['bloodType'] ?? data['data']?['bloodType'];
       final String? hospital = data['hospital'] ?? data['data']?['hospital'];
-      final String? requestId = data['requestId'] ?? data['data']?['requestId'];
       final String? phone = data['phone'] ?? data['data']?['phone'];
       final bool isGuest = (data['isGuest'] ?? data['data']?['isGuest']).toString() == 'true';
       payload = 'blood_emergency:reqId=$requestId,type=$bloodType,hosp=$hospital,ph=$phone,isGuest=$isGuest';
-    } else if (data['type'] == 'donor_responding' || data['type'] == 'donor_confirmed') {
-      final String? requestId = data['requestId'] ?? data['data']?['requestId'];
+    } else if (type == 'donor_responding') {
       final bool isGuest = (data['isGuest'] ?? data['data']?['isGuest']).toString() == 'true';
       payload = 'admin_request_detail:id=$requestId,isGuest=$isGuest';
-    } else if (data['type'] == 'funeral_ghusl') {
-      final String? requestId = data['requestId'] ?? data['data']?['requestId'];
+    } else if (type == 'donor_response_withdrawn') {
+      payload = requestId != null ? 'admin_request_detail:id=$requestId,isGuest=false' : 'admin_request_detail';
+    } else if (type == 'donor_confirmed') {
+      final String? bloodType = data['bloodType'] ?? data['data']?['bloodType'];
+      final String? hospital = data['hospital'] ?? data['data']?['hospital'];
+      final String? phone = data['phone'] ?? data['data']?['phone'];
+      payload = 'blood_emergency:reqId=$requestId,type=$bloodType,hosp=$hospital,ph=$phone,isGuest=false';
+    } else if (type == 'blood_donation_completed') {
+      payload = 'blood_donation_completed:id=$requestId';
+    } else if (type == 'funeral_ghusl') {
       final String? gender = data['gender'] ?? data['data']?['gender'];
       final String? location = data['location'] ?? data['data']?['location'];
       final String? phone = data['phone'] ?? data['data']?['phone'];
       payload = 'funeral_ghusl:id=$requestId,gender=$gender,loc=$location,ph=$phone';
+    } else if (type == 'request_update' || type == 'new_request' || type == 'status_change' || type == 'service_rating' || type == 'new_task') {
+      payload = requestId != null ? 'request_update:id=$requestId' : 'request_update';
+    } else if (type == 'new_donation') {
+      payload = donationId != null ? 'new_donation:id=$donationId' : 'new_donation';
     }
 
     _showLocalNotification(
       title: data['title'] ?? 'إشعار جديد',
       body: data['body'] ?? '',
       payload: payload,
+      type: type,
+      imageUrl: data['imageUrl'] ?? data['data']?['imageUrl'], // دعم رابط الصورة من Cloudinary
     );
-    
+  }
+
+  static Future<String?> _downloadAndSaveImage(String url, String fileName) async {
+    if (url.isEmpty) return null;
     try {
-       Get.find<SoundManager>().playNotification();
+      final Directory directory = await getTemporaryDirectory();
+      final String filePath = '${directory.path}/$fileName';
+      final http.Response response = await http.get(Uri.parse(url));
+      final File file = File(filePath);
+      await file.writeAsBytes(response.bodyBytes);
+      return filePath;
     } catch (e) {
-      debugPrint('❌ [NotificationService] Sound error: $e');
+      debugPrint('❌ [NotificationService] Error downloading image: $e');
+      return null;
     }
   }
 
-  void _showLocalNotification({required String title, required String body, String? payload}) {
+  void _showLocalNotification({
+    required String title, 
+    required String body, 
+    String? payload,
+    String? type,
+    String? imageUrl,
+  }) async {
+    final bool isChat = type == 'new_message' || type == 'group_message' || type == 'guest_message';
+    final String channelId = isChat ? _chatChannelId : _notificationChannelId;
+    final String channelName = isChat ? _chatChannelName : _notificationChannelName;
+    final String soundName = isChat ? _chatSoundName : _notificationSoundName;
+
+    String? largeIconPath;
+    BigPictureStyleInformation? bigPictureStyle;
+
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      largeIconPath = await _downloadAndSaveImage(imageUrl, 'notif_img_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      if (largeIconPath != null) {
+        bigPictureStyle = BigPictureStyleInformation(
+          FilePathAndroidBitmap(largeIconPath),
+          largeIcon: FilePathAndroidBitmap(largeIconPath),
+          contentTitle: title,
+          summaryText: body,
+          htmlFormatContentTitle: true,
+          htmlFormatSummaryText: true,
+        );
+      }
+    }
+
     _notificationsPlugin.show(
       id: title.hashCode,
       title: title,
       body: body,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
-          'nas_al_kheir_channel',
-          'جمعية ناس الخير',
-          channelDescription: 'إشعارات جمعية ناس الخير',
+          channelId,
+          channelName,
+          channelDescription: isChat ? 'إشعارات الرسائل الجديدة' : 'إشعارات جمعية ناس الخير العامة',
           importance: Importance.max,
           priority: Priority.max,
           icon: '@mipmap/launcher_icon',
-          largeIcon: const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
-          color: const Color(0xFF00C853),
-          playSound: true,
-          enableLights: true,
-          ledColor: const Color(0xFF00C853),
-          ledOnMs: 1000,
-          ledOffMs: 500,
-          showWhen: true,
-          ticker: 'ناس الخير',
-          subText: 'جمعية ناس الخير',
-          styleInformation: BigTextStyleInformation(
+          largeIcon: largeIconPath != null ? FilePathAndroidBitmap(largeIconPath) : const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
+          styleInformation: bigPictureStyle ?? BigTextStyleInformation(
             body,
             htmlFormatBigText: false,
             contentTitle: title,
@@ -231,6 +383,23 @@ class NotificationService extends GetxController {
             summaryText: 'ناس الخير',
             htmlFormatSummaryText: false,
           ),
+          color: const Color(0xFF00C853),
+          playSound: true,
+          sound: RawResourceAndroidNotificationSound(soundName),
+          enableLights: true,
+          ledColor: const Color(0xFF00C853),
+          ledOnMs: 1000,
+          ledOffMs: 500,
+          showWhen: true,
+          ticker: 'ناس الخير',
+          subText: 'جمعية ناس الخير',
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          sound: isChat ? '$_chatSoundName.wav' : '$_notificationSoundName.wav',
+          attachments: largeIconPath != null ? [DarwinNotificationAttachment(largeIconPath)] : [],
         ),
       ),
       payload: payload,
@@ -247,7 +416,6 @@ class NotificationService extends GetxController {
     try {
       debugPrint('🚀 NotificationService: Global Init');
       
-      // طلب الإذن (سيعيد true مباشرة لأنك وافقت مسبقاً)
       await FirebaseMessaging.instance.requestPermission();
 
       if (Platform.isAndroid) {
@@ -256,34 +424,58 @@ class NotificationService extends GetxController {
         await androidPlugin?.requestNotificationsPermission();
       }
 
+      if (Platform.isIOS) {
+        await _notificationsPlugin
+            .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+            ?.requestPermissions(alert: true, badge: true, sound: true);
+      }
+
       tz.initializeTimeZones(); 
       const androidInit = AndroidInitializationSettings('@mipmap/launcher_icon');
-      const initSettings = InitializationSettings(android: androidInit);
-      
+      const darwinInit = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+      const initSettings = InitializationSettings(android: androidInit, iOS: darwinInit);
+
       await _notificationsPlugin.initialize(
         settings: initSettings,
         onDidReceiveNotificationResponse: _onNotificationTap,
       );
 
-      // إنشاء القناة بوضعية Importance.max لضمان الظهور
-      const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'nas_al_kheir_channel',
-        'جمعية ناس الخير',
+      final androidPlugin = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+
+      // القناة العامة
+      const AndroidNotificationChannel generalChannel = AndroidNotificationChannel(
+        _notificationChannelId,
+        _notificationChannelName,
         description: 'إشعارات جمعية ناس الخير',
         importance: Importance.max,
         playSound: true,
+        sound: RawResourceAndroidNotificationSound(_notificationSoundName),
         enableVibration: true,
       );
 
-      await _notificationsPlugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(channel);
+      // قناة المحادثات (بالصوت الجديد)
+      const AndroidNotificationChannel chatChannel = AndroidNotificationChannel(
+        _chatChannelId,
+        _chatChannelName,
+        description: 'إشعارات الرسائل الجديدة في المحادثات',
+        importance: Importance.max,
+        playSound: true,
+        sound: RawResourceAndroidNotificationSound(_chatSoundName),
+        enableVibration: true,
+      );
+
+      await androidPlugin?.createNotificationChannel(generalChannel);
+      await androidPlugin?.createNotificationChannel(chatChannel);
 
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
       FirebaseMessaging.onMessageOpenedApp.listen(_handleBackgroundMessage);
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-      // 6. محاولة جلب الرمز مع مهلة زمنية قصيرة (5 ثوانٍ) لمنع تعليق التطبيق في حال فشل خدمات جوجل
       try {
         final token = await FirebaseMessaging.instance.getToken().timeout(
           const Duration(seconds: 5),
@@ -292,17 +484,14 @@ class NotificationService extends GetxController {
             return null;
           },
         );
-        
+
         if (token != null) {
           debugPrint('🔑 Token Verified: $token');
           await _saveToken(token);
-        } else {
-          debugPrint('⚠️ [NotificationService] Could not retrieve FCM token (Google Play Services might be unavailable).');
         }
       } catch (e) {
-        // معالجة خطأ SERVICE_NOT_AVAILABLE والتعامل معه بهدوء
         if (e.toString().contains('SERVICE_NOT_AVAILABLE')) {
-          debugPrint('📶 [NotificationService] FCM Service not available on this device/connection. Continuing without token.');
+          debugPrint('📶 [NotificationService] FCM Service not available.');
         } else {
           debugPrint('❌ [NotificationService] Token Fetch Error: $e');
         }
@@ -321,7 +510,7 @@ class NotificationService extends GetxController {
           'fcmToken': token,
           'lastTokenUpdate': FieldValue.serverTimestamp(),
           if (user.isAnonymous) 'role': 'guest',
-          if (user.isAnonymous) 'isApproved': true, // Guests are auto-approved for their limited scope
+          if (user.isAnonymous) 'isApproved': true,
           'userId': user.uid,
         }, SetOptions(merge: true));
       } catch (e) {
@@ -330,30 +519,87 @@ class NotificationService extends GetxController {
     }
   }
 
-  static void _handleForegroundMessage(RemoteMessage message) {
-    debugPrint('🔔 FCM Foreground: ${message.notification?.title}');
+  static void _handleForegroundMessage(RemoteMessage message) async {
+    debugPrint('🔔 [NotificationService] FCM Foreground Message Received');
     final notification = message.notification;
-    if (notification != null) {
-      _notificationsPlugin.show(
-        id: notification.hashCode,
-        title: notification.title,
-        body: notification.body,
-        notificationDetails: const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'nas_al_kheir_channel',
-            'جمعية ناس الخير',
-            importance: Importance.max,
-            priority: Priority.max,
-            icon: '@mipmap/launcher_icon',
-            playSound: true,
-          ),
-        ),
-      );
+    final data = message.data;
+
+    final String title = notification?.title ?? data['title'] ?? 'إشعار جديد';
+    final String body = notification?.body ?? data['body'] ?? '';
+    final String type = data['type']?.toString() ?? '';
+    final String? imageUrl = data['imageUrl'] ?? data['data']?['imageUrl'];
+
+    final bool isChat = type == 'new_message' || type == 'group_message' || type == 'guest_message';
+    final String channelId = isChat ? _chatChannelId : _notificationChannelId;
+    final String channelName = isChat ? _chatChannelName : _notificationChannelName;
+    final String soundName = isChat ? _chatSoundName : _notificationSoundName;
+
+    String? largeIconPath;
+    BigPictureStyleInformation? bigPictureStyle;
+
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      largeIconPath = await _downloadAndSaveImage(imageUrl, 'fground_notif_${DateTime.now().millisecond}.jpg');
+      if (largeIconPath != null) {
+        bigPictureStyle = BigPictureStyleInformation(
+          FilePathAndroidBitmap(largeIconPath),
+          largeIcon: FilePathAndroidBitmap(largeIconPath),
+          contentTitle: title,
+          summaryText: body,
+        );
+      }
     }
+
+    _notificationsPlugin.show(
+      id: DateTime.now().millisecond, 
+      title: title,
+      body: body,
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          channelId,
+          channelName,
+          importance: Importance.max,
+          priority: Priority.max,
+          icon: '@mipmap/launcher_icon',
+          largeIcon: largeIconPath != null ? FilePathAndroidBitmap(largeIconPath) : const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
+          styleInformation: bigPictureStyle,
+          playSound: true,
+          sound: RawResourceAndroidNotificationSound(soundName),
+          ticker: 'ناس الخير',
+          enableVibration: true,
+          showWhen: true,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          sound: isChat ? '$_chatSoundName.wav' : '$_notificationSoundName.wav',
+          attachments: largeIconPath != null ? [DarwinNotificationAttachment(largeIconPath)] : [],
+        ),
+      ),
+      payload: _serializePayload(message.data),
+    );
+  }
+
+  static String? _serializePayload(Map<String, dynamic> data) {
+    if (data.isEmpty) return null;
+    if (data['chatId'] != null) {
+      return 'chatId:${data['chatId']},userName:${data['senderName'] ?? ""},targetUserId:${data['senderId'] ?? ""}';
+    }
+    final String type = data['type']?.toString() ?? '';
+    final String? requestId = data['requestId'] ?? data['data']?['requestId'];
+    if (type == 'blood_emergency' || type == 'blood_encouragement') {
+       return 'blood_emergency:reqId=$requestId,type=${data['bloodType']},hosp=${data['hospital']},ph=${data['phone']},isGuest=${data['isGuest'] == 'true'}';
+    }
+    if (type == 'new_task' || type == 'request_update') {
+       return 'request_update:id=$requestId';
+    }
+    return data['type']?.toString();
   }
 
   static void _handleBackgroundMessage(RemoteMessage message) {
     final data = message.data;
+    final isAdmin = _isAdminRole(_currentUserRole());
+
     if (data['chatId'] != null) {
       Get.toNamed('/chat/private', arguments: {
         'chatId': data['chatId'],
@@ -368,14 +614,38 @@ class NotificationService extends GetxController {
         'phone': data['phone'],
         'isGuest': data['isGuest'] == 'true',
       });
-    } else if (data['type'] == 'donor_responding' || data['type'] == 'donor_confirmed') {
+    } else if (data['type'] == 'donor_confirmed') {
+      Get.toNamed('/blood-emergency', arguments: {
+        'requestId': data['requestId'],
+        'bloodType': data['bloodType'],
+        'hospital': data['hospital'],
+        'phone': data['phone'],
+      });
+    } else if (data['type'] == 'donor_responding') {
       Get.toNamed('/admin/request-detail', arguments: {
         'requestId': data['requestId'],
         'isGuest': data['isGuest'] == 'true',
       });
+    } else if (data['type'] == 'request_update' || data['type'] == 'status_change' || data['type'] == 'service_rating' || data['type'] == 'new_task') {
+      if (isAdmin && data['requestId'] != null) {
+        Get.toNamed('/admin/request-detail', arguments: {
+          'requestId': data['requestId'],
+        });
+      } else if (_currentUserRole() == UserRole.worker && data['requestId'] != null) {
+        Get.toNamed('/worker/task-detail', arguments: {
+          'requestId': data['requestId'],
+        });
+      } else {
+        Get.toNamed('/notifications');
+      }
+    } else if (data['type'] == 'new_donation') {
+      if (isAdmin) {
+        Get.toNamed('/admin/donations');
+      } else {
+        Get.toNamed('/notifications');
+      }
     } else if (data['type'] == 'new_request' || (data['requestId'] != null && data['type'] != 'blood_emergency' && data['type'] != 'blood_encouragement')) {
-      final AuthController auth = Get.find<AuthController>();
-      if (auth.currentUser.value?.role == UserRole.admin || auth.currentUser.value?.role == UserRole.superAdmin) {
+      if (isAdmin) {
         Get.toNamed('/admin/requests');
       } else {
         Get.toNamed('/notifications');
@@ -387,6 +657,8 @@ class NotificationService extends GetxController {
 
   static void _onNotificationTap(NotificationResponse response) {
     final payload = response.payload ?? '';
+    final isAdmin = _isAdminRole(_currentUserRole());
+
     if (payload.isEmpty) {
       Get.toNamed('/notifications');
       return;
@@ -394,8 +666,6 @@ class NotificationService extends GetxController {
 
     try {
       if (payload.contains('chatId')) {
-        // Simple manual parsing or use jsonDecode if available
-        // Expected format: chatId:xxx,userName:yyy,targetUserId:zzz
         final parts = payload.split(',');
         String? chatId, userName, targetUserId;
         for (var part in parts) {
@@ -403,7 +673,7 @@ class NotificationService extends GetxController {
            if (part.startsWith('userName:')) userName = part.split(':')[1];
            if (part.startsWith('targetUserId:')) targetUserId = part.split(':')[1];
         }
-        
+
         if (chatId != null) {
           Get.toNamed('/chat/private', arguments: {
             'chatId': chatId,
@@ -447,8 +717,39 @@ class NotificationService extends GetxController {
         return;
       }
 
-      final AuthController auth = Get.find<AuthController>();
-      final bool isAdmin = auth.currentUser.value?.role == UserRole.admin || auth.currentUser.value?.role == UserRole.superAdmin;
+      if (payload.startsWith('request_update:')) {
+        final content = payload.split(':')[1];
+        final parts = content.split(',');
+        String? requestId;
+        for (var p in parts) {
+          final kv = p.split('=');
+          if (kv.length == 2 && kv[0] == 'id') {
+            requestId = kv[1];
+          }
+        }
+        if (isAdmin && requestId != null) {
+          Get.toNamed('/admin/request-detail', arguments: {'requestId': requestId});
+        } else if (_currentUserRole() == UserRole.worker && requestId != null) {
+          Get.toNamed('/worker/task-detail', arguments: {'requestId': requestId});
+        } else {
+          Get.toNamed('/notifications');
+        }
+        return;
+      }
+
+      if (payload.startsWith('new_donation')) {
+        if (isAdmin) {
+          Get.toNamed('/admin/donations');
+        } else {
+          Get.toNamed('/notifications');
+        }
+        return;
+      }
+
+      if (payload.startsWith('blood_donation_completed:')) {
+        Get.toNamed('/notifications');
+        return;
+      }
 
       if ((payload == 'new_request' || payload.contains('requestId')) && isAdmin) {
         Get.toNamed('/admin/requests');
@@ -459,11 +760,6 @@ class NotificationService extends GetxController {
       debugPrint('❌ Notification Tap Error: $e');
       Get.toNamed('/notifications');
     }
-  }
-
-  @pragma('vm:entry-point')
-  static Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   }
 
   Future<void> scheduleMonthlyReminders() async {
@@ -487,7 +783,18 @@ class NotificationService extends GetxController {
             body: 'أخي المتبرع، موعد مساهمتك لـ [${projectDoc.data()?['name']}] حان',
             scheduledDate: _nextInstanceOfFirstOfMonth(),
             notificationDetails: const NotificationDetails(
-              android: AndroidNotificationDetails('monthly_reminders', 'التذكيرات'),
+              android: AndroidNotificationDetails(
+                'monthly_reminders',
+                'التذكيرات',
+                playSound: true,
+                sound: RawResourceAndroidNotificationSound(_notificationSoundName),
+              ),
+              iOS: DarwinNotificationDetails(
+                presentAlert: true,
+                presentBadge: true,
+                presentSound: true,
+                sound: 'notification.wav',
+              ),
             ),
             androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
             matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
@@ -513,41 +820,87 @@ class NotificationService extends GetxController {
     required String body,
     Map<String, dynamic>? data,
   }) async {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId != null && currentUserId == userId) {
+      debugPrint('🚫 [NotificationService] Skip self-notification for user $userId');
+      return;
+    }
+
     await FirebaseFirestore.instance.collection('notifications').add({
       'userId': userId,
       'type': type,
       'title': title,
       'body': body,
       'data': data ?? {},
-      // نسخ حقول البيانات الهامة إلى المستوى الأعلى لسهولة التنقل والوصول من المشغلات الخلفية
+      if (data != null && data['excludeUserId'] != null) 'excludeUserId': data['excludeUserId'],
       if (data != null && data['chatId'] != null) 'chatId': data['chatId'],
       if (data != null && data['senderId'] != null) 'senderId': data['senderId'],
       if (data != null && data['senderName'] != null) 'senderName': data['senderName'],
       if (data != null && data['requestId'] != null) 'requestId': data['requestId'],
       if (data != null && data['collection'] != null) 'collection': data['collection'],
+      if (data != null && data['targetRole'] != null) 'targetRole': data['targetRole'],
+      if (data != null && data['bloodType'] != null) 'bloodType': data['bloodType'],
+      if (data != null && data['hospital'] != null) 'hospital': data['hospital'],
+      if (data != null && data['phone'] != null) 'phone': data['phone'],
+      if (data != null && data['patientName'] != null) 'patientName': data['patientName'],
       'isRead': false,
+      'readBy': [],
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
 
-  // إرسال إشعار عام للجميع (مثل إضافة مشروع جديد)
+  static Future<void> notifyRole({
+    required String role,
+    required String type,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+    String? excludeUserId,
+  }) async {
+    final payload = <String, dynamic>{
+      'targetRole': role,
+      'type': type,
+      'title': title,
+      'body': body,
+      'data': data ?? {},
+      'isRead': false,
+      'readBy': [],
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+    if (excludeUserId != null) payload['excludeUserId'] = excludeUserId;
+    if (data != null && data['requestId'] != null) payload['requestId'] = data['requestId'];
+    if (data != null && data['bloodType'] != null) payload['bloodType'] = data['bloodType'];
+    if (data != null && data['hospital'] != null) payload['hospital'] = data['hospital'];
+    if (data != null && data['phone'] != null) payload['phone'] = data['phone'];
+    await FirebaseFirestore.instance.collection('notifications').add(payload);
+  }
+
   static Future<void> notifyAll({
     required String type,
     required String title,
     required String body,
     Map<String, dynamic>? data,
+    String? excludeUserId,
   }) async {
-    await FirebaseFirestore.instance.collection('notifications').add({
+    final effectiveExcludeUserId = excludeUserId ?? FirebaseAuth.instance.currentUser?.uid;
+    final requestId = data?['requestId'];
+    final projectId = data?['projectId'];
+
+    final payload = <String, dynamic>{
       'targetRole': 'all',
       'type': type,
       'title': title,
       'body': body,
       'data': data ?? {},
-      if (data != null && data['requestId'] != null) 'requestId': data['requestId'],
-      if (data != null && data['projectId'] != null) 'projectId': data['projectId'],
       'isRead': false,
+      'readBy': [],
       'createdAt': FieldValue.serverTimestamp(),
-    });
+    };
+    if (effectiveExcludeUserId != null) payload['excludeUserId'] = effectiveExcludeUserId;
+    if (requestId != null) payload['requestId'] = requestId;
+    if (projectId != null) payload['projectId'] = projectId;
+
+    await FirebaseFirestore.instance.collection('notifications').add(payload);
   }
 
   static Future<void> notifyAllAdmins({
@@ -559,38 +912,42 @@ class NotificationService extends GetxController {
   }) async {
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
-      
-      // إذا كان المستخدم زائراً أو غير مسجل الدخول، سيرسل إشعاراً واحداً موجهاً "لكل الإدمن" (Broadcast)
+
       if (currentUser == null || currentUser.isAnonymous) {
         debugPrint('🔔 [Guest/NoAuth] NotificationService: Sending broadcast notification to admins');
-        await FirebaseFirestore.instance.collection('notifications').add({
-          'targetRole': 'admin', // موجه لكل من لديه رتبة إدمن
+        final chatId = data?['chatId'];
+        final requestId = data?['requestId'];
+        final collection = data?['collection'];
+
+        final payload = <String, dynamic>{
+          'targetRole': 'admin',
           'type': type,
           'title': title,
           'body': body,
           'data': data ?? {},
           'senderId': currentUser?.uid ?? 'guest',
           'senderName': data?['senderName'] ?? 'زائر',
-          if (data != null && data['chatId'] != null) 'chatId': data['chatId'],
-          if (data != null && data['requestId'] != null) 'requestId': data['requestId'],
-          if (data != null && data['collection'] != null) 'collection': data['collection'],
           'isRead': false,
+          'readBy': [],
           'createdAt': FieldValue.serverTimestamp(),
-        });
+        };
+        if (excludeUserId != null) payload['excludeUserId'] = excludeUserId;
+        if (chatId != null) payload['chatId'] = chatId;
+        if (requestId != null) payload['requestId'] = requestId;
+        if (collection != null) payload['collection'] = collection;
+
+        await FirebaseFirestore.instance.collection('notifications').add(payload);
         return;
       }
 
       debugPrint('🔔 NotificationService: Notifying all admins - $title');
-      
-      // نستخدم تنويعات متعددة لأسماء الأدوار لضمان التوافق مع البيانات القديمة والـ Enums الجديدة 
+
       final admins = await FirebaseFirestore.instance
           .collection('users')
           .where('role', whereIn: ['admin', 'superAdmin', 'superadmin'])
           .where('isApproved', isEqualTo: true)
           .get();
 
-      debugPrint('👥 NotificationService: Found ${admins.docs.length} admins to notify');
-      
       for (var admin in admins.docs) {
         if (excludeUserId != null && admin.id == excludeUserId) continue;
         await sendNotification(userId: admin.id, type: type, title: title, body: body, data: data);
@@ -620,19 +977,62 @@ class NotificationService extends GetxController {
     if (userId == null) return;
     try {
       final AuthController authController = Get.find<AuthController>();
-      final isAdmin = authController.currentUser.value?.role == UserRole.admin || 
-                      authController.currentUser.value?.role == UserRole.superAdmin;
+      final role = authController.currentUser.value?.role;
 
-      final unread = await FirebaseFirestore.instance
-          .collection('notifications')
-          .where(isAdmin 
-            ? Filter.or(Filter('userId', isEqualTo: userId), Filter('targetRole', isEqualTo: 'admin'), Filter('targetRole', isEqualTo: 'all'))
-            : Filter.or(Filter('userId', isEqualTo: userId), Filter('targetRole', isEqualTo: 'all')))
+      Query unreadQuery = FirebaseFirestore.instance.collection('notifications');
+      if (role == UserRole.admin) {
+        unreadQuery = unreadQuery.where(Filter.or(
+          Filter('userId', isEqualTo: userId),
+          Filter('targetRole', isEqualTo: 'admin'),
+          Filter('targetRole', isEqualTo: 'all'),
+        ));
+      } else if (role == UserRole.superAdmin) {
+        unreadQuery = unreadQuery.where(Filter.or(
+          Filter('userId', isEqualTo: userId),
+          Filter('targetRole', isEqualTo: 'superAdmin'),
+          Filter('targetRole', isEqualTo: 'admin'),
+          Filter('targetRole', isEqualTo: 'all'),
+        ));
+      } else if (role == UserRole.worker) {
+        unreadQuery = unreadQuery.where(Filter.or(
+          Filter('userId', isEqualTo: userId),
+          Filter('targetRole', isEqualTo: 'worker'),
+          Filter('targetRole', isEqualTo: 'all'),
+        ));
+      } else if (role == UserRole.donor) {
+        unreadQuery = unreadQuery.where(Filter.or(
+          Filter('userId', isEqualTo: userId),
+          Filter('targetRole', isEqualTo: 'donor'),
+          Filter('targetRole', isEqualTo: 'all'),
+        ));
+      } else if (role == UserRole.beneficiary) {
+        unreadQuery = unreadQuery.where(Filter.or(
+          Filter('userId', isEqualTo: userId),
+          Filter('targetRole', isEqualTo: 'beneficiary'),
+          Filter('targetRole', isEqualTo: 'all'),
+        ));
+      } else if (role == UserRole.chatModerator) {
+        unreadQuery = unreadQuery.where(Filter.or(
+          Filter('userId', isEqualTo: userId),
+          Filter('targetRole', isEqualTo: 'chatModerator'),
+          Filter('targetRole', isEqualTo: 'all'),
+        ));
+      } else {
+        unreadQuery = unreadQuery.where(Filter.or(
+          Filter('userId', isEqualTo: userId),
+          Filter('targetRole', isEqualTo: 'all'),
+        ));
+      }
+
+      final unread = await unreadQuery
           .where('isRead', isEqualTo: false)
           .get();
       final batch = FirebaseFirestore.instance.batch();
       for (var doc in unread.docs) {
-        batch.update(doc.reference, {'isRead': true});
+        batch.update(doc.reference, {
+          'isRead': true,
+          'readBy': FieldValue.arrayUnion([userId])
+        });
       }
       await batch.commit();
     } catch (e) {
@@ -668,3 +1068,76 @@ class NotificationService extends GetxController {
   }
 }
 
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  } catch (_) {}
+  
+  final data = message.data;
+  final String title = data['title'] ?? message.notification?.title ?? 'جمعية ناس الخير';
+  final String body = data['body'] ?? message.notification?.body ?? 'إشعار جديد بانتظارك';
+  final String type = data['type']?.toString() ?? '';
+  final String? imageUrl = data['imageUrl'] ?? data['data']?['imageUrl'];
+
+  final bool isChat = type == 'new_message' || type == 'group_message' || type == 'guest_message';
+  final String channelId = isChat ? 'nas_alkhair_chats' : 'nas_alkhair_v2';
+  final String soundName = isChat ? 'new_message' : 'notification';
+
+  final FlutterLocalNotificationsPlugin backgroundNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+  const AndroidInitializationSettings androidInit = AndroidInitializationSettings('@mipmap/launcher_icon');
+  const InitializationSettings initSettings = InitializationSettings(android: androidInit);
+
+  await backgroundNotificationsPlugin.initialize(settings: initSettings);
+
+  String? largeIconPath;
+  BigPictureStyleInformation? bigPictureStyle;
+
+  if (imageUrl != null && imageUrl.isNotEmpty) {
+    try {
+      final Directory directory = await getTemporaryDirectory();
+      final String filePath = '${directory.path}/bg_notif_${DateTime.now().millisecond}.jpg';
+      final http.Response response = await http.get(Uri.parse(imageUrl));
+      final File file = File(filePath);
+      await file.writeAsBytes(response.bodyBytes);
+      largeIconPath = filePath;
+      
+      bigPictureStyle = BigPictureStyleInformation(
+        FilePathAndroidBitmap(largeIconPath),
+        largeIcon: FilePathAndroidBitmap(largeIconPath),
+        contentTitle: title,
+        summaryText: body,
+      );
+    } catch (e) {
+      debugPrint('❌ [BackgroundHandler] Image error: $e');
+    }
+  }
+
+  await backgroundNotificationsPlugin.show(
+    id: DateTime.now().millisecond + 100,
+    title: title,
+    body: body,
+    notificationDetails: NotificationDetails(
+      android: AndroidNotificationDetails(
+        channelId,
+        isChat ? 'إشعارات المحادثة' : 'إشعارات عامة',
+        importance: Importance.max,
+        priority: Priority.max,
+        icon: '@mipmap/launcher_icon',
+        largeIcon: largeIconPath != null ? FilePathAndroidBitmap(largeIconPath) : null,
+        styleInformation: bigPictureStyle,
+        playSound: true,
+        sound: RawResourceAndroidNotificationSound(soundName),
+        enableVibration: true,
+      ),
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        attachments: largeIconPath != null ? [DarwinNotificationAttachment(largeIconPath)] : [],
+      ),
+    ),
+    payload: type,
+  );
+}

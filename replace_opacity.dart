@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'dart:io';
 void main() {
   final dir = Directory('lib');
@@ -8,7 +9,7 @@ void main() {
       final newContent = content.replaceAll(RegExp(r'\.withOpacity\(([^)]+)\)'), r'.withValues(alpha: \1)');
       if (content != newContent) {
         file.writeAsStringSync(newContent);
-        print('Updated ' + file.path);
+        print('Updated ${file.path}');
       }
     }
   }

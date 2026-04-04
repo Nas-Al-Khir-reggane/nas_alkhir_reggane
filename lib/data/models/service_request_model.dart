@@ -17,11 +17,16 @@ class ServiceRequestModel {
   final String? assignedToName;
   final String? assignedCarId;
   final Map<String, dynamic> details;
-  final bool isGuest;
   final bool isSeenByAdmin;
+  final String bloodType;
+  final String hospital;
+  final String patientName;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final List<String> attachments; // Storage paths (preferred) or legacy file URLs
   final List<Map<String, dynamic>> donorResponses; // [{name, phone, respondedAt, userId}]
+  final double? latitude;
+  final double? longitude;
 
   ServiceRequestModel({
     required this.id,
@@ -40,11 +45,16 @@ class ServiceRequestModel {
     this.assignedToName,
     this.assignedCarId,
     this.details = const {},
-    this.isGuest = false,
     this.isSeenByAdmin = false,
+    this.bloodType = '',
+    this.hospital = '',
+    this.patientName = '',
     required this.createdAt,
     required this.updatedAt,
+    this.attachments = const [],
     this.donorResponses = const [],
+    this.latitude,
+    this.longitude,
   });
 
   Map<String, dynamic> toMap() {
@@ -65,18 +75,23 @@ class ServiceRequestModel {
       'assignedToName': assignedToName,
       'assignedCarId': assignedCarId,
       'details': details,
-      'isGuest': isGuest,
       'isSeenByAdmin': isSeenByAdmin,
+      'bloodType': bloodType,
+      'hospital': hospital,
+      'patientName': patientName,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
+      'attachments': attachments,
       'donorResponses': donorResponses,
+      'latitude': latitude,
+      'longitude': longitude,
     };
   }
 
-  factory ServiceRequestModel.fromMap(Map<String, dynamic> map) {
+  factory ServiceRequestModel.fromMap(Map<String, dynamic> map, {String? id}) {
     // Robust mapping to handle different key formats from Firestore
     return ServiceRequestModel(
-      id: map['id'] ?? '',
+      id: id ?? map['id'] ?? '',
       type: map['type'] ?? '',
       typeName: map['typeName'] ?? map['type_name'] ?? '',
       requesterId: map['requesterId'] ?? map['requester_id'] ?? map['userId'] ?? '',
@@ -94,8 +109,10 @@ class ServiceRequestModel {
       assignedToName: map['assignedToName'] ?? map['assigned_to_name'],
       assignedCarId: map['assignedCarId'] ?? map['assigned_car_id'],
       details: Map<String, dynamic>.from(map['details'] ?? {}),
-      isGuest: map['isGuest'] ?? map['is_guest'] ?? false,
       isSeenByAdmin: map['isSeenByAdmin'] ?? map['is_seen_by_admin'] ?? false,
+        bloodType: map['bloodType'] ?? map['details']?['الفصيلة'] ?? map['details']?['فصيلة الدم'] ?? map['details']?['bloodType'] ?? '',
+        hospital: map['hospital'] ?? map['details']?['المستشفى'] ?? map['details']?['hospital'] ?? map['deliveryLocation'] ?? '',
+        patientName: map['patientName'] ?? map['details']?['اسم المريض'] ?? map['details']?['المريض'] ?? map['requesterName'] ?? map['name'] ?? '',
       createdAt: (map['createdAt'] is Timestamp) 
           ? (map['createdAt'] as Timestamp).toDate() 
           : (map['created_at'] is Timestamp) 
@@ -106,9 +123,14 @@ class ServiceRequestModel {
           : (map['updated_at'] is Timestamp) 
               ? (map['updated_at'] as Timestamp).toDate() 
               : DateTime.now(),
+      attachments: (map['attachments'] != null && map['attachments'] is List) 
+          ? List<String>.from(map['attachments']) 
+          : const [],
       donorResponses: (map['donorResponses'] ?? map['donor_responses']) != null 
           ? List<Map<String, dynamic>>.from(map['donorResponses'] ?? map['donor_responses']) 
           : const [],
+      latitude: (map['latitude'] as num?)?.toDouble(),
+      longitude: (map['longitude'] as num?)?.toDouble(),
     );
   }
 
@@ -129,10 +151,13 @@ class ServiceRequestModel {
     String? assignedToName,
     String? assignedCarId,
     Map<String, dynamic>? details,
-    bool? isGuest,
     bool? isSeenByAdmin,
+    String? bloodType,
+    String? hospital,
+    String? patientName,
     DateTime? createdAt,
     DateTime? updatedAt,
+    List<String>? attachments,
     List<Map<String, dynamic>>? donorResponses,
   }) {
     return ServiceRequestModel(
@@ -152,12 +177,22 @@ class ServiceRequestModel {
       assignedToName: assignedToName ?? this.assignedToName,
       assignedCarId: assignedCarId ?? this.assignedCarId,
       details: details ?? this.details,
-      isGuest: isGuest ?? this.isGuest,
       isSeenByAdmin: isSeenByAdmin ?? this.isSeenByAdmin,
+      bloodType: bloodType ?? this.bloodType,
+      hospital: hospital ?? this.hospital,
+      patientName: patientName ?? this.patientName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      attachments: attachments ?? this.attachments,
       donorResponses: donorResponses ?? this.donorResponses,
     );
   }
-}
 
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ServiceRequestModel && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+}

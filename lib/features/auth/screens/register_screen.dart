@@ -35,9 +35,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _selectedBloodType;
   String _selectedGender = 'ذكر';
   String? _selectedWorkerRole;
-  List<String> _selectedServices = []; // التخصصات المختارة ✨
-  String? _ghuslExpertise; // مستوى خبرة التغسيل ✨
-  final _otherServicesController = TextEditingController(); // خدمات أخرى ✨
+  final List<String> _selectedServices = []; 
+  String? _ghuslExpertise; 
+  final _otherServicesController = TextEditingController(); 
 
   bool _isCompletingProfile = false;
   String? _existingUid;
@@ -55,9 +55,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedAvatar = DefaultAvatars.getRandomAvatar(_selectedRole);
+    _selectedAvatar = DefaultAvatars.getRandomAvatar(_selectedRole, _selectedGender);
     
-    // فحص وضع "إكمال البيانات"
     if (Get.arguments != null && Get.arguments is Map) {
       final args = Get.arguments as Map;
       if (args['isCompletingProfile'] == true) {
@@ -88,8 +87,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          Positioned(top: -50, right: -50, child: _buildBgCircle(300, 0.08)),
-          Positioned(bottom: -100, left: -50, child: _buildBgCircle(200, 0.05)),
+          // خلفية زخرفية موحدة (Unified Background)
+          Positioned(top: -80, right: -60, child: _buildBgCircle(320, 0.04)),
+          Positioned(bottom: -120, left: -60, child: _buildBgCircle(220, 0.03)),
 
           SafeArea(
             child: SingleChildScrollView(
@@ -105,7 +105,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       delay: const Duration(milliseconds: 200),
                       child: Text(
                         'انضم لعائلة ناس الخير',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSurface),
+                        style: TextStyle(
+                          fontSize: 22, 
+                          fontWeight: FontWeight.w900, 
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontFamily: 'Tajawal',
+                        ),
                       ),
                     ),
                     const SizedBox(height: 30),
@@ -182,7 +187,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         icon: Icons.lock_outline_rounded,
                         obscureText: _obscurePassword,
                         suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded),
+                          icon: Icon(_obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 20),
                           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                         ),
                         validator: (v) => v!.length < 6 ? '6 رموز على الأقل' : null,
@@ -195,7 +200,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         icon: Icons.check_circle_outline_rounded,
                         obscureText: _obscureConfirmPassword,
                         suffixIcon: IconButton(
-                          icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded),
+                          icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 20),
                           onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                         ),
                         validator: (v) => v != _passwordController.text ? 'غير متطابقة' : null,
@@ -269,7 +274,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onPressed: () => Get.back(),
                       child: RichText(
                         text: TextSpan(
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal'),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal', fontSize: 13),
                           children: [
                             const TextSpan(text: 'لديك حساب؟ '),
                             TextSpan(
@@ -297,7 +302,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: opacity),
       ),
     );
   }
@@ -305,9 +310,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildSectionHeader(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+        Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)),
         const SizedBox(width: 8),
-        Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+        Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, fontFamily: 'Tajawal')),
       ],
     );
   }
@@ -331,22 +336,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
         onTap: () {
           setState(() {
             _selectedRole = role;
-            _selectedAvatar = DefaultAvatars.getRandomAvatar(role);
+            _selectedAvatar = DefaultAvatars.getRandomAvatar(role, _selectedGender);
           });
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1) : Theme.of(context).cardColor,
+            color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.05) : Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.1), width: 2),
+            border: Border.all(
+              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.05), 
+              width: 1.5
+            ),
+            boxShadow: isSelected ? [BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05), blurRadius: 10)] : null,
           ),
           child: Column(
             children: [
-              Icon(icon, color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant, size: 26),
+              Icon(icon, color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5), size: 24),
               const SizedBox(height: 8),
-              Text(label, style: TextStyle(fontSize: 11, fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold, color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant)),
+              Text(label, style: TextStyle(
+                fontSize: 11, 
+                fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold, 
+                color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+                fontFamily: 'Tajawal'
+              )),
             ],
           ),
         ),
@@ -367,13 +381,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               return FilterChip(
                 showCheckmark: false,
                 avatar: Icon(role['icon'], 
-                  size: 16, 
+                  size: 14, 
                   color: isSelected ? Colors.white : AppTheme.primaryGreen),
                 label: Text(role['name'], 
                   style: TextStyle(
-                    fontSize: 12, 
+                    fontSize: 11, 
                     fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
-                    color: isSelected ? Colors.white : AppTheme.textSecondary
+                    color: isSelected ? Colors.white : AppTheme.textSecondary,
+                    fontFamily: 'Tajawal'
                   )),
                 selected: isSelected,
                 onSelected: (val) {
@@ -390,10 +405,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 backgroundColor: Theme.of(context).cardColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder)
+                  side: BorderSide(color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder.withValues(alpha: 0.1))
                 ),
-                elevation: isSelected ? 4 : 0,
-                pressElevation: 8,
+                elevation: 0,
+                pressElevation: 4,
               );
             }).toList(),
           ),
@@ -414,8 +429,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 16),
           _buildTextField(
             controller: _otherServicesController,
-            label: 'ما هي الخدمات الأخرى التي يمكنك تقديمها؟',
-            hint: 'مثال: صيانة كهرباء، دعم نفسي...',
+            label: 'خدمات تطوعية أخرى',
+            hint: 'مثال: صيانة، دعم نفسي...',
             icon: Icons.add_task_rounded,
           ),
         ],
@@ -429,23 +444,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       onTap: () => setState(() => _ghuslExpertise = value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.75) : Theme.of(context).cardColor,
+          color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.05) : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(15),
           border: Border.all(
-            color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder,
-            width: isSelected ? 2 : 1,
+            color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder.withValues(alpha: 0.1),
+            width: 1.5,
           ),
-          boxShadow: isSelected ? [BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.2), blurRadius: 8)] : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               isSelected ? Icons.check_circle_rounded : Icons.radio_button_off_rounded,
-              size: 18,
-              color: isSelected ? AppTheme.primaryGreen : AppTheme.textHint,
+              size: 16,
+              color: isSelected ? AppTheme.primaryGreen : AppTheme.textHint.withValues(alpha: 0.3),
             ),
             const SizedBox(width: 8),
             Text(
@@ -453,7 +467,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               style: TextStyle(
                 color: isSelected ? AppTheme.primaryGreen : AppTheme.textSecondary,
                 fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
-                fontSize: 13
+                fontSize: 12,
+                fontFamily: 'Tajawal'
               ),
             ),
           ],
@@ -478,13 +493,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
       label: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: isSelected ? Colors.white : Theme.of(context).colorScheme.primary),
+          Icon(icon, size: 14, color: isSelected ? Colors.white : Theme.of(context).colorScheme.primary),
           const SizedBox(width: 8),
-          Text(label, style: TextStyle(color: isSelected ? Colors.white : null)),
+          Text(label, style: TextStyle(color: isSelected ? Colors.white : null, fontSize: 12, fontFamily: 'Tajawal')),
         ],
       ),
       selected: isSelected,
-      onSelected: (val) => setState(() => _selectedGender = label),
+      onSelected: (val) {
+        setState(() {
+          _selectedGender = label;
+          _selectedAvatar = DefaultAvatars.getRandomAvatar(_selectedRole, _selectedGender);
+        });
+      },
       selectedColor: Theme.of(context).colorScheme.primary,
       backgroundColor: Theme.of(context).cardColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -494,8 +514,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildBloodTypeDropdown() {
     return DropdownButtonFormField<String>(
       initialValue: _selectedBloodType,
-      decoration: AppTheme.inputDecoration('اختر فصيلة الدم (إجبارية) *', Icons.bloodtype_outlined).copyWith(labelText: 'فصيلة الدم *'),
-      items: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+      decoration: AppTheme.inputDecoration('فصيلة الدم (إجبارية) *', Icons.bloodtype_outlined).copyWith(labelText: 'فصيلة الدم *'),
+      items: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
       onChanged: (v) => setState(() => _selectedBloodType = v),
       validator: (v) => v == null ? 'فصيلة الدم حقل إجباري' : null,
     );
@@ -522,7 +542,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       maxLines: maxLines,
       maxLength: maxLength,
       style: const TextStyle(fontSize: 14),
-      decoration: AppTheme.inputDecoration(hint, icon).copyWith(labelText: label, suffixIcon: suffixIcon, counterText: ''),
+      decoration: AppTheme.inputDecoration(hint, icon).copyWith(
+        labelText: label, 
+        suffixIcon: suffixIcon, 
+        counterText: '',
+        labelStyle: const TextStyle(fontSize: 13)
+      ),
       validator: validator,
     );
   }
@@ -562,9 +587,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildAvatarSelector() {
-    final avatars = DefaultAvatars.getAvatarsForRole(_selectedRole);
+    final avatars = DefaultAvatars.getAvatarsForRole(_selectedRole, _selectedGender);
     return SizedBox(
-      height: 80,
+      height: 70,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: avatars.length,
@@ -575,9 +600,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
             onTap: () => setState(() => _selectedAvatar = avatarUrl),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.only(left: 12),
-              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent, width: 3)),
-              child: CircleAvatar(radius: 32, backgroundColor: Theme.of(context).cardColor, backgroundImage: CachedNetworkImageProvider(avatarUrl)),
+              margin: const EdgeInsetsDirectional.only(start: 12),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle, 
+                border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent, width: 2.5)
+              ),
+              child: CircleAvatar(
+                radius: 28, 
+                backgroundColor: Theme.of(context).cardColor, 
+                backgroundImage: CachedNetworkImageProvider(avatarUrl)
+              ),
             ),
           );
         },
@@ -585,4 +617,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
-
