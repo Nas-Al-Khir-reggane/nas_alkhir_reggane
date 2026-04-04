@@ -1,98 +1,325 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق ناس الخير - حمل الآن</title>
-    
+    <title>جمعية ناس الخير رقان — تطبيق الخير الرقمي</title>
+    <meta name="description" content="تطبيق جمعية ناس الخير رقان لتسهيل التبرع بالدم وجمع المتطوعين لخدمة أهالي رقان وولاية أدرار.">
+
     <!-- خطوط جوجل (Tajawal) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+
     <!-- الأيقونات (FontAwesome) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- ملفات التنسيق والتشغيل -->
+
+    <!-- ملفات التنسيق -->
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-    
-    <div class="background-blobs">
-        <div class="blob blob-1"></div>
-        <div class="blob blob-2"></div>
+
+    <!-- خلفية حركية -->
+    <div class="ambient-background">
+        <div class="glow-orb gold-orb"></div>
+        <div class="glow-orb emerald-orb"></div>
     </div>
+    <div class="bg-grid"></div>
 
     <main class="container">
-        <!-- قسم الشعار والعنوان -->
-        <header class="header">
-            <div class="logo-container">
-                <i class="fa-solid fa-hand-holding-heart fa-3x logo-icon"></i>
+
+        <!-- ======================= 
+             الواجهة الرئيسية (Hero) 
+             ======================= -->
+        <header class="hero-section">
+            <div class="logo-wrapper">
+                <img src="logo.png" alt="شعار جمعية ناس الخير" class="official-logo">
             </div>
-            <h1 class="app-title">ناس الخير</h1>
-            <p class="app-subtitle">تطبيق صُنع بحب لتسهيل التبرع بالدم، وجمع المتطوعين لخدمة أهالي رقان وما جاورها.</p>
+            <h1 class="app-title">جمعية ناس الخير رقان</h1>
+            <p class="app-subtitle">
+                تطبيق صُنع بحب لتسهيل التبرع بالدم، وجمع المتطوعين لخدمة أهالي رقان وما جاورها وكامل سكان ولاية أدرار ووطننا العزيز الجزائر.
+            </p>
+
+            <div class="download-container glass-panel">
+                <p class="version-info" id="versionInfo">جاري البحث عن أحدث إصدار...</p>
+                <div class="buttons-container">
+                    <a href="#" class="download-btn premium-btn disabled" id="btn-main-download">
+                        <div class="btn-icon">
+                            <i class="fa-brands fa-android"></i>
+                        </div>
+                        <div class="btn-text">
+                            <span class="btn-title">تحميل التطبيق</span>
+                            <span class="btn-desc">متاح لأجهزة الأندرويد</span>
+                        </div>
+                        <i class="fa-solid fa-download download-icon"></i>
+                    </a>
+                </div>
+                <div id="loading-spinner" class="spinner-container">
+                    <div class="spinner"></div>
+                    <p>يتم تجهيز الرابط...</p>
+                </div>
+                <div id="error-message" class="error-msg" style="display: none;">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>نعتذر، التطبيق غير متوفر مؤقتاً.</span>
+                </div>
+            </div>
+
+            <!-- سهم التمرير النابض -->
+            <a href="#stats" class="scroll-indicator">
+                <div class="scroll-arrow"></div>
+                <span class="scroll-text">اكتشف المزيد</span>
+            </a>
         </header>
 
-        <!-- قسم التحميل الزجاجي (Glassmorphism) -->
-        <section class="download-section glass-panel">
-            <h2>شاركنا الأجر</h2>
-            <p class="version-info" id="versionInfo">نبحث عن أحدث نسخة متوفرة...</p>
-            
-            <div class="buttons-container">
-                <!-- زر التحميل الموحد -->
-                <a href="#" class="download-btn primary disabled" id="btn-main-download">
-                    <div class="btn-icon">
-                        <i class="fa-solid fa-mobile-screen"></i>
-                    </div>
-                    <div class="btn-text" style="margin-right: 15px; text-align: right;">
-                        <span class="btn-title">تحميل التطبيق</span>
-                        <span class="btn-desc">متاح لأجهزة أندرويد</span>
-                    </div>
-                    <i class="fa-solid fa-download download-icon" style="margin-right: auto; margin-left:10px;"></i>
-                </a>
+        <!-- ======================= 
+             شريط الإحصائيات 
+             ======================= -->
+        <div class="stats-bar fade-in" id="stats">
+            <div class="stat-item">
+                <div class="stat-number">12+</div>
+                <div class="stat-label">باب من أبواب الخير</div>
             </div>
-            
-            <div id="loading-spinner" class="spinner-container">
-                <div class="spinner"></div>
-                <p>يتم تجهيز رابط التحميل...</p>
+            <div class="stat-item">
+                <div class="stat-number">24/7</div>
+                <div class="stat-label">خدمة الطوارئ متاحة</div>
             </div>
-            
-            <div id="error-message" class="error-msg" style="display: none;">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-                <span>التطبيق غير متوفر للتحميل حالياً، نرجو العودة لاحقاً.</span>
+            <div class="stat-item">
+                <div class="stat-number">100%</div>
+                <div class="stat-label">شفافية تامة في التبرعات</div>
+            </div>
+        </div>
+
+        <!-- ======================= 
+             قسم الخدمات (Services) 
+             ======================= -->
+        <section class="services-section" id="services">
+            <div class="section-header fade-in">
+                <h2>أبواب الخير ومجالاتنا</h2>
+                <div class="divider"></div>
+                <p>نعمل كجسد واحد لتقديم خدمات متكاملة تحفظ كرامة الإنسان وتلبي نداء الإنسانية.</p>
+            </div>
+
+            <div class="services-grid">
+                <!-- 1 -->
+                <div class="service-card fade-in">
+                    <div class="service-icon red-glow"><i class="fa-solid fa-droplet"></i></div>
+                    <h3>التبرع بالدم وحالات الطوارئ</h3>
+                    <p>إنقاذ الأرواح بتوفير الزمر الدموية للمرضى ونداءات الاستغاثة العاجلة.</p>
+                </div>
+                <!-- 2 -->
+                <div class="service-card fade-in">
+                    <div class="service-icon purple-glow"><i class="fa-solid fa-truck-medical"></i></div>
+                    <h3>نقل المرضى والجنائز</h3>
+                    <p>خدمات النقل عبر سيارات مجهزة للمرضى ونقل وفيات لضمان التكريم والستر.</p>
+                </div>
+                <!-- 3 -->
+                <div class="service-card fade-in">
+                    <div class="service-icon blue-glow"><i class="fa-solid fa-water"></i></div>
+                    <h3>تغسيل وتكفين الموتى</h3>
+                    <p>فريق مختص بإكرام الموتى وفق السنة وتوفير لوازم الدفن والتكفين.</p>
+                </div>
+                <!-- 4 -->
+                <div class="service-card fade-in">
+                    <div class="service-icon pink-glow"><i class="fa-solid fa-children"></i></div>
+                    <h3>كفالة الأيتام والأرامل</h3>
+                    <p>دعم مالي ومعنوي للأيتام، ورعاية الأرامل لضمان حياة كريمة.</p>
+                </div>
+                <!-- 5 -->
+                <div class="service-card fade-in">
+                    <div class="service-icon green-glow"><i class="fa-solid fa-basket-shopping"></i></div>
+                    <h3>إطعام الطعام والمساعدات</h3>
+                    <p>توزيع قفف ومساعدات غذائية موسمية (رمضان، الشتاء) للعائلات المعوزة.</p>
+                </div>
+                <!-- 6 -->
+                <div class="service-card fade-in">
+                    <div class="service-icon cyan-glow"><i class="fa-solid fa-faucet-drip"></i></div>
+                    <h3>سقي الماء وحفر الآبار</h3>
+                    <p>مشاريع حفر وتجهيز آبار للمناطق المحتاجة دعماً للصدقة الجارية.</p>
+                </div>
+                <!-- 7 -->
+                <div class="service-card fade-in">
+                    <div class="service-icon gold-glow"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                    <h3>تفريج الكرب المالية</h3>
+                    <p>تقديم مساعدات مالية استعجالية لفك كرب المعسرين وسداد الديون.</p>
+                </div>
+                <!-- 8 -->
+                <div class="service-card fade-in">
+                    <div class="service-icon red-glow"><i class="fa-solid fa-stethoscope"></i></div>
+                    <h3>الرعاية والمعدات الطبية</h3>
+                    <p>توفير أجهزة التنفس، الكراسي المتحركة والأسرة الطبية للمحتاجين.</p>
+                </div>
+                <!-- 9 -->
+                <div class="service-card fade-in">
+                    <div class="service-icon brown-glow"><i class="fa-solid fa-trowel-bricks"></i></div>
+                    <h3>ترميم بيوت الله والفقراء</h3>
+                    <p>حملات تطوعية لترميم مساكن المحتاجين وصيانة وبناء المساجد.</p>
+                </div>
+                <!-- 10 -->
+                <div class="service-card fade-in">
+                    <div class="service-icon cyan-glow"><i class="fa-solid fa-school"></i></div>
+                    <h3>التعليم والحقيبة المدرسية</h3>
+                    <p>كفالة الطلاب ومساعدتهم وتوفير المستلزمات المدرسية مع الدخول الاجتماعي.</p>
+                </div>
+                <!-- 11 -->
+                <div class="service-card fade-in">
+                    <div class="service-icon purple-glow"><i class="fa-solid fa-hotel"></i></div>
+                    <h3>دار السبيل لإيواء عابري السبيل</h3>
+                    <p>توفير المبيت والراحة لعابري السبيل والمحتاجين من خارج المدينة وإكرامهم.</p>
+                </div>
+                <!-- 12 -->
+                <div class="service-card fade-in">
+                    <div class="service-icon gold-glow"><i class="fa-solid fa-coins"></i></div>
+                    <h3>زكاة المال والتمكين المستدام</h3>
+                    <p>استقبال وتوزيع الزكاة لدعم الأسر المنتجة ومساعدتهم على إطلاق مشاريع صغيرة.</p>
+                </div>
             </div>
         </section>
 
-        <!-- مميزات التطبيق -->
-        <section class="features">
-            <div class="feature-item glass-panel">
-                <i class="fa-solid fa-droplet feature-icon color-red"></i>
-                <h3>قطرة دم</h3>
-                <p>كن سبباً في استمرار حياة. نصلك بمن يحتاج زمرة دمك في الوقت المناسب.</p>
+        <!-- ======================= 
+             دليل الاستخدام (User Guide) 
+             ======================= -->
+        <section class="guide-section" id="guide">
+            <div class="section-header fade-in">
+                <h2>دليلك لاستخدام التطبيق</h2>
+                <div class="divider"></div>
+                <p>خطوات بسيطة لتكون جزءاً من هذا الصرح العظيم</p>
             </div>
-            <div class="feature-item glass-panel">
-                <i class="fa-solid fa-hands-holding-child feature-icon color-green"></i>
-                <h3>يد العون</h3>
-                <p>ننظم جهود المتطوعين لتصل المساعدة لمن يستحقها بمنتهى السرية والكرامة.</p>
-            </div>
-            <div class="feature-item glass-panel">
-                <i class="fa-solid fa-bed feature-icon color-gold"></i>
-                <h3>ستر وإكرام</h3>
-                <p>إدارة وتوفير خدمات تغسيل الموتى وتكفينهم، ابتغاءً لمرضاة الله.</p>
+
+            <div class="guide-steps">
+                <!-- Step 1 -->
+                <div class="guide-step fade-in">
+                    <div class="step-image-container">
+                        <div class="mockup-frame">
+                            <i class="fa-solid fa-id-card"></i>
+                        </div>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-number">1</div>
+                        <h3>تسجيل هويتك الرقمية</h3>
+                        <p>بعد التحميل، قم بإنشاء حسابك (متبرع/متطوع أو مستفيد). املأ بياناتك الأساسية وفصيلة دمك لتشكل "هويتك الرقمية للخير".</p>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="guide-step reverse-step fade-in">
+                    <div class="step-image-container">
+                        <div class="mockup-frame">
+                            <i class="fa-solid fa-hand-holding-heart"></i>
+                        </div>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-number">2</div>
+                        <h3>اطلب خدمة أو استجب لنداء</h3>
+                        <p>كـ"مستفيد" يمكنك رفع طلب لسيارة إسعاف، نقل جنازة، أو مساعدة مالية. وكـ"متبرع" يمكنك رؤية النداءات الطارئة والمشاريع المفتوحة للمشاركة فيها أو مشاركتها.</p>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="guide-step fade-in">
+                    <div class="step-image-container">
+                        <div class="mockup-frame">
+                            <i class="fa-brands fa-rocketchat"></i>
+                        </div>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-number">3</div>
+                        <h3>المساهمة والتواصل المباشر</h3>
+                        <p>تصفح المشاريع واختر ما يناسب صدقاتك. يمكنك التحدث مباشرة عبر قسم الرسائل (الدردشة) مع فريق الدعم للاستفسار أو متابعة حالة طلباتك.</p>
+                    </div>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="guide-step reverse-step fade-in">
+                    <div class="step-image-container">
+                        <div class="mockup-frame">
+                            <i class="fa-solid fa-chart-pie"></i>
+                        </div>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-number">4</div>
+                        <h3>متابعة المشاريع والشفافية</h3>
+                        <p>تابع تقدم جمع التبرعات للمشاريع الخيرية المفتوحة واكتمالها. ستصلك إشعارات دورية تتيح لك رؤية أثر عطائك بوضوح وشفافية تامة.</p>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <footer>
+        <!-- ======================= 
+             الفوتر (Footer) 
+             ======================= -->
+        <footer class="footer">
             <div class="social-links">
-                <a href="https://www.facebook.com/p/%D9%86%D8%A7%D8%B3-%D8%A7%D9%84%D8%AE%D9%8A%D8%B1-%D8%B1%D9%82%D8%A7%D9%86-Ness-El-khir-Reggane-100068333754724/" target="_blank" class="social-icon facebook">
+                <a href="https://www.facebook.com/p/%D9%86%D8%A7%D8%B3-%D8%A7%D9%84%D8%AE%D9%8A%D8%B1-%D8%B1%D9%82%D8%A7%D9%86-Ness-El-khir-Reggane-100068333754724/"
+                    target="_blank" class="social-icon facebook-btn">
                     <i class="fa-brands fa-facebook-f"></i>
                     <span>تواصل معنا على فيسبوك</span>
                 </a>
             </div>
-            <p>جميع الحقوق محفوظة &copy; تطبيق ناس الخير 2026</p>
+            <div class="footer-bottom">
+                <p>جميع الحقوق محفوظة &copy; تطبيق جمعية ناس الخير رقان 2026</p>
+            </div>
         </footer>
     </main>
 
+    <!-- ======================= 
+         مشهد ما بعد التحميل (Post-Download Celebration)
+         ======================= -->
+    <div class="cinema-overlay" id="celebrationOverlay">
+        <!-- جزيئات ذهبية عائمة -->
+        <canvas id="particlesCanvas"></canvas>
+
+        <!-- المحتوى السينمائي -->
+        <div class="cinema-scene">
+            <!-- الخط الزخرفي العلوي -->
+            <div class="cinema-line top-line"></div>
+
+            <!-- الأيقونة الكبرى -->
+            <div class="cinema-badge">
+                <div class="badge-glow"></div>
+                <div class="badge-ring"></div>
+                <div class="badge-icon">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+            </div>
+
+            <!-- النصوص المتتابعة -->
+            <h2 class="cinema-title">
+                <span class="word w1">بدأ</span>
+                <span class="word w2">التحميل</span>
+                <span class="word w3">بنجاح</span>
+            </h2>
+            <p class="cinema-verse">﴿ وَمَا تُقَدِّمُوا لِأَنفُسِكُم مِّنْ خَيْرٍ تَجِدُوهُ عِندَ اللَّهِ ﴾</p>
+            <p class="cinema-sub">بينما يتم تجهيز التطبيق، اكتشف عالماً من الخير ينتظرك:</p>
+
+            <!-- بطاقات الاستكشاف -->
+            <div class="cinema-cards">
+                <a href="#services" class="cinema-card" onclick="closeCelebration()">
+                    <div class="card-shine"></div>
+                    <i class="fa-solid fa-heart-pulse card-icon"></i>
+                    <strong>12 باباً من أبواب الخير</strong>
+                    <span>اكتشف خدماتنا</span>
+                </a>
+                <a href="#guide" class="cinema-card" onclick="closeCelebration()">
+                    <div class="card-shine"></div>
+                    <i class="fa-solid fa-compass card-icon"></i>
+                    <strong>دليل الاستخدام</strong>
+                    <span>ابدأ رحلتك</span>
+                </a>
+            </div>
+
+            <!-- زر إغلاق -->
+            <button class="cinema-dismiss" onclick="closeCelebration()">
+                متابعة التصفح <i class="fa-solid fa-arrow-left"></i>
+            </button>
+
+            <!-- الخط الزخرفي السفلي -->
+            <div class="cinema-line bottom-line"></div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
+
 </html>
