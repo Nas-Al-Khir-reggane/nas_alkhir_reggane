@@ -5,16 +5,16 @@ const app = express();
 // 1. إعداد منفذ للسيرفر (مطلوب للمنصات السحابية)
 const PORT = process.env.PORT || 3000;
 
-// 2. قراءة بيانات شهادة Firebase من متغير بيئة أو من الملف المحلي
+// 2. قراءة بيانات شهادة Firebase من متغير بيئة FIREBASE_CONFIG أو من الملف المحلي
 let serviceAccount;
 try {
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  if (process.env.FIREBASE_CONFIG) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
   } else {
     serviceAccount = require('./serviceAccountKey.json');
   }
 } catch (e) {
-  console.error("❌ فشل في تحميل ملف مفتاح الخدمة! تأكد من إعداد FIREBASE_SERVICE_ACCOUNT");
+  console.error("❌ فشل في تحميل ملف مفتاح الخدمة! تأكد من إعداد FIREBASE_CONFIG بشكل صحيح كـ JSON.");
   process.exit(1);
 }
 
