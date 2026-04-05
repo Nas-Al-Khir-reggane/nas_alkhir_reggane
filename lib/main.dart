@@ -10,6 +10,9 @@ import 'core/constants/app_constants.dart';
 import 'data/services/notification_service.dart';
 import 'core/services/theme_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +37,13 @@ void main() async {
       );
     }
     
+    try {
+      final String? fcmToken = await FirebaseMessaging.instance.getToken();
+      debugPrint('🔥 FCM Token: $fcmToken');
+    } catch (e) {
+      debugPrint('⚠️ قراءة توكن FCM فشلت: $e');
+    }
+
     // تشغيل الإشعارات في الخلفية لضمان عدم تعليق الواجهة
     NotificationService.init().catchError((e) {
       debugPrint('⚠️ Notification Init Failed: $e');
@@ -43,6 +53,39 @@ void main() async {
   } catch (e, stack) {
     debugPrint('💥 Critical Startup Error: $e');
     debugPrint('💥 StackTrace: $stack');
+  }
+}
+
+// دالة تجريبية لإرسال إشعار حالة طارئة
+Future<void> sendEmergencyNotification() async {
+  try {
+    final String? deviceToken = await FirebaseMessaging.instance.getToken();
+    if (deviceToken == null) {
+      debugPrint('⚠️ تعذر الحصول على توكن الجهاز');
+      return;
+    }
+
+    final response = await http.post(
+      Uri.parse('https://nas-alkhir-reggane.onrender.com/send-emergency'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'token': deviceToken,
+        'title': '🚨 تنبيه حالة طارئة',
+        'body': 'هناك طلب استغاثة جديد في منطقتك. يرجى المساعدة إن استطعت.',
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      debugPrint('✅ تم إرسال الإشعار بنجاح');
+      Get.snackbar('نجاح', 'تم إرسال بلاغ الطوارئ بنجاح',
+        backgroundColor: Colors.green, colorText: Colors.white);
+    } else {
+      debugPrint('❌ فشل الإرسال: ${response.body}');
+      Get.snackbar('خطأ', 'فشل في إرسال البلاغ: ${response.body}',
+        backgroundColor: Colors.red, colorText: Colors.white);
+    }
+  } catch (e) {
+    debugPrint('💥 خطأ أثناء طلب الإرسال: $e');
   }
 }
 
@@ -72,7 +115,16 @@ class NasAlKheirApp extends StatelessWidget {
       initialBinding: InitialBinding(),
       initialRoute: AppRoutes.splash,
       getPages: AppRoutes.getPages(),
+      builder: (context, child) {
+        return Scaffold(
+          body: child,
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => sendEmergencyNotification(),
+            backgroundColor: Colors.red,
+            child: const Icon(Icons.emergency, color: Colors.white),
+          ),
+        );
+      },
     );
   }
 }
-

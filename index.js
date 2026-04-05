@@ -32,20 +32,52 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const fcm = admin.messaging();
 
+// سيرفر بسيط لإبقاء الخدمة تعمل
+const APP_URL = 'https://nas-alkhir-reggane.onrender.com'; // سيتم تحديثه تلقائياً إذا تغير
+
 app.get('/', (req, res) => res.send('🚀 خادم إشعارات "ناس الخير" يعمل بنجاح سحابياً!'));
+
+// سكريبت Keep-Alive لمنع Render من النوم (Free Tier)
+setInterval(() => {
+  const http = require('http');
+  console.log('📡 Keep-Alive: Pinging server...');
+  http.get(APP_URL, (res) => {
+    console.log(`📡 Keep-Alive Status: ${res.statusCode}`);
+  }).on('error', (err) => {
+    console.error('❌ Keep-Alive Error:', err.message);
+  });
+}, 10 * 60 * 1000); // كل 10 دقائق
 
 app.post('/send-emergency', async (req, res) => {
   const { token, title, body } = req.body;
   const message = {
     notification: { title, body },
-    android: { priority: 'high' },
+    android: {
+      priority: 'high',
+      notification: {
+        sound: 'default'
+      }
+    },
+    apns: {
+      payload: {
+        aps: {
+          contentAvailable: true,
+          sound: 'default'
+        },
+      },
+      headers: {
+        'apns-priority': '10',
+      },
+    },
     token: token
   };
 
   try {
-    await fcm.send(message);
+    const response = await fcm.send(message);
+    console.log('✅ تم إرسال بلاغ طوارئ بنجاح:', response);
     res.status(200).send('تم الإرسال بنجاح');
   } catch (error) {
+    console.error('❌ خطأ في إرسال بلاغ الطوارئ:', error);
     res.status(500).send(error.message);
   }
 });
@@ -79,4 +111,3 @@ db.collection('notifications').onSnapshot(snapshot => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🌍 السيرفر يعمل الآن على المنفذ: ${PORT}`);
 });
-
