@@ -1103,7 +1103,13 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> assignToWorker(String requestId, String workerId, {String? workerName, bool? isGuest}) async {
+    Future<void> assignToWorker(String requestId, String workerId, {String? workerName, bool? isGuest}) async {
+    if (!isSuperAdmin) {
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية إسناد المهام محصورة للمدير العام فقط.',
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red);
+      return;
+    }
     if (isLoading.value) return; // 🛡️ حماية الضغط المزدوج
     isLoading.value = true;
     try {
@@ -1167,7 +1173,13 @@ class AdminController extends GetxController {
   Future<void> assignRequestToWorker(String requestId, String workerId, {bool? isGuest}) => assignToWorker(requestId, workerId, isGuest: isGuest);
   Future<void> assignRequestToVehicle(String requestId, String vehicleId, {bool? isGuest}) => assignToVehicle(requestId, vehicleId, isGuest: isGuest);
 
-  Future<void> assignToVehicle(String requestId, String vehicleId, {bool? isGuest}) async {
+    Future<void> assignToVehicle(String requestId, String vehicleId, {bool? isGuest}) async {
+    if (!isSuperAdmin) {
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية إسناد السيارات محصورة للمدير العام فقط.',
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red);
+      return;
+    }
     if (isLoading.value) return; // 🛡️ حماية الضغط المزدوج
     isLoading.value = true;
     try {
@@ -1182,9 +1194,15 @@ class AdminController extends GetxController {
     } finally {
       isLoading.value = false;
     }
-  }
+    }
 
-  Future<void> updateRequestStatus(String id, String status, {bool? isGuest}) async {
+    Future<void> updateRequestStatus(String id, String status, {bool? isGuest}) async {
+    if (!isSuperAdmin) {
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية تغيير حالة وتأكيد الطلبات محصورة للمدير العام فقط.',
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red);
+      return;
+    }
     if (isLoading.value) return; // 🛡️ حماية الضغط المزدوج
     isLoading.value = true;
     try {
@@ -1293,7 +1311,13 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> deleteRequest(String id, {bool? isGuest}) async {
+    Future<void> deleteRequest(String id, {bool? isGuest}) async {
+    if (!isSuperAdmin) {
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية حذف الطلبات محصورة للمدير العام فقط.',
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red);
+      return;
+    }
     if (isLoading.value) return;
     isLoading.value = true;
     try {
@@ -1671,7 +1695,13 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> forceAssignDonor({required String requestId, required String donorId, required String donorName, required String donorPhone}) async {
+    Future<void> forceAssignDonor({required String requestId, required String donorId, required String donorName, required String donorPhone}) async {
+    if (!isSuperAdmin) {
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، تعيين المتبرعين محصور للمدير العام فقط.',
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red);
+      return;
+    }
     try {
       isLoading.value = true;
       final docRef = _firestore.collection(AppConstants.serviceRequestsCollection).doc(requestId);
@@ -1724,7 +1754,13 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> confirmDonor({required String requestId, required String donorId, required String donorName}) async {
+    Future<void> confirmDonor({required String requestId, required String donorId, required String donorName}) async {
+    if (!isSuperAdmin) {
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، اعتماد المتبرعين محصور للمدير العام فقط.',
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red);
+      return;
+    }
     if (isLoading.value) return; // 🛡️ منع الضغط المتكرر
     try {
       isLoading.value = true;
@@ -1873,7 +1909,13 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> unassignConfirmedDonor({required String requestId}) async {
+    Future<void> unassignConfirmedDonor({required String requestId}) async {
+    if (!isSuperAdmin) {
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، فك الإسناد محصور للمدير العام فقط.',
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red);
+      return;
+    }
     if (isLoading.value) return; // 🛡️ حماية ضد الضغط المتكرر
     try {
       isLoading.value = true;
@@ -1953,7 +1995,7 @@ class AdminController extends GetxController {
     } finally {
       isLoading.value = false;
     }
-  }
+    }
 
   Future<void> markBloodDonationCompleted({required String requestId, required String donorId, required String donorName}) async {
     if (isLoading.value) return; // 🛡️ حماية ضد الضغط المتكرر

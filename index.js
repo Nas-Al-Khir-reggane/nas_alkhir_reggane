@@ -130,8 +130,13 @@ db.collection('notifications').onSnapshot(snapshot => {
             return;
           }
           const userDoc = await db.collection('users').doc(data.userId).get();
-          if (userDoc.exists && userDoc.data().fcmToken) {
-             targetTokens.push(userDoc.data().fcmToken);
+          if (userDoc.exists) {
+             const userData = userDoc.data();
+             if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
+                 targetTokens.push(...userData.fcmTokens);
+             } else if (userData.fcmToken) {
+                 targetTokens.push(userData.fcmToken);
+             }
           }
         } else if (data.targetRole) {
           // ب- إشعار موجه لمجموعة (role أو all)
@@ -148,9 +153,13 @@ db.collection('notifications').onSnapshot(snapshot => {
           const usersSnap = await usersQuery.get();
           usersSnap.forEach(userDoc => {
              const userData = userDoc.data();
-             // استثناء المرسل نفسه أو من لا يملك توكن
-             if (userData.fcmToken && userDoc.id !== senderId) {
-                targetTokens.push(userData.fcmToken);
+             // استثناء المرسل نفسه
+             if (userDoc.id !== senderId) {
+                if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
+                    targetTokens.push(...userData.fcmTokens);
+                } else if (userData.fcmToken) {
+                    targetTokens.push(userData.fcmToken);
+                }
              }
           });
           
@@ -158,6 +167,9 @@ db.collection('notifications').onSnapshot(snapshot => {
             console.log(`ℹ️ تم تجميع ${targetTokens.length} توكن للمجموعة ${data.targetRole}`);
           }
         }
+
+        // إزالة التوكنز المكررة في حالة وجود أجهزة مشتركة
+        targetTokens = [...new Set(targetTokens)];
 
         // إرسال الإشعارات لمن لديه توكن
         if (targetTokens.length > 0) {
@@ -175,7 +187,7 @@ db.collection('notifications').onSnapshot(snapshot => {
             await fcm.sendEachForMulticast(message);
           }
 
-          console.log(`✅ تم رسال الإشعار لـ ${targetTokens.length} مستخدم/مستخدمين.`);
+          console.log(`✅ تم إرسال الإشعار لـ ${targetTokens.length} جهاز/مستخدم.`);
         } else {
           console.log(`⚠️ لم يتم إرسال الإشعار لأنه لا توجد توكنز مستهدفة صالحة.`);
         }

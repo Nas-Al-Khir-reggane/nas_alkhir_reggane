@@ -276,7 +276,8 @@ class NotificationService extends GetxController {
     if (user != null) {
       try {
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'fcmToken': token,
+          'fcmToken': token, // للإصدارات القديمة من السيرفر
+          'fcmTokens': FieldValue.arrayUnion([token]), // لدعم أجهزة متعددة لنفس الحساب
           'lastTokenUpdate': FieldValue.serverTimestamp(),
           if (user.isAnonymous) 'role': 'guest',
           if (user.isAnonymous) 'isApproved': true,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/notification_service.dart';
@@ -326,10 +327,16 @@ class AuthController extends GetxController with WidgetsBindingObserver {
     final userUid = FirebaseAuth.instance.currentUser?.uid;
     if (userUid != null) {
       try {
-        // حذف التوكن من قاعدة البيانات لمنع وصول إشعارات الحساب القديم للجهاز الحالي
-        await FirebaseFirestore.instance.collection('users').doc(userUid).update({
+        final token = await FirebaseMessaging.instance.getToken();
+        final updates = <String, dynamic>{
           'fcmToken': FieldValue.delete(),
-        });
+        };
+        if (token != null) {
+          updates['fcmTokens'] = FieldValue.arrayRemove([token]);
+        }
+        
+        // حذف التوكن من قاعدة البيانات لمنع وصول إشعارات الحساب القديم للجهاز الحالي
+        await FirebaseFirestore.instance.collection('users').doc(userUid).update(updates);
       } catch (e) {
         debugPrint('⚠️ خطأ في مسح توكن الإشعارات: $e');
       }
