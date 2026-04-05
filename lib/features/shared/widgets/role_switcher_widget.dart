@@ -17,6 +17,11 @@ class RoleSwitcherWidget extends StatelessWidget {
       final user = authController.currentUser.value;
       if (user == null) return const SizedBox.shrink();
 
+      // إخفاء الويجت للمدراء والمدير العام كما طلب المستخدم
+      if (user.role == UserRole.superAdmin || user.role == UserRole.admin) {
+        return const SizedBox.shrink();
+      }
+
       final List<UserRole> availableRoles = _getAvailableRoles(user);
       if (availableRoles.length <= 1) return const SizedBox.shrink();
 

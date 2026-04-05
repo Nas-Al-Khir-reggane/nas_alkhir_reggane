@@ -83,6 +83,18 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       return;
     }
 
+    // ✅ التحقق من وجود المرفقات (إجباري لجميع الطلبات)
+    if (selectedFiles.isEmpty) {
+      Get.snackbar(
+        'وثائق مطلوبة', 
+        'يجب إرفاق وثيقة ثبوتية (بطاقة التعريف) ووثائق الحالة لإتمام الطلب',
+        backgroundColor: AppTheme.errorColor.withValues(alpha: 0.2),
+        colorText: AppTheme.errorColor,
+        icon: const Icon(Icons.warning_amber_rounded, color: AppTheme.errorColor),
+      );
+      return;
+    }
+
     if (selectedService!.id == 'blood_donation' || selectedService!.id == 'blood_emergency') {
       final patientName = (details['اسم المريض'] ?? details['المريض'] ?? beneficiaryNameController.text).toString().trim();
       final bloodType = (details['الفصيلة'] ?? details['فصيلة الدم'] ?? details['bloodType']).toString().trim();
@@ -145,10 +157,10 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         for (var path in result.paths) {
           if (path != null) {
             File f = File(path);
-            if (f.lengthSync() <= 2 * 1024 * 1024) {
+            if (f.lengthSync() <= 3 * 1024 * 1024) { // زيادة طفيفة للمساحة
               selectedFiles.add(f);
             } else {
-              Get.snackbar('تنبيه', 'حجم الملف لا يمكن أن يتجاوز 2 ميغابايت');
+              Get.snackbar('تنبيه', 'حجم الملف لا يمكن أن يتجاوز 3 ميغابايت');
             }
           }
         }
@@ -262,24 +274,64 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         ),
                       ),
     
-                      if (selectedService!.id == 'dar_sabil' || selectedService!.name.contains('دار السبيل') || selectedService!.name == 'دار السبيل أدرار') ...[
-                        const SizedBox(height: 24),
-                        _buildSectionHeader('إرفاق وثائق (اختياري)', Icons.attach_file_rounded),
-                        const SizedBox(height: 8),
-                        ElevatedButton.icon(
-                          onPressed: () => _pickFiles(setModalState),
-                          icon: const Icon(Icons.upload_file),
-                          label: const Text('اختر ملفات (صور أو PDF بحد أقصى 2 م.ب)'),
+                      // ✅ جعل المرفقات إجبارية لجميع الخدمات
+                      const SizedBox(height: 24),
+                      _buildSectionHeader('إرفاق الوثائق الثبوتية (إجباري)', Icons.attach_file_rounded),
+                      const SizedBox(height: 4),
+                      Text('يرجى رفع صورة بطاقة التعريف + وثائق الحالة (طبي، اجتماعي...)', 
+                        style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                      const SizedBox(height: 12),
+                      InkWell(
+                        onTap: () => _pickFiles(setModalState),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: selectedFiles.isEmpty 
+                              ? AppTheme.errorColor.withValues(alpha: 0.05) 
+                              : AppTheme.primaryGreen.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(
+                              color: selectedFiles.isEmpty 
+                                ? AppTheme.errorColor.withValues(alpha: 0.3) 
+                                : AppTheme.primaryGreen.withValues(alpha: 0.3),
+                              style: BorderStyle.solid,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                selectedFiles.isEmpty ? Icons.cloud_upload_outlined : Icons.check_circle_rounded, 
+                                color: selectedFiles.isEmpty ? AppTheme.errorColor : AppTheme.primaryGreen
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                selectedFiles.isEmpty ? 'اضغط لرفع الوثائق المطلوبة' : 'تم اختيار ${selectedFiles.length} ملفات',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold, 
+                                  color: selectedFiles.isEmpty ? AppTheme.errorColor : AppTheme.primaryGreen
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        if (selectedFiles.isNotEmpty)
-                          Wrap(
+                      ),
+                      if (selectedFiles.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Wrap(
                             spacing: 8,
+                            runSpacing: 8,
                             children: selectedFiles.map((f) => Chip(
+                              backgroundColor: Theme.of(context).colorScheme.surface,
+                              side: BorderSide(color: AppTheme.primaryGreen.withValues(alpha: 0.2)),
                               label: Text(f.path.split('/').last, style: const TextStyle(fontSize: 10)),
                               onDeleted: () => setModalState(() => selectedFiles.remove(f)),
+                              deleteIcon: const Icon(Icons.cancel, size: 16),
                             )).toList(),
-                          )
-                      ],
+                          ),
+                        ),
 
                       const SizedBox(height: 24),
                       _buildSectionHeader('درجة استعجال الطلب', Icons.bolt_rounded),
@@ -690,7 +742,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'نحن في خدمتكم دائماً. يرجى توخي الدقة في البيانات المدخلة لضمان سرعة معالجة الطلب من قبل لجنة الجمعية.',
+            'نحن في خدمتكم دائماً. يرجى توخي الدقة في البيانات المدخلة وإرفاق كافة الوثائق المطلوبة لضمان سرعة معالجة الطلب.',
             style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, height: 1.6),
           ),
         ],

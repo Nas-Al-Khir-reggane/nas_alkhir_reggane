@@ -228,10 +228,6 @@ class AdminController extends GetxController {
           double total = 0;
           for (var d in snap.docs) {
             final data = d.data();
-            if (data == null) {
-              debugPrint('⚠️ AdminController: Document ${d.id} has null data.');
-              continue;
-            }
 
             final status = (data['status'] ?? 'missing').toString().toLowerCase();
             final amountRaw = data['amount'] ?? 0;
@@ -1429,16 +1425,16 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> initializeVersionConfig({bool silent = false}) async {
+    Future<void> initializeVersionConfig({bool silent = false}) async {
     if (!_requireSuperAdmin('تهيئة إعدادات الإصدار')) return;
     isLoading.value = true;
     try {
       await _firestore.collection('app_config').doc('version').set({
-        'currentVersion': '1.0.0',
-        'buildNumber': 1,
-        'minVersion': '1.0.0',
+        'currentVersion': '1.0.1',
+        'buildNumber': 3,
+        'minVersion': '1.0.1',
         'forceUpdate': false,
-        'updateUrl': 'https://play.google.com/store/apps/details?id=com.nasalkheir.reggane',
+        'updateUrl': 'https://nas-al-khir-reggane.github.io/nas_alkhir_reggane/',
         'title': 'تحديث جديد متوفر',
         'message': 'يرجى تحديث التطبيق للحصول على آخر المميزات والتحسينات.',
         'updatedAt': FieldValue.serverTimestamp(),
@@ -1453,7 +1449,7 @@ class AdminController extends GetxController {
     } finally {
       isLoading.value = false;
     }
-  }
+    }
 
   List<String> getCompatibleDonors(String patientType) {
     switch (patientType) {
@@ -2169,7 +2165,7 @@ class AdminController extends GetxController {
     );
   }
 
-  Future<void> sendGlobalBroadcast({required String title, required String body}) async {
+    Future<void> sendGlobalBroadcast({required String title, required String body}) async {
     if (!_requireSuperAdmin('إرسال نداء عام')) return;
     isLoading.value = true;
     try {
@@ -2182,7 +2178,15 @@ class AdminController extends GetxController {
       );
 
       await _firestore.collection('broadcasts').doc(id).set(broadcast.toMap());
-      Get.snackbar('🚀 انطلق النداء', 'تم نشر الإعلان التفاعلي بنجاح لجميع المستخدمين.',
+
+      // 🔔 إرسال إشعار فوري لجميع المستخدمين لضمان وصول التنبيه حتى لو كان التطبيق مغلقاً
+      await NotificationService.notifyAll(
+        type: 'announcement',
+        title: title,
+        body: body,
+      );
+
+      Get.snackbar('🚀 انطلق النداء', 'تم نشر الإعلان التفاعلي وإرسال الإشعارات لجميع المستخدمين بنجاح.',
           backgroundColor: AppTheme.successColor.withValues(alpha: 0.15),
           colorText: AppTheme.successColor);
     } catch (e) {
@@ -2190,7 +2194,7 @@ class AdminController extends GetxController {
     } finally {
       isLoading.value = false;
     }
-  }
+    }
 
   Future<void> confirmBroadcastReceipt(String broadcastId) async {
     final uid = _authController.currentUser.value?.id;

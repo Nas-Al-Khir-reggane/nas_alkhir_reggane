@@ -33,7 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _selectedAvatar;
   
   String? _selectedBloodType;
-  String _selectedGender = 'ذكر';
+  String? _selectedGender;
   String? _selectedWorkerRole;
   final List<String> _selectedServices = []; 
   String? _ghuslExpertise; 
@@ -55,8 +55,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedAvatar = DefaultAvatars.getRandomAvatar(_selectedRole, _selectedGender);
-    
+    // إزالة التعيين التلقائي للأفتار والجنس للسماح بالتحقق
+
     if (Get.arguments != null && Get.arguments is Map) {
       final args = Get.arguments as Map;
       if (args['isCompletingProfile'] == true) {
@@ -222,6 +222,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               icon: _isCompletingProfile ? Icons.save_rounded : Icons.person_add_alt_1_rounded,
                               onPressed: () {
                                 if (_formKey.currentState!.validate()) {
+                                  if (_selectedGender == null) {
+                                    Get.snackbar('تنبيه', 'يرجى اختيار الجنس (إجباري)',
+                                      backgroundColor: Colors.orange.withValues(alpha: 0.15));
+                                    return;
+                                  }
+
                                   if (_selectedBloodType == null) {
                                     Get.snackbar('تنبيه', 'يرجى اختيار فصيلة الدم (إجبارية)', 
                                       backgroundColor: Colors.orange.withValues(alpha: 0.15));
@@ -237,7 +243,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         commune: _selectedCommune!,
                                         address: _addressController.text.trim(),
                                         email: _emailController.text.trim(),
-                                        gender: _selectedGender,
+                                        gender: _selectedGender!,
                                         role: _selectedRole,
                                         profileImage: _selectedAvatar,
                                         bloodType: _selectedBloodType!,
@@ -258,7 +264,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         role: _selectedRole,
                                         profileImage: _selectedAvatar,
                                         bloodType: _selectedBloodType!,
-                                        gender: _selectedGender,
+                                        gender: _selectedGender!,
                                         workerRole: _selectedWorkerRole,
                                         volunteerServices: _selectedServices,
                                         ghuslExpertise: _ghuslExpertise,
@@ -336,7 +342,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         onTap: () {
           setState(() {
             _selectedRole = role;
-            _selectedAvatar = DefaultAvatars.getRandomAvatar(role, _selectedGender);
+            _selectedAvatar = DefaultAvatars.getRandomAvatar(role, _selectedGender ?? 'ذكر');
           });
         },
         child: AnimatedContainer(
@@ -478,11 +484,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildGenderSelection() {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildChoiceChip('ذكر', Icons.male_rounded),
-        const SizedBox(width: 10),
-        _buildChoiceChip('أنثى', Icons.female_rounded),
+        Row(
+          children: [
+            _buildChoiceChip('ذكر', Icons.male_rounded),
+            const SizedBox(width: 10),
+            _buildChoiceChip('أنثى', Icons.female_rounded),
+          ],
+        ),
+        if (_selectedGender == null)
+          const Padding(
+            padding: EdgeInsets.only(top: 4, right: 12),
+            child: Text(
+              'يرجى اختيار الجنس (إجباري)',
+              style: TextStyle(color: Colors.red, fontSize: 11, fontFamily: 'Tajawal'),
+            ),
+          ),
       ],
     );
   }
@@ -502,7 +521,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       onSelected: (val) {
         setState(() {
           _selectedGender = label;
-          _selectedAvatar = DefaultAvatars.getRandomAvatar(_selectedRole, _selectedGender);
+          _selectedAvatar = DefaultAvatars.getRandomAvatar(_selectedRole, _selectedGender!);
         });
       },
       selectedColor: Theme.of(context).colorScheme.primary,
@@ -514,7 +533,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildBloodTypeDropdown() {
     return DropdownButtonFormField<String>(
       initialValue: _selectedBloodType,
-      decoration: AppTheme.inputDecoration('فصيلة الدم (إجبارية) *', Icons.bloodtype_outlined).copyWith(labelText: 'فصيلة الدم *'),
+      decoration: AppTheme.inputDecoration('فصيلة الدم (إجباري) *', Icons.bloodtype_outlined).copyWith(labelText: 'فصيلة الدم *'),
       items: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
       onChanged: (v) => setState(() => _selectedBloodType = v),
       validator: (v) => v == null ? 'فصيلة الدم حقل إجباري' : null,
@@ -587,7 +606,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildAvatarSelector() {
-    final avatars = DefaultAvatars.getAvatarsForRole(_selectedRole, _selectedGender);
+    final avatars = DefaultAvatars.getAvatarsForRole(_selectedRole, _selectedGender ?? 'ذكر');
     return SizedBox(
       height: 70,
       child: ListView.builder(
@@ -617,3 +636,4 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
+

@@ -37,7 +37,8 @@ import '../../../core/widgets/role_guard.dart';
 import 'project_detail_screen.dart';
 import '../widgets/dashboard_header.dart';
 import '../../shared/widgets/community_pulse_card.dart';
-import '../../shared/widgets/app_drawer.dart';
+import '../../../core/widgets/update_banner.dart';
+
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -120,10 +121,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
           isDark: Theme.of(context).brightness == Brightness.dark,
           child: Scaffold(
             backgroundColor: Colors.transparent, // Allow ambient to show
-            drawer: const AppDrawer(),
-            body: IndexedStack(
-              index: _currentIndex,
-              children: screens,
+            body: Column(
+              children: [
+                Expanded(
+                  child: IndexedStack(
+                    index: _currentIndex,
+                    children: screens,
+                  ),
+                ),
+                const UpdateBanner(),
+              ],
             ),
             bottomNavigationBar: _buildBottomBar(),
             floatingActionButton: _shouldShowFAB() ? _buildFAB() : null,

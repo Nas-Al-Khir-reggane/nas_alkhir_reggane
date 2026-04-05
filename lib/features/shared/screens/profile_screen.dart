@@ -11,6 +11,7 @@ import '../../../core/services/theme_service.dart';
 import '../../../core/routes/app_routes.dart';
 import '../widgets/user_avatar.dart';
 import '../widgets/role_switcher_widget.dart';
+import '../widgets/membership_card_dialog.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:animate_do/animate_do.dart';
@@ -183,13 +184,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Text(user.name, style: GoogleFonts.tajawal(fontSize: 22, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(user.role.displayName, style: GoogleFonts.tajawal(color: Theme.of(context).colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w800)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(user.role.displayName, style: GoogleFonts.tajawal(color: Theme.of(context).colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w800)),
+                    ),
+                    if (ownProfile) ...[
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => Get.dialog(MembershipCardDialog(user: user)),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(colors: [Color(0xFFD4AF37), Color(0xFFFFD700)]),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [BoxShadow(color: const Color(0xFFD4AF37).withValues(alpha: 0.3), blurRadius: 4)],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.badge_rounded, color: Colors.white, size: 14),
+                              const SizedBox(width: 4),
+                              Text("بطاقة الانخراط", style: GoogleFonts.tajawal(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),

@@ -15,6 +15,7 @@ class VersionService extends GetxService {
   RxString updateUrl = "".obs;
   RxString releaseNotes = "".obs;
   RxBool isRequired = false.obs;
+  RxBool hasUpdate = false.obs;
 
   @override
   void onInit() {
@@ -35,7 +36,6 @@ class VersionService extends GetxService {
       debugPrint("📱 Current Version: ${currentVersion.value} (Build: $currentBuildNumber)");
 
       // 2. Get latest version from Firestore
-      // Use a timeout to prevent hanging if Firebase has issues
       DocumentSnapshot config = await _firestore
           .collection('app_config')
           .doc('version')
@@ -44,19 +44,25 @@ class VersionService extends GetxService {
 
       if (config.exists) {
         Map<String, dynamic> data = config.data() as Map<String, dynamic>;
-        latestVersion.value = data['latest_version'] ?? "";
-        updateUrl.value = data['update_url'] ?? "";
-        releaseNotes.value = data['release_notes'] ?? "";
-        isRequired.value = data['is_required'] ?? false;
-        int latestBuildNumber = data['build_number'] ?? 0;
+
+        // Match Firestore field names from the user's screenshot
+        latestVersion.value = data['currentVersion'] ?? "";
+        updateUrl.value = data['updateUrl'] ?? "";
+        releaseNotes.value = data['message'] ?? ""; // Using 'message' as release notes
+        isRequired.value = data['forceUpdate'] ?? false;
+        int latestBuildNumber = data['buildNumber'] ?? 0;
 
         debugPrint("🚀 Remote Version: ${latestVersion.value} (Build: $latestBuildNumber)");
 
         // 3. Compare build numbers
         if (latestBuildNumber > currentBuildNumber) {
-          debugPrint("✨ New version available! Showing dialog...");
-          _showUpdateDialog();
+          hasUpdate.value = true;
+          debugPrint("✨ New version available! showing update indicator...");
+          if (isRequired.value) {
+            _showUpdateDialog();
+          }
         } else {
+          hasUpdate.value = false;
           debugPrint("✅ App is up to date.");
         }
       } else {
@@ -94,4 +100,3 @@ class VersionService extends GetxService {
     }
   }
 }
-

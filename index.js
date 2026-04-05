@@ -49,7 +49,7 @@ setInterval(() => {
 }, 10 * 60 * 1000); // كل 10 دقائق
 
 app.post('/send-emergency', async (req, res) => {
-  const { token, title, body } = req.body;
+  const { title, body } = req.body;
   const message = {
     notification: { title, body },
     android: {
@@ -69,15 +69,15 @@ app.post('/send-emergency', async (req, res) => {
         'apns-priority': '10',
       },
     },
-    token: token
+    topic: 'emergencies' // الإرسال لجميع المشتركين في هذا الموضوع
   };
 
   try {
     const response = await fcm.send(message);
-    console.log('✅ تم إرسال بلاغ طوارئ بنجاح:', response);
-    res.status(200).send('تم الإرسال بنجاح');
+    console.log('✅ تم إرسال بلاغ طوارئ جماعي للمشتركين:', response);
+    res.status(200).send('تم إرسال البلاغ الجماعي بنجاح');
   } catch (error) {
-    console.error('❌ خطأ في إرسال بلاغ الطوارئ:', error);
+    console.error('❌ خطأ في إرسال البلاغ الجماعي:', error);
     res.status(500).send(error.message);
   }
 });
@@ -87,18 +87,38 @@ db.collection('notifications').onSnapshot(snapshot => {
   snapshot.docChanges().forEach(async (change) => {
     if (change.type === 'added') {
       const data = change.doc.data();
+
+      // 1. منع تكرار الإرسال
       if (data.fcmSent === true) return;
 
       try {
+        // 2. جلب توكن المستخدم المستهدف
         const userDoc = await db.collection('users').doc(data.userId).get();
         if (userDoc.exists && userDoc.data().fcmToken) {
+
+          // 3. التحقق من أن المرسل ليس هو نفسه المستلم (إذا كان الحقل متوفراً)
+          // ملاحظة: الحقل senderId يجب أن يكون موجوداً في وثيقة الإشعار في Firestore
+          if (data.senderId && data.senderId === data.userId) {
+            console.log(`ℹ️ تخطي الإشعار لأن المرسل هو نفسه المستلم (${data.userId})`);
+            return;
+          }
+
           const message = {
             notification: { title: data.title, body: data.body },
             token: userDoc.data().fcmToken,
-            data: { type: data.type || 'general' }
+            data: {
+              type: data.type || 'general',
+              notificationId: change.doc.id // لمعرفه هوية الإشعار ومنع التكرار في الهاتف
+            }
           };
           await fcm.send(message);
-          await db.collection('notifications').doc(change.doc.id).update({ fcmSent: true });
+
+          // تحديث الوثيقة فوراً لمنع أي Snapshot آخر من معالجتها
+          await db.collection('notifications').doc(change.doc.id).update({
+            fcmSent: true,
+            sentAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+
           console.log(`✅ تم إرسال إشعار للمستخدم ${data.userId}`);
         }
       } catch (err) {

@@ -94,70 +94,15 @@ class PendingApprovalScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: 60),
                   FadeInUp(
                     delay: const Duration(milliseconds: 400),
-                    child: Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.05)),
-                        boxShadow: AppTheme.cardShadow,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(Icons.info_outline, color: AppTheme.primaryGreen, size: 20),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              'يمكنك طلب خدمة زائر (بدون حساب) ريثما يتم تفعيل حسابك.',
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'Tajawal',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 500),
                     child: SizedBox(
                       width: double.infinity,
                       child: AppTheme.gradientButton(
-                        text: 'طلب خدمة زائر الآن',
-                        onPressed: () => Get.toNamed('/guest/request'),
-                        icon: Icons.add_circle_outline_rounded,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 600),
-                    child: TextButton.icon(
-                      onPressed: () => Get.find<AuthController>().logout(),
-                      icon: const Icon(Icons.logout_rounded, size: 18),
-                      label: const Text(
-                        'تسجيل الخروج',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Tajawal',
-                        ),
-                      ),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.7),
+                        text: 'الرجوع لتسجيل الدخول',
+                        onPressed: () => Get.find<AuthController>().logout(),
+                        icon: Icons.login_rounded,
                       ),
                     ),
                   ),

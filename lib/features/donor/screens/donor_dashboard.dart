@@ -24,11 +24,12 @@ import '../../admin/controllers/project_controller.dart';
 import '../../../data/services/notification_service.dart';
 import '../../admin/controllers/admin_controller.dart';
 import '../../shared/widgets/strategic_goal_card.dart';
-import '../../shared/widgets/app_drawer.dart';
+
 
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/shimmer_loader.dart';
 import '../../../core/animations/sound_manager.dart';
+import '../../../core/widgets/update_banner.dart';
 
 class DonorDashboard extends StatefulWidget {
   const DonorDashboard({super.key});
@@ -151,17 +152,23 @@ class _DonorDashboardState extends State<DonorDashboard> {
       },
       child: Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          drawer: const AppDrawer(),
-          body: IndexedStack(
-          index: _currentIndex,
-          children: [
-            _buildHomeTab(),
-            _buildProjectsTab(),
-            const MySubscriptionsScreen(),
-            const DonateScreen(),
-            _buildContactTab(),
-          ],
-        ),
+          body: Column(
+            children: [
+              Expanded(
+                child: IndexedStack(
+                  index: _currentIndex,
+                  children: [
+                    _buildHomeTab(),
+                    _buildProjectsTab(),
+                    const MySubscriptionsScreen(),
+                    const DonateScreen(),
+                    _buildContactTab(),
+                  ],
+                ),
+              ),
+              const UpdateBanner(),
+            ],
+          ),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
@@ -231,13 +238,6 @@ class _DonorDashboardState extends State<DonorDashboard> {
           const SizedBox(height: 20),
           Row(
             children: [
-              Builder(
-                builder: (context) => IconButton(
-                  icon: Icon(Icons.menu_rounded, color: Theme.of(context).colorScheme.primary, size: 28),
-                  onPressed: () => Scaffold.of(context).openDrawer(),
-                ),
-              ),
-              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

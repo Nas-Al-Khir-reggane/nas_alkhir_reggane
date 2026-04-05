@@ -230,6 +230,15 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       if (user != null) {
         currentUser.value = user;
         _startUserListener();
+
+        // إرسال إشعار للمدير العام والإدارة
+        await NotificationService.notifyAllAdmins(
+          type: 'new_registration',
+          title: '👤 تسجيل جديد',
+          body: 'طلب ${user.name} الانضمام كـ ${user.role.displayName}',
+          data: {'userId': user.id},
+        );
+
         Get.offAllNamed(AppRoutes.pending);
       }
     } catch (e) {
@@ -292,6 +301,15 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       if (freshUser != null) {
         currentUser.value = freshUser;
         _startUserListener();
+
+        // إرسال إشعار للمدير العام والإدارة
+        await NotificationService.notifyAllAdmins(
+          type: 'new_registration',
+          title: '👤 استكمال تسجيل مستخدم',
+          body: 'قام ${freshUser.name} باستكمال تسجيله كـ ${freshUser.role.displayName}',
+          data: {'userId': freshUser.id},
+        );
+
         Get.offAllNamed(AppRoutes.pending);
       }
     } catch (e) {
@@ -540,4 +558,3 @@ class AuthController extends GetxController with WidgetsBindingObserver {
     } catch (_) {}
   }
 }
-

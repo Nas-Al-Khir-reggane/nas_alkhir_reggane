@@ -14,10 +14,11 @@ import '../../../data/models/service_request_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/notification_service.dart';
 import '../../shared/widgets/community_pulse_card.dart';
-import '../../shared/widgets/app_drawer.dart';
+
 import '../../../core/constants/app_constants.dart';
 import '../../../core/animations/sound_manager.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../../core/widgets/update_banner.dart';
 
 
 class BeneficiaryDashboard extends StatefulWidget {
@@ -114,16 +115,22 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
       },
       child: Scaffold(
           backgroundColor: Theme.of(context).colorScheme.surface,
-          drawer: const AppDrawer(),
-          body: IndexedStack(
-          index: _currentIndex,
-          children: [
-            _buildHomeTab(),
-            const NewRequestScreen(),
-            _buildActivitiesTab(),
-            _buildContactTab(),
-          ],
-        ),
+          body: Column(
+            children: [
+              Expanded(
+                child: IndexedStack(
+                  index: _currentIndex,
+                  children: [
+                    _buildHomeTab(),
+                    const NewRequestScreen(),
+                    _buildActivitiesTab(),
+                    _buildContactTab(),
+                  ],
+                ),
+              ),
+              const UpdateBanner(),
+            ],
+          ),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
@@ -178,7 +185,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
         ),
       ),
     );
-  }
+    }
 
   Widget _buildHomeTab() {
     return SingleChildScrollView(
@@ -189,13 +196,6 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
           const SizedBox(height: 10),
           Row(
             children: [
-              Builder(
-                builder: (context) => IconButton(
-                  icon: Icon(Icons.menu_rounded, color: Theme.of(context).colorScheme.primary, size: 28),
-                  onPressed: () => Scaffold.of(context).openDrawer(),
-                ),
-              ),
-              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -37,6 +37,12 @@ void main() async {
       );
     }
     
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+    // الاشتراك في موضوع الطوارئ لاستقبال الإشعارات الجماعية
+    await messaging.subscribeToTopic('emergencies');
+    print('✅ Subscribed to emergencies topic');
+
     try {
       final String? fcmToken = await FirebaseMessaging.instance.getToken();
       debugPrint('🔥 FCM Token: $fcmToken');
@@ -118,11 +124,6 @@ class NasAlKheirApp extends StatelessWidget {
       builder: (context, child) {
         return Scaffold(
           body: child,
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => sendEmergencyNotification(),
-            backgroundColor: Colors.red,
-            child: const Icon(Icons.emergency, color: Colors.white),
-          ),
         );
       },
     );

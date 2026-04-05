@@ -15,11 +15,13 @@ import '../../../core/theme/app_theme.dart';
 class MembershipCardWidget extends StatelessWidget {
   final UserModel user;
   final ScreenshotController screenshotController;
+  final Color cardColor; // إضافة متغير لتغيير اللون
 
   const MembershipCardWidget({
     super.key,
     required this.user,
     required this.screenshotController,
+    this.cardColor = const Color(0xFF1B5E20), // اللون الافتراضي (الأخضر)
   });
 
   @override
@@ -28,16 +30,16 @@ class MembershipCardWidget extends StatelessWidget {
       controller: screenshotController,
       child: Container(
         width: 350,
-        height: 520,
+        height: 540, // تم زيادة الارتفاع قليلاً لتفادي الفيضان
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(30),
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF1B5E20), // Dark Green
-              Color(0xFF2E7D32), // Emerald
-              Color(0xFF43A047), // Light Emerald
+              cardColor, // استخدام اللون المختار
+              cardColor.withOpacity(0.8),
+              cardColor.withOpacity(0.6),
             ],
           ),
           boxShadow: [
@@ -80,8 +82,9 @@ class MembershipCardWidget extends StatelessWidget {
             ),
 
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 25), // تقليل البادينغ العمودي
               child: Column(
+                mainAxisSize: MainAxisSize.min, // العناية بحجم العناصر
                 children: [
                    // Header
                   Row(
@@ -126,7 +129,7 @@ class MembershipCardWidget extends StatelessWidget {
                       border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
                     ),
                     child: CircleAvatar(
-                      radius: 55,
+                      radius: 50, // تصغير قطر الصورة قليلاً (كان 55)
                       backgroundColor: Colors.white.withOpacity(0.1),
                       backgroundImage: user.profileImage != null && user.profileImage!.isNotEmpty
                           ? NetworkImage(user.profileImage!)
@@ -137,12 +140,14 @@ class MembershipCardWidget extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 15), // تقليل المسافة (كانت 20)
 
                   // Name and ID
                   Text(
                     user.name,
                     textAlign: TextAlign.center,
+                    maxLines: 1, // منع السقوط لسطر جديد
+                    overflow: TextOverflow.ellipsis, // إضافة نقاط للتعبئة الزائدة
                     style: GoogleFonts.tajawal(
                       color: Colors.white,
                       fontSize: 22,
@@ -160,29 +165,29 @@ class MembershipCardWidget extends StatelessWidget {
                       borderRadius: BorderRadius.circular(50),
                     ),
                     child: Text(
-                      'ID: NKR-${user.id.substring(user.id.length - 6).toUpperCase()}',
+                      'nesselkheir-${user.id.substring(user.id.length - 6).toUpperCase()}',
                       style: GoogleFonts.tajawal(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 10, // تصغير حجم الخط قليلاً ليتناسب مع الطول الجديد
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 1.5,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 25), // تقليل المسافة (كانت 30)
 
                   // Details Grid
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildDetailItem('الرتبة', user.role.displayName, Icons.star_border_rounded),
+                      _buildDetailItem('المهمة', user.role.displayName, Icons.star_border_rounded),
                       _buildDetailItem('الزمرة', user.bloodType ?? '--', Icons.bloodtype_outlined),
                       _buildDetailItem('الولاية', user.wilaya.split(' - ').last, Icons.map_outlined),
                     ],
                   ),
 
-                  const Spacer(),
+                  const SizedBox(height: 20), // مسافة ثابتة بدل Spacer لتفادي الفيضان في التصوير
 
                   // Bottom QR and Signature
                   Row(
@@ -190,15 +195,15 @@ class MembershipCardWidget extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(6),
+                        padding: const EdgeInsets.all(4), // تقليل البادينغ الداخلي
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: QrImageView(
                           data: 'USER:${user.id}',
                           version: QrVersions.auto,
-                          size: 65,
+                          size: 60, // تصغير الـ QR قليلاً (كان 65)
                           gapless: false,
                         ),
                       ),
@@ -215,7 +220,7 @@ class MembershipCardWidget extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            'إكرام الميت رحمة',
+                            'معا نبني .. معا نرحم',
                             style: GoogleFonts.marckScript( // Using a script font for signature feel
                               color: Colors.white.withOpacity(0.9),
                               fontSize: 14,
@@ -259,11 +264,28 @@ class MembershipCardWidget extends StatelessWidget {
   }
 }
 
-class MembershipCardDialog extends StatelessWidget {
+class MembershipCardDialog extends StatefulWidget { // تحويلها لـ StatefulWidget لتغيير الحالة
   final UserModel user;
-  final ScreenshotController screenshotController = ScreenshotController();
 
-  MembershipCardDialog({super.key, required this.user});
+  const MembershipCardDialog({super.key, required this.user});
+
+  @override
+  State<MembershipCardDialog> createState() => _MembershipCardDialogState();
+}
+
+class _MembershipCardDialogState extends State<MembershipCardDialog> {
+  final ScreenshotController screenshotController = ScreenshotController();
+  Color selectedColor = const Color(0xFF1B5E20); // اللون المبدئي
+
+  final List<Color> cardColors = [
+    const Color(0xFF1B5E20), // أخضر (رسمي)
+    const Color(0xFF1A237E), // أزرق ملكي
+    const Color(0xFFB71C1C), // أحمر دافئ
+    const Color(0xFF4A148C), // بنفسجي فاخر
+    const Color(0xFF004D40), // تيل عميق
+    const Color(0xFF212121), // أسود فخم
+    const Color(0xFFBF8F00), // ذهبي/بني محروق
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -274,10 +296,43 @@ class MembershipCardDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           MembershipCardWidget(
-            user: user,
+            user: widget.user,
             screenshotController: screenshotController,
+            cardColor: selectedColor, // تمرير اللون المحدد
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 20),
+          // محدد الألوان
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: cardColors.map((color) => GestureDetector(
+                onTap: () => setState(() => selectedColor = color),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 5),
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selectedColor == color ? Colors.white : Colors.transparent,
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      if (selectedColor == color)
+                        BoxShadow(color: color.withOpacity(0.5), blurRadius: 10)
+                    ],
+                  ),
+                ),
+              )).toList(),
+            ),
+          ),
+          const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -331,7 +386,7 @@ class MembershipCardDialog extends StatelessWidget {
         final directory = await getTemporaryDirectory();
         final imagePath = await File('${directory.path}/membership_card.png').create();
         await imagePath.writeAsBytes(image);
-        
+
         await Share.shareXFiles(
           [XFile(imagePath.path)],
           text: 'بطاقة عضوية ناس الخير رقان - فخور بانتمائي 🕊️',
@@ -342,4 +397,3 @@ class MembershipCardDialog extends StatelessWidget {
     }
   }
 }
-
