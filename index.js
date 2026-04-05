@@ -55,14 +55,21 @@ setInterval(() => {
 // دالة مساعدة: استخراج كل توكنات المستخدم
 // ======================================================
 function extractTokens(userData) {
-  const tokens = [];
+  const tokens = new Set();
+
+  // الحقل الجديد (مصفوفة)
   if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
-    tokens.push(...userData.fcmTokens);
+    userData.fcmTokens.forEach(t => {
+      if (t && typeof t === 'string' && t.length > 10) tokens.add(t);
+    });
   }
-  if (userData.fcmToken && !tokens.includes(userData.fcmToken)) {
-    tokens.push(userData.fcmToken);
+
+  // الحقل القديم – للتوافق مع المستخدمين الذين لم يُحدِّثوا التطبيق بعد
+  if (userData.fcmToken && typeof userData.fcmToken === 'string' && userData.fcmToken.length > 10) {
+    tokens.add(userData.fcmToken);
   }
-  return tokens.filter(t => t && typeof t === 'string' && t.length > 10);
+
+  return [...tokens];
 }
 
 // ======================================================

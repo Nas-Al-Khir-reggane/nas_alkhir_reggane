@@ -245,6 +245,12 @@ class NotificationService extends GetxController {
       FirebaseMessaging.onMessageOpenedApp.listen(_handleBackgroundMessage);
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
+      // مستمع تجديد التوكن: يُحدّث Firestore تلقائياً عند تجديد Firebase للتوكن
+      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+        debugPrint('🔄 [NotificationService] FCM Token Refreshed - Saving...');
+        saveCurrentDeviceToken();
+      });
+
       try {
         final token = await FirebaseMessaging.instance.getToken().timeout(
           const Duration(seconds: 5),
@@ -255,8 +261,9 @@ class NotificationService extends GetxController {
         );
 
         if (token != null) {
-          debugPrint('🔑 Token Verified: $token');
-          await _saveToken(token);
+          debugPrint('🔑 Token fetched at init: ${token.substring(0, 20)}...');
+          // يحفظ فقط إذا كان المستخدم مسجلاً − وإلا سيُستدعى من auth_controller بعد الدخول
+          await saveCurrentDeviceToken();
         }
       } catch (e) {
         if (e.toString().contains('SERVICE_NOT_AVAILABLE')) {
@@ -271,23 +278,36 @@ class NotificationService extends GetxController {
     }
   }
 
-  static Future<void> _saveToken(String token) async {
+  /// يجلب التوكن الحالي ثم يحفظه في Firestore – يُستدعى بعد تسجيل الدخول مباشرةً
+  static Future<void> saveCurrentDeviceToken() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      try {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'fcmToken': token, // للإصدارات القديمة من السيرفر
-          'fcmTokens': FieldValue.arrayUnion([token]), // لدعم أجهزة متعددة لنفس الحساب
-          'lastTokenUpdate': FieldValue.serverTimestamp(),
-          if (user.isAnonymous) 'role': 'guest',
-          if (user.isAnonymous) 'isApproved': true,
-          'userId': user.uid,
-        }, SetOptions(merge: true));
-      } catch (e) {
-        debugPrint('❌ [NotificationService] Save token error: $e');
+    if (user == null) {
+      debugPrint('⚠️ [NotificationService] saveCurrentDeviceToken: لا يوجد مستخدم مسجل.');
+      return;
+    }
+    try {
+      final token = await FirebaseMessaging.instance.getToken().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => null,
+      );
+      if (token == null) {
+        debugPrint('⚠️ [NotificationService] FCM Token is null − no token to save.');
+        return;
       }
+      debugPrint('🔑 [NotificationService] Saving FCM Token for user ${user.uid}');
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        // نحفظ المصفوفة فقط − السيرفر يقرأها. نتخلص من الحقل الفردي القديم لتفادي إرسال مزدوج
+        'fcmTokens': FieldValue.arrayUnion([token]),
+        'lastTokenUpdate': FieldValue.serverTimestamp(),
+        'userId': user.uid,
+      }, SetOptions(merge: true));
+      debugPrint('✅ [NotificationService] Token saved successfully.');
+    } catch (e) {
+      debugPrint('❌ [NotificationService] saveCurrentDeviceToken error: $e');
     }
   }
+
+  static Future<void> _saveToken(String token) => saveCurrentDeviceToken();
 
   static Future<String?> _downloadAndSaveImage(String url, String fileName) async {
     if (url.isEmpty) return null;

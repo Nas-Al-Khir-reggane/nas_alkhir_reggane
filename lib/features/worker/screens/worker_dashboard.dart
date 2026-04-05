@@ -466,49 +466,57 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
   }
 
   Widget _buildSupportTab() {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 40),
-          Text('🛡️ التواصل مع الإدارة', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
-          Text('اختر مديراً لمراسلته بخصوص عملك أو تقديم تقرير', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
-          const SizedBox(height: 16),
-          // Group team chat button
-          GestureDetector(
-            onTap: () => Get.toNamed(AppRoutes.chatGroup, arguments: {
-              'chatId': 'group_team',
-              'groupName': 'غرفة الفريق الجماعية',
-            }),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.groups_rounded, color: Theme.of(context).colorScheme.onPrimary, size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('🛡️ التواصل مع الإدارة', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
+                Text('اختر مديراً لمراسلته بخصوص عملك أو تقديم تقرير', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+                const SizedBox(height: 16),
+                // Group team chat button
+                GestureDetector(
+                  onTap: () => Get.toNamed(AppRoutes.chatGroup, arguments: {
+                    'chatId': 'group_team',
+                    'groupName': 'غرفة الفريق الجماعية',
+                  }),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Row(
                       children: [
-                        Text('غرفة الفريق الجماعية', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w800, fontSize: 15, fontFamily: 'Tajawal')),
-                        Text('الدردشة مع جميع أعضاء الفريق', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.15), fontSize: 12, fontFamily: 'Tajawal')),
+                        Icon(Icons.groups_rounded, color: Theme.of(context).colorScheme.onPrimary, size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('غرفة الفريق الجماعية', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w800, fontSize: 15, fontFamily: 'Tajawal')),
+                              Text('الدردشة مع جميع أعضاء الفريق', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.15), fontSize: 12, fontFamily: 'Tajawal')),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios, color: Theme.of(context).colorScheme.onPrimary, size: 16),
                       ],
                     ),
                   ),
-                  Icon(Icons.arrow_forward_ios, color: Theme.of(context).colorScheme.onPrimary, size: 16),
-                ],
-              ),
+                ),
+                const SizedBox(height: 20),
+                Text('💬 تواصل مباشر مع الإدارة', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'Tajawal')),
+                const SizedBox(height: 12),
+              ],
             ),
           ),
-          const SizedBox(height: 20),
-          Text('💬 تواصل مباشر مع الإدارة', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'Tajawal')),
-          const SizedBox(height: 12),
-          Expanded(
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          sliver: SliverFillRemaining(
             child: StreamBuilder<QuerySnapshot>(
               stream: _adminsStream,
               builder: (context, snapshot) {
@@ -559,8 +567,8 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
               },
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

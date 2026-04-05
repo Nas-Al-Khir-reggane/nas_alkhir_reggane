@@ -150,6 +150,8 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       if (user != null) {
         currentUser.value = user;
         _startUserListener();
+        // حفظ توكن FCM فور تسجيل الدخول – هذا يضمن وصول الإشعارات لهذا الجهاز
+        NotificationService.saveCurrentDeviceToken();
         _navigateBasedOnRole(user);
       } else {
         // إذا نجح تسجيل الدخول في Firebase (لأن signIn لم تطلق خطأ) ولكن لم يتم العثور على ملف Firestore
@@ -231,6 +233,8 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       if (user != null) {
         currentUser.value = user;
         _startUserListener();
+        // حفظ توكن FCM بعد التسجيل
+        NotificationService.saveCurrentDeviceToken();
 
         // إرسال إشعار للمدير العام والإدارة
         await NotificationService.notifyAllAdmins(
@@ -302,6 +306,8 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       if (freshUser != null) {
         currentUser.value = freshUser;
         _startUserListener();
+        // حفظ توكن FCM بعد استكمال التسجيل
+        NotificationService.saveCurrentDeviceToken();
 
         // إرسال إشعار للمدير العام والإدارة
         await NotificationService.notifyAllAdmins(
