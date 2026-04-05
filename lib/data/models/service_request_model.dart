@@ -27,6 +27,7 @@ class ServiceRequestModel {
   final List<Map<String, dynamic>> donorResponses; // [{name, phone, respondedAt, userId}]
   final double? latitude;
   final double? longitude;
+  final String? roomNumber; // رقم الغرفة في دار السبيل ✨
 
   ServiceRequestModel({
     required this.id,
@@ -55,6 +56,7 @@ class ServiceRequestModel {
     this.donorResponses = const [],
     this.latitude,
     this.longitude,
+    this.roomNumber,
   });
 
   Map<String, dynamic> toMap() {
@@ -85,6 +87,7 @@ class ServiceRequestModel {
       'donorResponses': donorResponses,
       'latitude': latitude,
       'longitude': longitude,
+      'roomNumber': roomNumber,
     };
   }
 
@@ -131,6 +134,7 @@ class ServiceRequestModel {
           : const [],
       latitude: (map['latitude'] as num?)?.toDouble(),
       longitude: (map['longitude'] as num?)?.toDouble(),
+      roomNumber: map['roomNumber'] ?? map['room_number'],
     );
   }
 
@@ -159,6 +163,7 @@ class ServiceRequestModel {
     DateTime? updatedAt,
     List<String>? attachments,
     List<Map<String, dynamic>>? donorResponses,
+    String? roomNumber,
   }) {
     return ServiceRequestModel(
       id: id ?? this.id,
@@ -185,6 +190,7 @@ class ServiceRequestModel {
       updatedAt: updatedAt ?? this.updatedAt,
       attachments: attachments ?? this.attachments,
       donorResponses: donorResponses ?? this.donorResponses,
+      roomNumber: roomNumber ?? this.roomNumber,
     );
   }
 

@@ -6,15 +6,15 @@ extension UserRoleExtension on UserRole {
   String get displayName {
     switch (this) {
       case UserRole.superAdmin:
-        return 'مدير عام';
+        return 'منسق عام';
       case UserRole.admin:
-        return 'مدير';
+        return 'منسق';
       case UserRole.worker:
         return 'متطوع';
       case UserRole.donor:
         return 'متبرع';
       case UserRole.beneficiary:
-        return 'مستفيد';
+        return 'طالب الخير';
       case UserRole.chatModerator:
         return 'مشرف الدردشة';
     }
@@ -60,6 +60,7 @@ class UserModel {
   final String? notes;
   // الأدوار الإضافية التي يمنحها المدير: 'canDonate', 'canRequestService'
   final List<String> additionalRoles;
+  final bool canManageDarSabil; // ✨ صلاحية إدارة دار السبيل المستقلة
 
   UserModel({
     required this.id,
@@ -97,6 +98,7 @@ class UserModel {
     this.avatarSeed,
     this.avatarType = 'avataaars',
     this.additionalRoles = const [],
+    this.canManageDarSabil = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -136,6 +138,7 @@ class UserModel {
       'avatarSeed': avatarSeed,
       'avatarType': avatarType,
       'additionalRoles': additionalRoles,
+      'canManageDarSabil': canManageDarSabil,
     };
   }
 
@@ -188,6 +191,7 @@ class UserModel {
       avatarSeed: map['avatarSeed'],
       avatarType: map['avatarType'] ?? 'avataaars',
       additionalRoles: List<String>.from(map['additionalRoles'] ?? []),
+      canManageDarSabil: map['canManageDarSabil'] ?? false,
     );
   }
 
@@ -227,6 +231,7 @@ class UserModel {
     String? avatarSeed,
     String? avatarType,
     List<String>? additionalRoles,
+    bool? canManageDarSabil,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -264,6 +269,7 @@ class UserModel {
       avatarSeed: avatarSeed ?? this.avatarSeed,
       avatarType: avatarType ?? this.avatarType,
       additionalRoles: additionalRoles ?? this.additionalRoles,
+      canManageDarSabil: canManageDarSabil ?? this.canManageDarSabil,
     );
   }
 
@@ -279,5 +285,14 @@ class UserModel {
     final difference = now.difference(lastDonatedAt!).inDays;
     return difference >= smartDonationCoolOffDays;
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is UserModel && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
 }
 

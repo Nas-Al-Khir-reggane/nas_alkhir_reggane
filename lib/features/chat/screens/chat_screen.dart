@@ -135,6 +135,14 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   bool _isGroupAllowedForRole(String groupId, UserRole? role) {
+    // 🛡️ إذا كان الدور لم يحمل بعد، نمنح فرصة للتحقق لاحقاً في الـ build
+    if (role == null) {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return false;
+      // لا نحظر هنا، سنحظر في الـ build إذا استمر النقص
+      return true; 
+    }
+
     if (groupId == 'group_management') {
       return _isAdminRole(role);
     }
@@ -484,9 +492,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     final chatId = _getChatId();
 
-    if (chatId == 'invalid_chat') {
-      _denyChatAccess('هذا المسار غير مسموح حسب سياسة المراسلة المعتمدة.');
-    } else {
+    if (chatId != 'invalid_chat') {
       if (widget.isGroupChat) {
         _messagesStream = FirebaseFirestore.instance
             .collection('chats')
@@ -1543,6 +1549,11 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  bool get _canDeleteAnyMessage {
+    final role = _authController.currentUser.value?.role;
+    return _isAdminRole(role) || role == UserRole.chatModerator;
+  }
+
   void _showLongPressMenu(ChatMessageModel message) {
     HapticFeedback.heavyImpact();
     
@@ -1661,7 +1672,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         'توجيه', 
                         () { Get.back(); _showForwardSelector(message); }
                       ),
-                      if (isMe || _isAdminRole(_authController.currentUser.value?.role)) ...[
+                      if (isMe || _canDeleteAnyMessage) ...[
                         _buildMiniDivider(),
                         _buildMiniHorizontalAction(
                           Icons.delete_outline_rounded, 

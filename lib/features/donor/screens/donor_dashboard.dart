@@ -23,6 +23,7 @@ import '../../../data/models/donation_model.dart';
 import '../../admin/controllers/project_controller.dart';
 import '../../../data/services/notification_service.dart';
 import '../../admin/controllers/admin_controller.dart';
+import '../../admin/screens/dar_al_sabil_management_screen.dart';
 import '../../shared/widgets/strategic_goal_card.dart';
 
 
@@ -559,10 +560,10 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   }).toList(),
                 )),
 
-          // ======== 🆕 قسم الخدمات الإضافية للمتبرعين ========
           Obx(() {
             final user = authController.currentUser.value;
-            if (user == null || !user.additionalRoles.contains('canRequestService')) {
+            if (user == null) return const SizedBox.shrink();
+            if (!user.canManageDarSabil && !user.additionalRoles.contains('canRequestService')) {
               return const SizedBox.shrink();
             }
 
@@ -582,53 +583,28 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => Get.toNamed(AppRoutes.beneficiaryDashboard),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)),
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(Icons.handshake_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('طلب خدمة / مساعدة',
-                                    style: TextStyle(
-                                        color: Theme.of(context).colorScheme.onSurface,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15)),
-                                const SizedBox(height: 4),
-                                Text('ارفع طلباً جديداً للإدارة للتدخل',
-                                    style: TextStyle(
-                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                        fontSize: 12)),
-                              ],
-                            ),
-                          ),
-                          Icon(Icons.arrow_forward_ios_rounded,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant, size: 16),
-                        ],
-                      ),
-                    ),
+                
+                // ✨ إضافة كرت إدارة دار السبيل للمفوضين
+                if (user.canManageDarSabil) ...[
+                  _buildExtraDashboardCard(
+                    title: 'إدارة دار السبيل 🏠',
+                    subtitle: 'إدارة النزلاء، الغرف، والمهام اليومية',
+                    icon: Icons.home_work_rounded,
+                    color: AppTheme.goldAccent,
+                    onTap: () => Get.to(() => const DarSabilManagementScreen()),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                ],
+
+                if (user.additionalRoles.contains('canRequestService')) ...[
+                  _buildExtraDashboardCard(
+                    title: 'طلب خدمة / مساعدة',
+                    subtitle: 'ارفع طلباً جديداً للإدارة للتدخل',
+                    icon: Icons.handshake_rounded,
+                    color: Theme.of(context).colorScheme.primary,
+                    onTap: () => Get.toNamed(AppRoutes.beneficiaryDashboard),
+                  ),
+                ],
               ],
             );
           }),
@@ -1277,35 +1253,41 @@ class _DonorDashboardState extends State<DonorDashboard> {
   }
 
   Widget _buildContactTab() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 50),
-        Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 0),
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('تواصل معنا',
-                  style: TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSurface)),
-              Text('تواصل مع فريق إدارة ناس الخير',
-                  style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+              const SizedBox(height: 50),
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('تواصل معنا',
+                        style: TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSurface)),
+                    Text('تواصل مع فريق إدارة ناس الخير',
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text('تواصل خاص مع الإدارة',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              ),
+              const SizedBox(height: 8),
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Text('تواصل خاص مع الإدارة',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
-        ),
-        const SizedBox(height: 8),
-        Expanded(
+        SliverFillRemaining(
           child: StreamBuilder<QuerySnapshot>(
             stream: _adminsStream,
             builder: (context, snapshot) {
@@ -1326,7 +1308,7 @@ class _DonorDashboardState extends State<DonorDashboard> {
                   .where((u) => u.role == UserRole.admin || u.role == UserRole.superAdmin)
                   .toList();
                   
-              // ترتيب: المدير العام أولاً ثم البقية أبجدياً
+              // ترتيب: المنسق العام أولاً ثم البقية أبجدياً
               admins.sort((a, b) {
                 if (a.role == UserRole.superAdmin && b.role != UserRole.superAdmin) return -1;
                 if (a.role != UserRole.superAdmin && b.role == UserRole.superAdmin) return 1;
@@ -1519,6 +1501,62 @@ class _DonorDashboardState extends State<DonorDashboard> {
                 ),
               ),
               const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExtraDashboardCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15)),
+                    const SizedBox(height: 4),
+                    Text(subtitle,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 12)),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant, size: 16),
             ],
           ),
         ),

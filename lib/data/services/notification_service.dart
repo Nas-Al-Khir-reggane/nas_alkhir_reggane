@@ -713,62 +713,54 @@ class NotificationService extends GetxController {
     String? excludeUserId,
   }) async {
     try {
-      final currentUser = FirebaseAuth.instance.currentUser;
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+      debugPrint('🔔 NotificationService: notifyAllAdmins - $title');
 
-      if (currentUser == null || currentUser.isAnonymous) {
-        debugPrint('🔔 [Guest/NoAuth] NotificationService: Sending broadcast notification to admins');
-        final chatId = data?['chatId'];
-        final requestId = data?['requestId'];
-        final collection = data?['collection'];
+      final payload = <String, dynamic>{
+        'targetRole': 'admin',
+        'type': type,
+        'title': title,
+        'body': body,
+        'data': data ?? {},
+        'senderId': data?['senderId'] ?? currentUserId ?? 'guest',
+        'isRead': false,
+        'readBy': [],
+        'createdAt': FieldValue.serverTimestamp(),
+      };
 
-        final payload = <String, dynamic>{
-          'targetRole': 'admin',
-          'type': type,
-          'title': title,
-          'body': body,
-          'data': data ?? {},
-          'senderId': currentUser?.uid ?? 'guest',
-          'senderName': data?['senderName'] ?? 'زائر',
-          'isRead': false,
-          'readBy': [],
-          'createdAt': FieldValue.serverTimestamp(),
-        };
-        if (excludeUserId != null) payload['excludeUserId'] = excludeUserId;
-        if (chatId != null) payload['chatId'] = chatId;
-        if (requestId != null) payload['requestId'] = requestId;
-        if (collection != null) payload['collection'] = collection;
-
-        await FirebaseFirestore.instance.collection('notifications').add(payload);
-        return;
+      // حقول اختيارية
+      final optionalFields = ['chatId', 'requestId', 'collection', 'senderName',
+                              'bloodType', 'hospital', 'phone', 'patientName', 'imageUrl'];
+      for (final field in optionalFields) {
+        if (data?[field] != null) payload[field] = data![field];
       }
+      if (excludeUserId != null) payload['excludeUserId'] = excludeUserId;
 
-      debugPrint('🔔 NotificationService: Notifying all admins - $title');
-
-      final admins = await FirebaseFirestore.instance
-          .collection('users')
-          .where('role', whereIn: ['admin', 'superAdmin', 'superadmin'])
-          .where('isApproved', isEqualTo: true)
-          .get();
-
-      for (var admin in admins.docs) {
-        if (excludeUserId != null && admin.id == excludeUserId) continue;
-        await sendNotification(userId: admin.id, type: type, title: title, body: body, data: data);
-      }
+      await FirebaseFirestore.instance.collection('notifications').add(payload);
     } catch (e) {
       debugPrint('❌ [NotificationService] notifyAllAdmins error: $e');
     }
   }
 
-  static Future<void> notifyAllWorkers({required String title, required String body}) async {
+  static Future<void> notifyAllWorkers({required String title, required String body, Map<String, dynamic>? data}) async {
     try {
-      final workers = await FirebaseFirestore.instance
-          .collection('users')
-          .where('role', isEqualTo: 'worker')
-          .where('isApproved', isEqualTo: true)
-          .get();
-      for (var worker in workers.docs) {
-        await sendNotification(userId: worker.id, type: 'announcement', title: title, body: body);
-      }
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+      debugPrint('🔔 NotificationService: notifyAllWorkers - $title');
+
+      final payload = <String, dynamic>{
+        'targetRole': 'worker',
+        'type': 'announcement',
+        'title': title,
+        'body': body,
+        'data': data ?? {},
+        'senderId': currentUserId ?? 'system',
+        'isRead': false,
+        'readBy': [],
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+      if (data?['requestId'] != null) payload['requestId'] = data!['requestId'];
+
+      await FirebaseFirestore.instance.collection('notifications').add(payload);
     } catch (e) {
       debugPrint('❌ [NotificationService] notifyAllWorkers error: $e');
     }

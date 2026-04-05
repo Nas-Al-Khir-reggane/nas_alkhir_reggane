@@ -6,6 +6,9 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
+// ======================================================
+// إعداد Firebase Admin
+// ======================================================
 let serviceAccount;
 try {
   console.log("🛠️ محاولة قراءة FIREBASE_CONFIG...");
@@ -32,12 +35,12 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const fcm = admin.messaging();
 
-// سيرفر بسيط لإبقاء الخدمة تعمل
-const APP_URL = 'https://nas-alkhir-reggane.onrender.com'; // سيتم تحديثه تلقائياً إذا تغير
+// ======================================================
+// Keep-Alive (Free Tier)
+// ======================================================
+const APP_URL = 'https://nas-alkhir-reggane.onrender.com';
+app.get('/', (req, res) => res.send('🚀 خادم إشعارات "ناس الخير" يعمل بنجاح!'));
 
-app.get('/', (req, res) => res.send('🚀 خادم إشعارات "ناس الخير" يعمل بنجاح سحابياً!'));
-
-// سكريبت Keep-Alive لمنع Render من النوم (Free Tier)
 setInterval(() => {
   const http = require('http');
   console.log('📡 Keep-Alive: Pinging server...');
@@ -46,166 +49,234 @@ setInterval(() => {
   }).on('error', (err) => {
     console.error('❌ Keep-Alive Error:', err.message);
   });
-}, 10 * 60 * 1000); // كل 10 دقائق
+}, 10 * 60 * 1000);
 
-app.post('/send-emergency', async (req, res) => {
-  const { title, body } = req.body;
+// ======================================================
+// دالة مساعدة: استخراج كل توكنات المستخدم
+// ======================================================
+function extractTokens(userData) {
+  const tokens = [];
+  if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
+    tokens.push(...userData.fcmTokens);
+  }
+  if (userData.fcmToken && !tokens.includes(userData.fcmToken)) {
+    tokens.push(userData.fcmToken);
+  }
+  return tokens.filter(t => t && typeof t === 'string' && t.length > 10);
+}
+
+// ======================================================
+// دالة مساعدة: إرسال FCM مع تنظيف التوكنات الميتة
+// ======================================================
+async function sendFCM(tokens, notification, dataPayload) {
+  if (!tokens || tokens.length === 0) {
+    console.log('⚠️ لا توجد توكنات صالحة للإرسال.');
+    return;
+  }
+
+  const uniqueTokens = [...new Set(tokens)];
+  console.log(`📨 إرسال إلى ${uniqueTokens.length} جهاز...`);
+
   const message = {
-    notification: { title, body },
+    notification: {
+      title: notification.title || 'جمعية ناس الخير',
+      body: notification.body || '',
+    },
+    data: dataPayload,
     android: {
       priority: 'high',
-      notification: {
-        sound: 'default'
-      }
+      notification: { sound: 'notification', channelId: 'nas_alkhair_v2' }
     },
     apns: {
-      payload: {
-        aps: {
-          contentAvailable: true,
-          sound: 'default'
-        },
-      },
-      headers: {
-        'apns-priority': '10',
-      },
+      payload: { aps: { contentAvailable: true, sound: 'notification.wav' } },
+      headers: { 'apns-priority': '10' },
     },
-    topic: 'emergencies' // الإرسال لجميع المشتركين في هذا الموضوع
   };
 
-  try {
-    const response = await fcm.send(message);
-    console.log('✅ تم إرسال بلاغ طوارئ جماعي للمشتركين:', response);
-    res.status(200).send('تم إرسال البلاغ الجماعي بنجاح');
-  } catch (error) {
-    console.error('❌ خطأ في إرسال البلاغ الجماعي:', error);
-    res.status(500).send(error.message);
-  }
-});
+  const deadTokens = [];
 
-// ذاكرة مؤقتة لمنع سباق البيانات (Race Condition) والتكرار
-const processedNotifications = new Set();
-// تنظيف الذاكرة المؤقتة كل ساعة لمنع استهلاك الذاكرة بشكل مستمر
-setInterval(() => processedNotifications.clear(), 60 * 60 * 1000);
-
-// مراقبة Firestore لإرسال الإشعارات التلقائية
-db.collection('notifications').onSnapshot(snapshot => {
-  snapshot.docChanges().forEach(async (change) => {
-    if (change.type === 'added') {
-      const notificationId = change.doc.id;
-      const data = change.doc.data();
-
-      // 1. منع تكرار الإرسال
-      if (data.fcmSent === true || processedNotifications.has(notificationId)) return;
-      
-      processedNotifications.add(notificationId);
-
+  if (uniqueTokens.length === 1) {
+    try {
+      await fcm.send({ ...message, token: uniqueTokens[0] });
+      console.log('✅ تم إرسال الإشعار بنجاح.');
+    } catch (err) {
+      console.error('❌ فشل الإرسال:', err.message);
+      if (err.code === 'messaging/registration-token-not-registered' ||
+          err.code === 'messaging/invalid-registration-token') {
+        deadTokens.push(uniqueTokens[0]);
+      }
+    }
+  } else {
+    // تقسيم التوكنات على دفعات من 500
+    for (let i = 0; i < uniqueTokens.length; i += 500) {
+      const batch = uniqueTokens.slice(i, i + 500);
       try {
-        const senderId = data.senderId || (data.data && data.data.senderId);
+        const response = await fcm.sendEachForMulticast({ ...message, tokens: batch });
+        console.log(`✅ نجح: ${response.successCount}, فشل: ${response.failureCount} من ${batch.length}`);
 
-        // تجهيز بيانات FCM
-        let fcmDataPayload = {
-          type: String(data.type || 'general'),
-          notificationId: String(notificationId)
-        };
-
-        if (data.data && typeof data.data === 'object') {
-           for (const [key, value] of Object.entries(data.data)) {
-              if (value !== null && value !== undefined) fcmDataPayload[key] = String(value);
-           }
-        }
-        ['chatId', 'requestId', 'bloodType', 'hospital', 'phone', 'patientName', 'collection', 'targetRole'].forEach(key => {
-           if (data[key] !== null && data[key] !== undefined) fcmDataPayload[key] = String(data[key]);
-        });
-        if (data.imageUrl || (data.data && data.data.imageUrl)) {
-            fcmDataPayload.imageUrl = String(data.imageUrl || data.data.imageUrl);
-        }
-
-        let targetTokens = [];
-
-        if (data.userId) {
-          // أ- إشعار موجه لشخص واحد محدد
-          if (senderId && senderId === data.userId) {
-            console.log(`ℹ️ تخطي الإشعار الفردي لأنه موجه لنفس المرسل (${data.userId})`);
-            await db.collection('notifications').doc(notificationId).update({ fcmSent: true });
-            return;
-          }
-          const userDoc = await db.collection('users').doc(data.userId).get();
-          if (userDoc.exists) {
-             const userData = userDoc.data();
-             if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
-                 targetTokens.push(...userData.fcmTokens);
-             } else if (userData.fcmToken) {
-                 targetTokens.push(userData.fcmToken);
-             }
-          }
-        } else if (data.targetRole) {
-          // ب- إشعار موجه لمجموعة (role أو all)
-          let usersQuery = db.collection('users');
-          
-          if (data.targetRole !== 'all') {
-            if (data.targetRole === 'admin') {
-              usersQuery = usersQuery.where('role', 'in', ['admin', 'superAdmin', 'superadmin']);
-            } else {
-              usersQuery = usersQuery.where('role', '==', data.targetRole);
+        // جمع التوكنات المعطلة لحذفها
+        response.responses.forEach((resp, idx) => {
+          if (!resp.success) {
+            const errCode = resp.error?.code;
+            if (errCode === 'messaging/registration-token-not-registered' ||
+                errCode === 'messaging/invalid-registration-token') {
+              deadTokens.push(batch[idx]);
             }
           }
-          
-          const usersSnap = await usersQuery.get();
-          usersSnap.forEach(userDoc => {
-             const userData = userDoc.data();
-             // استثناء المرسل نفسه
-             if (userDoc.id !== senderId) {
-                if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
-                    targetTokens.push(...userData.fcmTokens);
-                } else if (userData.fcmToken) {
-                    targetTokens.push(userData.fcmToken);
-                }
-             }
-          });
-          
-          if (targetTokens.length > 0) {
-            console.log(`ℹ️ تم تجميع ${targetTokens.length} توكن للمجموعة ${data.targetRole}`);
+        });
+      } catch (err) {
+        console.error('❌ فشل إرسال دفعة:', err.message);
+      }
+    }
+  }
+
+  // تنظيف التوكنات الميتة من Firestore
+  if (deadTokens.length > 0) {
+    console.log(`🧹 حذف ${deadTokens.length} توكن منتهي الصلاحية...`);
+    try {
+      const usersSnap = await db.collection('users').get();
+      const batch = db.batch();
+      usersSnap.forEach(doc => {
+        const data = doc.data();
+        const tokens = extractTokens(data);
+        const hasDeadToken = deadTokens.some(dead => tokens.includes(dead));
+        if (hasDeadToken) {
+          const updates = {};
+          if (deadTokens.includes(data.fcmToken)) {
+            updates.fcmToken = admin.firestore.FieldValue.delete();
+          }
+          if (data.fcmTokens) {
+            updates.fcmTokens = admin.firestore.FieldValue.arrayRemove(...deadTokens);
+          }
+          if (Object.keys(updates).length > 0) {
+            batch.update(doc.ref, updates);
           }
         }
+      });
+      await batch.commit();
+    } catch (e) {
+      console.error('⚠️ خطأ في تنظيف التوكنات الميتة:', e.message);
+    }
+  }
+}
 
-        // إزالة التوكنز المكررة في حالة وجود أجهزة مشتركة
-        targetTokens = [...new Set(targetTokens)];
+// ======================================================
+// ذاكرة مؤقتة لمنع التكرار (idempotency)
+// ======================================================
+const processedNotifications = new Set();
+setInterval(() => {
+  processedNotifications.clear();
+  console.log('🧹 تم تنظيف الذاكرة المؤقتة للإشعارات.');
+}, 60 * 60 * 1000);
 
-        // إرسال الإشعارات لمن لديه توكن
-        if (targetTokens.length > 0) {
-          const message = {
-            notification: { title: data.title, body: data.body },
-            data: fcmDataPayload,
-          };
-          
-          if (targetTokens.length === 1) {
-            message.token = targetTokens[0];
-            await fcm.send(message);
-          } else {
-            // إرسال جماعي (يصل إلى 500 توكن في المرة الواحدة)
-            message.tokens = targetTokens.slice(0, 500);
-            await fcm.sendEachForMulticast(message);
+// ======================================================
+// مراقبة Firestore → إرسال FCM
+// ======================================================
+db.collection('notifications').onSnapshot(snapshot => {
+  snapshot.docChanges().forEach(async (change) => {
+    if (change.type !== 'added') return;
+
+    const notificationId = change.doc.id;
+    const data = change.doc.data();
+
+    // منع التكرار
+    if (data.fcmSent === true) return;
+    if (processedNotifications.has(notificationId)) return;
+    processedNotifications.add(notificationId);
+
+    try {
+      const senderId = data.senderId || data.data?.senderId || null;
+
+      // تجهيز payload البيانات (FCM يطلب قيماً نصية فقط)
+      const fcmDataPayload = {
+        notificationId: String(notificationId),
+        type: String(data.type || 'general'),
+      };
+
+      const topLevelFields = ['chatId', 'requestId', 'bloodType', 'hospital', 'phone',
+                               'patientName', 'collection', 'targetRole', 'imageUrl',
+                               'donationId', 'senderName', 'senderId'];
+      topLevelFields.forEach(key => {
+        if (data[key] != null) fcmDataPayload[key] = String(data[key]);
+      });
+
+      if (data.data && typeof data.data === 'object') {
+        for (const [key, value] of Object.entries(data.data)) {
+          if (value != null && fcmDataPayload[key] === undefined) {
+            fcmDataPayload[key] = String(value);
           }
+        }
+      }
 
-          console.log(`✅ تم إرسال الإشعار لـ ${targetTokens.length} جهاز/مستخدم.`);
+      const notification = {
+        title: data.title || 'جمعية ناس الخير',
+        body: data.body || '',
+      };
+
+      let targetTokens = [];
+
+      // ── أ: إشعار لمستخدم محدد (userId) ──────────────────
+      if (data.userId) {
+        // لا نرسل للمرسل نفسه
+        if (senderId && senderId === data.userId) {
+          console.log(`⏭️ تخطي: إشعار ذاتي للمستخدم ${data.userId}`);
+          await db.collection('notifications').doc(notificationId).update({ fcmSent: true });
+          return;
+        }
+
+        const userDoc = await db.collection('users').doc(data.userId).get();
+        if (userDoc.exists) {
+          targetTokens = extractTokens(userDoc.data());
         } else {
-          console.log(`⚠️ لم يتم إرسال الإشعار لأنه لا توجد توكنز مستهدفة صالحة.`);
+          console.log(`⚠️ المستخدم ${data.userId} غير موجود في قاعدة البيانات.`);
         }
 
-        // تحديث الوثيقة كمنتهية
-        await db.collection('notifications').doc(notificationId).update({
-          fcmSent: true,
-          sentAt: admin.firestore.FieldValue.serverTimestamp()
+      // ── ب: إشعار جماعي (targetRole) ─────────────────────
+      } else if (data.targetRole) {
+        let query = db.collection('users');
+
+        if (data.targetRole === 'admin') {
+          query = query.where('role', 'in', ['admin', 'superAdmin', 'superadmin']);
+        } else if (data.targetRole !== 'all') {
+          query = query.where('role', '==', data.targetRole);
+        }
+
+        const usersSnap = await query.get();
+        usersSnap.forEach(userDoc => {
+          // استثناء المرسل
+          if (userDoc.id === senderId) return;
+          // استثناء مستخدم محدد إضافاً (excludeUserId)
+          if (data.excludeUserId && userDoc.id === data.excludeUserId) return;
+          targetTokens.push(...extractTokens(userDoc.data()));
         });
 
-      } catch (err) {
-        console.error("❌ خطأ أثناء معالجة إشعار Firestore:", err.message);
-        processedNotifications.delete(notificationId);
+        console.log(`ℹ️ [${data.targetRole}] تجميع ${targetTokens.length} توكن (بعد استثناء المرسل).`);
+      } else {
+        console.log(`⚠️ وثيقة إشعار (${notificationId}) لا تحتوي userId ولا targetRole. تجاهل.`);
+        await db.collection('notifications').doc(notificationId).update({ fcmSent: true });
+        return;
       }
+
+      // إرسال FCM
+      await sendFCM(targetTokens, notification, fcmDataPayload);
+
+      // تحديث الوثيقة كـ "تم الإرسال"
+      await db.collection('notifications').doc(notificationId).update({
+        fcmSent: true,
+        sentAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+    } catch (err) {
+      console.error(`❌ خطأ في معالجة الإشعار (${notificationId}):`, err.message);
+      // إعادة الإشعار للقائمة للمحاولة مجدداً في الدقيقة القادمة
+      processedNotifications.delete(notificationId);
     }
   });
 });
 
+// ======================================================
+// تشغيل السيرفر
+// ======================================================
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🌍 السيرفر يعمل الآن على المنفذ: ${PORT}`);
 });

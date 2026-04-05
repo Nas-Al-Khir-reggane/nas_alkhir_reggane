@@ -54,7 +54,7 @@ class AdminController extends GetxController {
     if (isSuperAdmin) return true;
     Get.snackbar(
       '❌ وصول مرفوض',
-      'هذه العملية ($actionLabel) متاحة للمدير العام فقط',
+      'هذه العملية ($actionLabel) متاحة للمنسق العام فقط',
       backgroundColor: Colors.red.withValues(alpha: 0.1),
       colorText: Colors.red,
     );
@@ -148,6 +148,18 @@ class AdminController extends GetxController {
   RxList<ServiceRequestModel> recentRequests = <ServiceRequestModel>[].obs;
   RxList<ServiceRequestModel> urgentRequests = <ServiceRequestModel>[].obs;
   RxList<DonationModel> recentDonations = <DonationModel>[].obs;
+
+  // ✨ دار السبيل
+  RxList<UserModel> darSabilManagers = <UserModel>[].obs;
+  RxList<Map<String, dynamic>> darSabilTasks = <Map<String, dynamic>>[].obs;
+  RxList<ServiceRequestModel> darSabilGuests = <ServiceRequestModel>[].obs;
+  RxList<Map<String, dynamic>> darSabilSupplies = <Map<String, dynamic>>[].obs;
+  RxMap<String, dynamic> darSabilSummary = <String, dynamic>{
+    'guestsCount': 0,
+    'tasksProgress': 0.0,
+    'pendingTasks': 0,
+    'lowSuppliesCount': 0,
+  }.obs;
   RxList<ProjectModel> activeProjectsList = <ProjectModel>[].obs;
   RxList<WorkerUpdate> fieldUpdates = <WorkerUpdate>[].obs;
   RxList<UserModel> activeWorkersList = <UserModel>[].obs;
@@ -218,6 +230,8 @@ class AdminController extends GetxController {
     if (!isAnyAdmin) return;
 
     // --- 1. إحصائيات مالية (للمدير العام فقط من وثيقة الإحصائيات المركزية) ---
+    _listenToDarSabilData();
+
     if (isSuperAdmin) {
       _statsSubs.add(
         _firestore.collection(AppConstants.donationsCollection).snapshots().listen((snap) {
@@ -400,11 +414,11 @@ class AdminController extends GetxController {
         }
 
         // ترتيب حسب حقل order إذا وجد، أو حسب ترتيب الإضافة
-        goals.sort((a, b) => (goalsMap[a.id]['order'] ?? 0).compareTo(goalsMap[b.id]['order'] ?? 0));
-        
         activeGoals.assignAll(goals);
       }, onError: (e) => debugPrint('Live activeGoals error: $e')),
     );
+
+    _listenToDarSabilData();
   }
 
   // تحميل كل بيانات الداشبورد (للبيانات غير اللحظية مثل الرسوم البيانية)
@@ -642,7 +656,7 @@ class AdminController extends GetxController {
 
   Future<void> deleteDonation(DonationModel donation) async {
     if (!isSuperAdmin) {
-      Get.snackbar('❌ وصول مرفوض', 'عذراً، هذه الصلاحية محصورة للمدير العام فقط لتفادي التلاعب بالبيانات المالية.',
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، هذه الصلاحية محصورة للمنسق العام فقط.',
         backgroundColor: Colors.red.withValues(alpha: 0.1),
         colorText: Colors.red);
       return;
@@ -1048,7 +1062,7 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> approveUser(String userId, dynamic role, {List<String>? additionalRoles}) async {
+  Future<void> approveUser(String userId, dynamic role, {List<String>? additionalRoles, bool? canManageDarSabil}) async {
     if (!_requireSuperAdmin('الموافقة على المستخدمين')) return;
     try {
       String roleStr = role is UserRole ? role.name : role.toString();
@@ -1064,6 +1078,21 @@ class AdminController extends GetxController {
       
       if (additionalRoles != null) {
         updateData['additionalRoles'] = additionalRoles;
+      }
+
+      if (canManageDarSabil != null) {
+        updateData['canManageDarSabil'] = canManageDarSabil;
+        
+        // ✨ التزامن مع وثيقة الإعدادات لضمان عمل القواعد الأمنية
+        if (canManageDarSabil) {
+          await _firestore.collection(AppConstants.darSabilMgmtCollection).doc('config').set({
+            'managerIds': FieldValue.arrayUnion([userId])
+          }, SetOptions(merge: true));
+        } else {
+          await _firestore.collection(AppConstants.darSabilMgmtCollection).doc('config').set({
+            'managerIds': FieldValue.arrayRemove([userId])
+          }, SetOptions(merge: true));
+        }
       }
 
       await _firestore.collection(AppConstants.usersCollection).doc(userId).update(updateData);
@@ -1105,7 +1134,7 @@ class AdminController extends GetxController {
 
     Future<void> assignToWorker(String requestId, String workerId, {String? workerName, bool? isGuest}) async {
     if (!isSuperAdmin) {
-      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية إسناد المهام محصورة للمدير العام فقط.',
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية إسناد المهام محصورة للمنسق العام فقط.',
         backgroundColor: Colors.red.withValues(alpha: 0.1),
         colorText: Colors.red);
       return;
@@ -1175,7 +1204,7 @@ class AdminController extends GetxController {
 
     Future<void> assignToVehicle(String requestId, String vehicleId, {bool? isGuest}) async {
     if (!isSuperAdmin) {
-      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية إسناد السيارات محصورة للمدير العام فقط.',
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية إسناد السيارات محصورة للمنسق العام فقط.',
         backgroundColor: Colors.red.withValues(alpha: 0.1),
         colorText: Colors.red);
       return;
@@ -1198,7 +1227,7 @@ class AdminController extends GetxController {
 
     Future<void> updateRequestStatus(String id, String status, {bool? isGuest}) async {
     if (!isSuperAdmin) {
-      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية تغيير حالة وتأكيد الطلبات محصورة للمدير العام فقط.',
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية تغيير حالة وتأكيد الطلبات محصورة للمنسق العام فقط.',
         backgroundColor: Colors.red.withValues(alpha: 0.1),
         colorText: Colors.red);
       return;
@@ -1313,7 +1342,7 @@ class AdminController extends GetxController {
 
     Future<void> deleteRequest(String id, {bool? isGuest}) async {
     if (!isSuperAdmin) {
-      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية حذف الطلبات محصورة للمدير العام فقط.',
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية حذف الطلبات محصورة للمنسق العام فقط.',
         backgroundColor: Colors.red.withValues(alpha: 0.1),
         colorText: Colors.red);
       return;
@@ -1441,7 +1470,7 @@ class AdminController extends GetxController {
     try {
       await _firestore.collection(AppConstants.projectsCollection).add(newProject.toMap());
       await loadActiveProjects();
-      Get.snackbar('✅ تم', 'تم إضافة المشروع بنجاح');
+      Get.snackbar('✅ تمت الإضافة', 'تم إضافة المشروع بنجاح');
     } catch (e) {
       Get.snackbar('خطأ', 'حدث خطأ: $e');
     } finally {
@@ -1697,7 +1726,7 @@ class AdminController extends GetxController {
 
     Future<void> forceAssignDonor({required String requestId, required String donorId, required String donorName, required String donorPhone}) async {
     if (!isSuperAdmin) {
-      Get.snackbar('❌ وصول مرفوض', 'عذراً، تعيين المتبرعين محصور للمدير العام فقط.',
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، تعيين المتبرعين محصور للمنسق العام فقط.',
         backgroundColor: Colors.red.withValues(alpha: 0.1),
         colorText: Colors.red);
       return;
@@ -1756,7 +1785,7 @@ class AdminController extends GetxController {
 
     Future<void> confirmDonor({required String requestId, required String donorId, required String donorName}) async {
     if (!isSuperAdmin) {
-      Get.snackbar('❌ وصول مرفوض', 'عذراً، اعتماد المتبرعين محصور للمدير العام فقط.',
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، اعتماد المتبرعين محصور للمنسق العام فقط.',
         backgroundColor: Colors.red.withValues(alpha: 0.1),
         colorText: Colors.red);
       return;
@@ -1911,7 +1940,7 @@ class AdminController extends GetxController {
 
     Future<void> unassignConfirmedDonor({required String requestId}) async {
     if (!isSuperAdmin) {
-      Get.snackbar('❌ وصول مرفوض', 'عذراً، فك الإسناد محصور للمدير العام فقط.',
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، فك الإسناد محصور للمنسق العام فقط.',
         backgroundColor: Colors.red.withValues(alpha: 0.1),
         colorText: Colors.red);
       return;
@@ -2330,20 +2359,16 @@ class AdminController extends GetxController {
         .toLowerCase();
   }
 
+  // --- 👤 إدارة رتب المستخدمين ---
+
   Future<void> updateUserRole(String userId, String newRole) async {
     if (!_requireSuperAdmin('تغيير رتبة المستخدم')) return;
     try {
-      if (!_isValidRoleName(newRole)) {
-        Get.snackbar('❌ خطأ', 'رتبة غير صالحة: $newRole');
-        return;
-      }
       await _firestore.collection(AppConstants.usersCollection).doc(userId).update({
         'role': newRole,
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      Get.snackbar('✅ تم التحديث', 'تم تغيير رتبة المستخدم إلى ($newRole) بنجاح.',
-          backgroundColor: AppTheme.successColor.withValues(alpha: 0.15),
-          colorText: AppTheme.successColor);
+      Get.snackbar('✅ تم التحديث', 'تم تغيير رتبة المستخدم بنجاح.');
     } catch (e) {
       Get.snackbar('❌ خطأ', 'فشل تحديث الرتبة: $e');
     }
@@ -2351,125 +2376,54 @@ class AdminController extends GetxController {
 
   Future<void> deleteServiceType(String id) async {
     try {
-      await _firestore.collection('service_types').doc(id).delete();
-      Get.snackbar('✅ تم الحذف', 'تم حذف نوع الخدمة بنجاح');
+      await _firestore.collection(AppConstants.serviceTypesCollection).doc(id).delete();
     } catch (e) {
-      Get.snackbar('❌ خطأ', 'فشل الحذف: $e');
+      debugPrint('Error deleting service type: $e');
     }
   }
 
   Future<void> updateServiceType(String id, Map<String, dynamic> data) async {
     try {
-      await _firestore.collection('service_types').doc(id).update(data);
-      Get.snackbar('✅ تم التحديث', 'تم تحديث البيانات بنجاح');
+      await _firestore.collection(AppConstants.serviceTypesCollection).doc(id).update(data);
     } catch (e) {
-      Get.snackbar('❌ خطأ', 'فشل التحديث: $e');
+      debugPrint('Error updating service type: $e');
     }
   }
 
   Future<void> deleteTaskType(String id) async {
     try {
-      await _firestore.collection('task_types').doc(id).delete();
-      Get.snackbar('✅ تم الحذف', 'تم حذف نوع المهمة بنجاح');
+      await _firestore.collection(AppConstants.taskTypesCollection).doc(id).delete();
     } catch (e) {
-      Get.snackbar('❌ خطأ', 'فشل الحذف: $e');
+      debugPrint('Error deleting task type: $e');
     }
   }
 
   Future<void> updateTaskType(String id, Map<String, dynamic> data) async {
     try {
-      await _firestore.collection('task_types').doc(id).update(data);
-      Get.snackbar('✅ تم التحديث', 'تم تحديث المهمة بنجاح');
+      await _firestore.collection(AppConstants.taskTypesCollection).doc(id).update(data);
     } catch (e) {
-      Get.snackbar('❌ خطأ', 'فشل التحديث: $e');
+      debugPrint('Error updating task type: $e');
     }
   }
 
-  Future<void> seedDefaultServices() => seedInitialData();
-
-  // --- إدارة الأهداف التشغيلية (Super Admin Only) ---
+  // --- 🚀 إدارة الأهداف التحديات التشغيلية (Challenges) ---
 
   Future<void> loadStrategicGoals() async {
     try {
       final doc = await _firestore.doc(AppConstants.strategicGoalsDoc).get();
-      if (!doc.exists) {
-        activeGoals.clear();
-        return;
-      }
+      if (!doc.exists) return;
 
       final data = doc.data();
-      if (data == null || data['goals'] == null) {
-        activeGoals.clear();
-        return;
-      }
+      if (data == null || data['goals'] == null) return;
 
       final Map<String, dynamic> goalsMap = Map<String, dynamic>.from(data['goals']);
       List<StrategicGoalModel> goals = [];
-      final now = DateTime.now();
-      final startOfMonth = DateTime(now.year, now.month, 1);
 
       for (var entry in goalsMap.entries) {
         var goalData = Map<String, dynamic>.from(entry.value);
         if (!(goalData['isActive'] ?? true)) continue;
-
-        var goal = StrategicGoalModel.fromMap(goalData, entry.key);
-        double currentProgress = goal.currentValue;
-        final type = goalData['type'] as String;
-
-        if (!isAnyAdmin) {
-          goals.add(goal.copyWith(currentValue: currentProgress));
-          continue;
-        }
-
-        try {
-          if (type == GoalType.donations.name) {
-            final donationSnap = await _firestore.collection(AppConstants.donationsCollection)
-                .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
-                .get();
-            double total = 0;
-            for (var d in donationSnap.docs) {
-              total += ((d.data())['amount'] ?? 0).toDouble();
-            }
-            currentProgress = total;
-          } 
-          else if (type == GoalType.beneficiaries.name) {
-            final beneficiarySnap = await _firestore.collection(AppConstants.usersCollection)
-                .where('role', isEqualTo: UserRole.beneficiary.name)
-                .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
-                .get();
-            currentProgress = beneficiarySnap.docs.length.toDouble();
-          } 
-          else if (type == GoalType.services.name) {
-            Query q = _firestore.collection(AppConstants.serviceRequestsCollection)
-                .where('status', isEqualTo: 'completed')
-                .where('updatedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth));
-            
-            final serviceTypeId = goalData['serviceTypeId'];
-            if (serviceTypeId != null && serviceTypeId.toString().isNotEmpty) {
-              q = q.where('type', isEqualTo: serviceTypeId);
-            }
-            
-            final serviceSnap = await q.get();
-            currentProgress = serviceSnap.docs.length.toDouble();
-          }
-
-          // إذا كان المستخدم مديراً، نقوم بتحديث القيمة المخزنة في Firestore ليراها المتبرعون
-          if (isAnyAdmin && currentProgress != goal.currentValue) {
-            _firestore.doc(AppConstants.strategicGoalsDoc).set({
-              'goals': {
-                entry.key: {'currentValue': currentProgress}
-              }
-            }, SetOptions(merge: true));
-          }
-        } catch (e) {
-          debugPrint('Permission or calc error for goal ${goal.title}: $e');
-          // في حال فشل الحساب (مثلاً للمتبرع)، نعتمد على القيمة المخزنة مسبقاً في الوثيقة
-          currentProgress = goal.currentValue;
-        }
-
-        goals.add(goal.copyWith(currentValue: currentProgress));
+        goals.add(StrategicGoalModel.fromMap(goalData, entry.key));
       }
-
       activeGoals.assignAll(goals);
     } catch (e) {
       debugPrint('Error loading strategic goals: $e');
@@ -2477,65 +2431,40 @@ class AdminController extends GetxController {
   }
 
   Future<void> addStrategicGoal(StrategicGoalModel goal) async {
-    if (!isSuperAdmin) {
-      Get.snackbar('🚫 عذراً', 'هذه الصلاحية محصورة فقط للمدير العام للجمعية.', 
-          backgroundColor: Colors.orange.withValues(alpha: 0.1), colorText: Colors.orange);
-      return;
-    }
-
+    if (!isSuperAdmin) return;
     try {
-      isLoading.value = true;
-      final goalId = _firestore.collection('dummy').doc().id; 
+      final goalId = _firestore.collection('dummy').doc().id;
       final data = goal.toMap();
       data['id'] = goalId;
-      
       await _firestore.doc(AppConstants.strategicGoalsDoc).set({
-        'goals': {
-          goalId: data
-        }
+        'goals': {goalId: data}
       }, SetOptions(merge: true));
-      
       await loadStrategicGoals();
-      Get.snackbar('🚀 انطلقنا!', 'تم تفعيل التحدي التشغيلي الجديد بنجاح.',
-          backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
-          colorText: AppTheme.successColor);
+      Get.snackbar('✅ نجاح', 'تم إضافة التحدي بنجاح');
     } catch (e) {
-      debugPrint('Firestore Add Goal Error: $e');
-    } finally {
-      isLoading.value = false;
+      debugPrint('Error adding strategic goal: $e');
     }
   }
 
   Future<void> updateStrategicGoal(StrategicGoalModel goal) async {
     if (!isSuperAdmin) return;
     try {
-      isLoading.value = true;
       await _firestore.doc(AppConstants.strategicGoalsDoc).set({
-        'goals': {
-          goal.id: goal.toMap()
-        }
+        'goals': {goal.id: goal.toMap()}
       }, SetOptions(merge: true));
       await loadStrategicGoals();
-      Get.snackbar('تم التحديث', 'تم حفظ التعديلات على التحدي بنجاح.');
     } catch (e) {
       debugPrint('Error updating goal: $e');
-    } finally {
-      isLoading.value = false;
     }
   }
 
   Future<void> deactivateGoal(String goalId) async {
     if (!isSuperAdmin) return;
-    
     try {
       await _firestore.doc(AppConstants.strategicGoalsDoc).set({
-        'goals': {
-          goalId: {'isActive': false}
-        }
+        'goals': {goalId: {'isActive': false}}
       }, SetOptions(merge: true));
-      
       await loadStrategicGoals();
-      Get.snackbar('تم الإكمال', 'تم إكمال أو أرشفة التحدي بنجاح.');
     } catch (e) {
       debugPrint('Error deactivating goal: $e');
     }
@@ -2548,9 +2477,235 @@ class AdminController extends GetxController {
         'goals.$goalId': FieldValue.delete()
       });
       await loadStrategicGoals();
-      Get.snackbar('تم الحذف', 'تم إزالة التحدي نهائياً من النظام.');
     } catch (e) {
       debugPrint('Error deleting goal: $e');
+    }
+  }
+
+  // --- 🍃 إدارة دار السبيل (Dar al-Sabil Logic) ---
+
+  void _listenToDarSabilData() {
+    if (!isAnyAdmin) return;
+
+    // تتبع النزلاء
+    _statsSubs.add(
+      _firestore.collection(AppConstants.serviceRequestsCollection)
+          .where('type', isEqualTo: 'dar_sabil')
+          .orderBy('createdAt', descending: true)
+          .snapshots().listen((snap) {
+            darSabilGuests.value = snap.docs.map((d) => ServiceRequestModel.fromMap(d.data(), id: d.id)).toList();
+            _updateDarSabilSummary();
+          })
+    );
+
+    // تتبع المهام الداخلية
+    _statsSubs.add(
+      _firestore.collection(AppConstants.darSabilMgmtCollection)
+          .doc('tasks').collection('items')
+          .orderBy('createdAt', descending: true)
+          .snapshots().listen((snap) {
+            darSabilTasks.value = snap.docs.map((d) => {'id': d.id, ...d.data()}).toList();
+            _updateDarSabilSummary();
+          })
+    );
+
+    // تتبع المسيرين
+    _statsSubs.add(
+      _firestore.collection(AppConstants.darSabilMgmtCollection)
+          .doc('config').snapshots().listen((doc) async {
+            if (doc.exists && doc.data() != null) {
+              final List<String> ids = List<String>.from(doc.data()!['managerIds'] ?? []);
+              if (ids.isEmpty) {
+                darSabilManagers.clear();
+                return;
+              }
+              final usersSnap = await _firestore.collection(AppConstants.usersCollection)
+                  .where(FieldPath.documentId, whereIn: ids).get();
+              darSabilManagers.value = usersSnap.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList();
+            }
+          })
+    );
+
+    // تتبع المؤن
+    _statsSubs.add(
+      _firestore.collection(AppConstants.darSabilMgmtCollection)
+          .doc('supplies').collection('items').snapshots().listen((snap) {
+            darSabilSupplies.value = snap.docs.map((d) => {'id': d.id, ...d.data()}).toList();
+            _updateDarSabilSummary();
+          })
+    );
+  }
+
+  void _updateDarSabilSummary() {
+    final completedCount = darSabilTasks.where((t) => t['status'] == 'completed').length;
+    final total = darSabilTasks.length;
+    final lowCount = darSabilSupplies.where((s) => s['status'] != 'available').length;
+
+    darSabilSummary.value = {
+      'guestsCount': darSabilGuests.length,
+      'tasksProgress': total > 0 ? (completedCount / total) : 0.0,
+      'pendingTasks': total - completedCount,
+      'lowSuppliesCount': lowCount,
+    };
+    darSabilSummary.refresh();
+  }
+
+  Future<void> assignDarSabilManager(String userId) async {
+    if (!_requireSuperAdmin('تعيين مسير لدار السبيل')) return;
+    try {
+      await _firestore.collection(AppConstants.darSabilMgmtCollection).doc('config').set({
+        'managerIds': FieldValue.arrayUnion([userId])
+      }, SetOptions(merge: true));
+      Get.snackbar('✅ نجاح', 'تم تعيين المسير بنجاح');
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'تعذر التعيين: $e');
+    }
+  }
+
+  Future<void> revokeDarSabilManager(String userId) async {
+    if (!_requireSuperAdmin('إلغاء تعيين مسير')) return;
+    try {
+      await _firestore.collection(AppConstants.darSabilMgmtCollection).doc('config').update({
+        'managerIds': FieldValue.arrayRemove([userId])
+      });
+      Get.snackbar('✅ نجاح', 'تم إلغاء التعيين');
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'تعذر الإلغاء: $e');
+    }
+  }
+
+  Future<void> addDarSabilTask(String title, String desc, String assignedToId, String assignedToName) async {
+    if (!isAnyAdmin) return; // Changed from SuperAdmin to AnyAdmin
+    try {
+      await _firestore.collection(AppConstants.darSabilMgmtCollection).doc('tasks').collection('items').add({
+        'title': title,
+        'description': desc,
+        'assignedToId': assignedToId,
+        'assignedToName': assignedToName,
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      Get.snackbar('✅ نجاح', 'تم إضافة المهمة بنجاح للمسؤول: $assignedToName');
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'فشل إضافة المهمة: $e');
+    }
+  }
+
+  Future<void> updateDarSabilSupply(String itemId, String newStatus) async {
+    if (!isAnyAdmin) return;
+    try {
+      await _firestore.collection(AppConstants.darSabilMgmtCollection)
+          .doc('supplies').collection('items').doc(itemId).set({
+            'status': newStatus,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+      _updateDarSabilSummary();
+    } catch (e) {
+      debugPrint('Supply update error: $e');
+    }
+  }
+
+  Future<void> toggleDarSabilTask(String taskId, String currentStatus) async {
+    if (!isAnyAdmin) return;
+    try {
+      final newStatus = currentStatus == 'pending' ? 'completed' : 'pending';
+      await _firestore.collection(AppConstants.darSabilMgmtCollection)
+          .doc('tasks').collection('items').doc(taskId).update({'status': newStatus});
+    } catch (e) {
+      debugPrint('Task toggle error: $e');
+    }
+  }
+
+  Future<void> deleteDarSabilTask(String taskId) async {
+    if (!isAnyAdmin) return; // Changed from SuperAdmin to AnyAdmin
+    try {
+      await _firestore.collection(AppConstants.darSabilMgmtCollection)
+          .doc('tasks').collection('items').doc(taskId).delete();
+      Get.snackbar('✅ تم الحذف', 'تم حذف المهمة بنجاح');
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'تعذر الحذف');
+    }
+  }
+
+  Future<void> seedDarSabilInitialTasks() async {
+    if (!_requireSuperAdmin('تهيئة المهام')) return;
+    try {
+      final batch = _firestore.batch();
+      final collection = _firestore.collection(AppConstants.darSabilMgmtCollection).doc('tasks').collection('items');
+      final tasks = [
+        {'title': 'تجهيز الغرف', 'description': 'غسل الأغطية وفحص الإنارة.'},
+        {'title': 'جرد المطبخ', 'description': 'التأكد من توفر المواد الأساسية.'},
+        {'title': 'سجل النزلاء', 'description': 'مراجعة بيانات النزلاء لليوم.'},
+        {'title': 'صيانة المرافق', 'description': 'فحص دورات المياه.'},
+        {'title': 'الاستقبال', 'description': 'توزيع الوجبات ومرافقة الضيوف الجدد.'},
+      ];
+      for (var t in tasks) {
+        final doc = collection.doc();
+        batch.set(doc, {
+          ...t,
+          'assignedToId': currentUser?.id ?? '',
+          'assignedToName': currentUser?.name ?? 'المنسق',
+          'status': 'pending',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
+      Get.snackbar('✅ نجاح', 'تمت تهيئة المهام بنجاح');
+    } catch (e) {
+      debugPrint('Seeding error: $e');
+    }
+  }
+
+  Future<void> assignDarSabilRoom(String requestId, String roomNumber) async {
+    if (!isAnyAdmin) return;
+    try {
+      isLoading.value = true;
+      await _firestore.collection(AppConstants.serviceRequestsCollection).doc(requestId).update({
+        'roomNumber': roomNumber,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      Get.snackbar('✅ تم التخصيص', 'تم تخصيص الغرفة رقم $roomNumber للنزيل بنجاح.',
+          backgroundColor: Colors.green.withValues(alpha: 0.1),
+          colorText: Colors.green);
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'تعذر تخصيص الغرفة: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> refreshDarSabilData() async {
+    isLoading.value = true;
+    try {
+      await Future.delayed(const Duration(seconds: 1)); // UX delay for visual feedback
+      _updateDarSabilSummary();
+      Get.snackbar('🔄 تم التحديث', 'تمت إعادة حساب إحصائيات الدار وتحديث البيانات الحية', 
+          backgroundColor: Colors.blue.withValues(alpha: 0.1),
+          colorText: Colors.blue);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> toggleUserDarSabilPermission(String userId, bool value) async {
+    if (!_requireSuperAdmin('تعديل صلاحيات دار السبيل')) return;
+    try {
+      isLoading.value = true;
+      await _firestore.collection(AppConstants.usersCollection).doc(userId).update({
+        'canManageDarSabil': value,
+      });
+      // تحديث قائمة المستخدمين النشطة محلياً لضمان الانعكاس الفوري في الواجهة
+      final index = activeWorkersList.indexWhere((u) => u.id == userId);
+      if (index != -1) {
+        activeWorkersList[index] = activeWorkersList[index].copyWith(canManageDarSabil: value);
+      }
+      
+      Get.snackbar('✅ تم التحديث', value ? 'تم منح صلاحية إدارة دار السبيل' : 'تم سحب صلاحية إدارة دار السبيل',
+          backgroundColor: value ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1));
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'تعذر تحديث الصلاحية: $e');
+    } finally {
+      isLoading.value = false;
     }
   }
 }

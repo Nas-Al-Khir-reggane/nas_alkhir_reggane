@@ -18,6 +18,7 @@ import '../../shared/widgets/community_pulse_card.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/animations/sound_manager.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../admin/screens/dar_al_sabil_management_screen.dart';
 import '../../../core/widgets/update_banner.dart';
 
 
@@ -408,10 +409,10 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                   }).toList(),
                 )),
 
-          // ======== 🆕 قسم الخدمات الإضافية للمستفيد ========
           Obx(() {
             final user = authController.currentUser.value;
-            if (user == null || !user.additionalRoles.contains('canDonate')) {
+            if (user == null) return const SizedBox.shrink();
+            if (!user.canManageDarSabil && !user.additionalRoles.contains('canDonate')) {
               return const SizedBox.shrink();
             }
 
@@ -431,53 +432,28 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => Get.toNamed(AppRoutes.donorDashboard),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.pinkAccent.withValues(alpha: 0.2)),
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.pinkAccent.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.volunteer_activism_rounded, color: Colors.pinkAccent, size: 24),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('كن متبرعاً وصانع أمل',
-                                    style: TextStyle(
-                                        color: Theme.of(context).colorScheme.onSurface,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15)),
-                                const SizedBox(height: 4),
-                                Text('ساهم بالتبرع المالي والمشاريع الخيرية',
-                                    style: TextStyle(
-                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                        fontSize: 12)),
-                              ],
-                            ),
-                          ),
-                          Icon(Icons.arrow_forward_ios_rounded,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant, size: 16),
-                        ],
-                      ),
-                    ),
+
+                // ✨ إضافة كرت إدارة دار السبيل للمفوضين
+                if (user.canManageDarSabil) ...[
+                  _buildExtraDashboardCard(
+                    title: 'إدارة دار السبيل 🏠',
+                    subtitle: 'إدارة النزلاء، الغرف، والمهام اليومية',
+                    icon: Icons.home_work_rounded,
+                    color: AppTheme.goldAccent,
+                    onTap: () => Get.to(() => const DarSabilManagementScreen()),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                ],
+
+                if (user.additionalRoles.contains('canDonate')) ...[
+                  _buildExtraDashboardCard(
+                    title: 'كن متبرعاً وصانع أمل',
+                    subtitle: 'ساهم بالتبرع المالي والمشاريع الخيرية',
+                    icon: Icons.volunteer_activism_rounded,
+                    color: Colors.pinkAccent,
+                    onTap: () => Get.toNamed(AppRoutes.donorDashboard),
+                  ),
+                ],
               ],
             );
           }),
@@ -1072,6 +1048,62 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
       child: Text(
         AppConstants.translateStatus(status),
         style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildExtraDashboardCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15)),
+                    const SizedBox(height: 4),
+                    Text(subtitle,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 12)),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant, size: 16),
+            ],
+          ),
+        ),
       ),
     );
   }

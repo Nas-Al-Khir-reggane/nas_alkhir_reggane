@@ -44,7 +44,7 @@ class ProjectsScreen extends StatelessWidget {
               ),
             ),
           ),
-          
+
           Column(
             children: [
               SafeArea(
@@ -65,7 +65,7 @@ class ProjectsScreen extends StatelessWidget {
                           Obx(() => Text(
                               '${projectController.totalProjects} مشروع قيد الإدارة',
                               style: TextStyle(
-                                  color: AppTheme.textSecondary.withValues(alpha: 0.7), 
+                                  color: AppTheme.textSecondary.withValues(alpha: 0.7),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500))),
                         ],

@@ -14,6 +14,7 @@ import '../../../data/models/service_request_model.dart';
 import '../../../data/models/user_model.dart';
 import './update_task_screen.dart';
 import './task_detail_screen.dart';
+import '../../admin/screens/dar_al_sabil_management_screen.dart';
 
 import '../../../data/services/notification_service.dart';
 import '../../shared/widgets/community_pulse_card.dart';
@@ -129,6 +130,8 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                 children: [
                   _buildHomeTab(),
                   const UpdateTaskScreen(),
+                  if (authController.currentUser.value?.canManageDarSabil ?? false)
+                    const DarSabilManagementScreen(),
                   _buildSupportTab(),
                 ],
               ),
@@ -166,6 +169,12 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                 activeIcon: Icon(Icons.add_circle),
                 label: 'تحديث',
               ),
+              if (authController.currentUser.value?.canManageDarSabil ?? false)
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.home_work_outlined),
+                  activeIcon: Icon(Icons.home_work),
+                  label: 'دار السبيل',
+                ),
               BottomNavigationBarItem(
                 icon: Obx(() {
                   final chatController = Get.find<ChatController>();
@@ -510,7 +519,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                     .where((u) => u.role == UserRole.admin || u.role == UserRole.superAdmin)
                     .toList();
 
-                // ترتيب: المدير العام أولاً ثم البقية أبجدياً
+                // ترتيب: المنسق العام أولاً ثم البقية أبجدياً
                 admins.sort((a, b) {
                   if (a.role == UserRole.superAdmin && b.role != UserRole.superAdmin) return -1;
                   if (a.role != UserRole.superAdmin && b.role == UserRole.superAdmin) return 1;

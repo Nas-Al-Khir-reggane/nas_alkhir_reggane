@@ -692,6 +692,8 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   void _showChangeRoleDialog(UserModel user) {
     UserRole selectedRole = user.role;
     List<String> selectedAdditionalRoles = List.from(user.additionalRoles);
+    bool canManageSabil = user.canManageDarSabil;
+    bool isAuthorizedToGrantSuperAdmin = _adminCtl.currentUser?.role == UserRole.superAdmin;
 
     Get.bottomSheet(
       StatefulBuilder(builder: (context, setSheetState) {
@@ -725,13 +727,49 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                         value: selectedRole,
                         style: TextStyle(color: AppTheme.textPrimary),
                         items: UserRole.values.map((role) {
-                          if (role == UserRole.superAdmin && _adminCtl.currentUser?.role != UserRole.superAdmin) return null;
-                          return DropdownMenuItem(value: role, child: Text(role.displayName));
+                          if (role == UserRole.superAdmin && !isAuthorizedToGrantSuperAdmin) return null;
+                          return DropdownMenuItem(
+                            value: role, 
+                            child: Row(
+                              children: [
+                                Text(role.displayName),
+                                if (role == UserRole.superAdmin) ...[
+                                  const SizedBox(width: 8),
+                                  Icon(Icons.stars_rounded, color: AppTheme.goldAccent, size: 18),
+                                ],
+                              ],
+                            ),
+                          );
                         }).whereType<DropdownMenuItem<UserRole>>().toList(),
                         onChanged: (val) => setSheetState(() => selectedRole = val!),
                       ),
                     ),
                   ),
+                  if (selectedRole == UserRole.superAdmin && user.role != UserRole.superAdmin)
+                    FadeInDown(
+                      duration: const Duration(milliseconds: 300),
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.goldAccent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded, color: AppTheme.goldAccent, size: 20),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                "تنبيه: أنت الآن تمنح هذا المستخدم كامل صلاحيات 'المنسق العام' (Super Admin).",
+                                style: TextStyle(color: AppTheme.goldAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 20),
                   Text("صلاحيات إضافية (اختياري)", style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
@@ -765,6 +803,18 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                       });
                     },
                   ),
+                  CheckboxListTile(
+                    title: Text("صلاحية إدارة دار السبيل 🏠", style: TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
+                    subtitle: Text("تمكن المستخدم من الوصول لشاشة إدارة النزلاء والمهام", style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                    value: canManageSabil,
+                    activeColor: AppTheme.goldAccent,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (val) {
+                      setSheetState(() {
+                        canManageSabil = val ?? false;
+                      });
+                    },
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -789,6 +839,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                               user.id, 
                               selectedRole, 
                               additionalRoles: selectedAdditionalRoles,
+                              canManageDarSabil: canManageSabil,
                             );
                             Get.back();
                           },
@@ -842,6 +893,10 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                   "صلاحيات إضافية", 
                   user.additionalRoles.map((r) => r == 'canDonate' ? 'التبرع' : r == 'canRequestService' ? 'الاستفادة' : r).join('، ')
                 ),
+              ],
+              if (user.canManageDarSabil) ...[
+                const SizedBox(height: 12),
+                _buildUserInfoRow(Icons.home_work_rounded, "إدارة دار السبيل", "مُفوض ✅"),
               ],
               const SizedBox(height: 12),
               _buildUserInfoRow(Icons.male_rounded, "الجنس", user.gender),

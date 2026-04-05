@@ -386,6 +386,11 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ─── إدارة دار السبيل ──────────────────────────────────
+    match /dar_sabil_mgmt/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
     // ─── البث العام التفاعلي (Broadcasts) ───────────────────
     match /broadcasts/{broadcastId} {
       allow read:   if isLoggedIn();

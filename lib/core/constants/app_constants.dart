@@ -327,6 +327,7 @@ class AppConstants {
   static const String serviceTypesCollection = "service_types";
   static const String taskTypesCollection = "task_types";
   static const String strategicGoalsDoc = "app_config/strategic_goals";
+  static const String darSabilMgmtCollection = "dar_sabil_mgmt";
 
 
   static String translateStatus(String status) {

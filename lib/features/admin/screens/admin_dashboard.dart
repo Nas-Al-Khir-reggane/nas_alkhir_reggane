@@ -35,6 +35,7 @@ import '../widgets/mission_control_map.dart';
 import '../widgets/activity_pulse.dart';
 import '../../../core/widgets/role_guard.dart';
 import 'project_detail_screen.dart';
+import 'dar_al_sabil_management_screen.dart';
 import '../widgets/dashboard_header.dart';
 import '../../shared/widgets/community_pulse_card.dart';
 import '../../../core/widgets/update_banner.dart';
@@ -1108,6 +1109,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
             _buildSettingsTile(Icons.track_changes_outlined, 'الأهداف الخيرية', 'تعديل أوامر الجمعية', () => Get.toNamed(AppRoutes.adminStrategicGoals)),
             _buildSettingsTile(Icons.bar_chart, 'التقارير وإحصائيات المردود', 'تقارير شهرية وسنوية شاملة ومفصلة PDF', () => Get.toNamed('/admin/reports')),
           ],
+          
+          // ✨ إدارة دار السبيل تظهر للمنسق العام ولأي مدير مفوض
+          if (controller.isSuperAdmin || (user?.canManageDarSabil ?? false)) ...[
+            _buildSettingsTile(Icons.bed_rounded, 'إدارة دار السبيل 🏠', 'تعيين المسيرين ومتابعة المهام والنزلاء', () => Get.to(() => const DarSabilManagementScreen())),
+          ],
+          
           _buildSettingsTile(Icons.airport_shuttle, 'سيارات الجنازة', 'إدارة السيارات', () => Get.toNamed('/admin/vehicles')),
           const SizedBox(height: 12),
           _buildSettingsTile(Icons.inbox_rounded, 'صندوق الرسائل', 'جميع محادثاتك الخاصة والجماعية', () => setState(() => _currentIndex = 4)), // Index 4 is Inbox
