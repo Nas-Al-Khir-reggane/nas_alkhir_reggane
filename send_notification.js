@@ -2,19 +2,22 @@ const admin = require('firebase-admin');
 const express = require('express');
 const app = express();
 
+app.use(express.json());
+
 // 1. إعداد منفذ للسيرفر (مطلوب للمنصات السحابية)
 const PORT = process.env.PORT || 3000;
 
-// 2. قراءة بيانات شهادة Firebase من متغير بيئة FIREBASE_CONFIG أو من الملف المحلي
+// 2. قراءة بيانات شهادة Firebase من متغير بيئة FIREBASE_CONFIG
 let serviceAccount;
 try {
   if (process.env.FIREBASE_CONFIG) {
     serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
   } else {
+    // للدعم المحلي فقط إذا لم يتوفر متغير البيئة
     serviceAccount = require('./serviceAccountKey.json');
   }
 } catch (e) {
-  console.error("❌ فشل في تحميل ملف مفتاح الخدمة! تأكد من إعداد FIREBASE_CONFIG بشكل صحيح كـ JSON.");
+  console.error("❌ فشل في تحميل مفتاح خدمة Firebase! تأكد من ضبط FIREBASE_CONFIG.");
   process.exit(1);
 }
 
@@ -29,7 +32,32 @@ const fcm = admin.messaging();
 
 // سيرفر بسيط لإبقاء الخدمة تعمل
 app.get('/', (req, res) => res.send('🚀 خادم إشعارات "ناس الخير" يعمل بنجاح 24/7'));
-app.listen(PORT, () => console.log(`🌍 السيرفر يعمل على المنفذ: ${PORT}`));
+
+// نقطة اتصال لاستقبال بلاغات الطوارئ من Flutter
+app.post('/send-emergency', async (req, res) => {
+  const { token, title, body } = req.body;
+  const message = {
+    notification: { title, body },
+    android: {
+      priority: 'high',
+      notification: {
+        sound: 'default'
+      }
+    },
+    token: token
+  };
+
+  try {
+    const response = await admin.messaging().send(message);
+    console.log('✅ تم إرسال بلاغ طوارئ بنجاح:', response);
+    res.status(200).send('تم الإرسال بنجاح');
+  } catch (error) {
+    console.error('❌ خطأ في إرسال بلاغ الطوارئ:', error);
+    res.status(500).send(error.message);
+  }
+});
+
+app.listen(PORT, () => console.log('🌍 السيرفر يعمل على منفذ ' + PORT));
 
 console.log('📡 بدأت مراقبة قاعدة البيانات لإرسال الإشعارات الفورية...');
 
