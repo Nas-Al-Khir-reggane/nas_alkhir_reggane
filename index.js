@@ -84,18 +84,21 @@ async function sendFCM(tokens, notification, dataPayload) {
   const uniqueTokens = [...new Set(tokens)];
   console.log(`📨 إرسال إلى ${uniqueTokens.length} جهاز...`);
 
+  // ⚠️ نستخدم data-only message (بدون حقل notification)
+  // لكي يتحكم التطبيق بالكامل في عرض الإشعار ولا يعرض النظام إشعاراً مزدوجاً
+  const enrichedData = {
+    ...dataPayload,
+    title: notification.title || 'جمعية ناس الخير',
+    body: notification.body || '',
+  };
+
   const message = {
-    notification: {
-      title: notification.title || 'جمعية ناس الخير',
-      body: notification.body || '',
-    },
-    data: dataPayload,
+    data: enrichedData,
     android: {
       priority: 'high',
-      notification: { sound: 'notification', channelId: 'nas_alkhair_v2' }
     },
     apns: {
-      payload: { aps: { contentAvailable: true, sound: 'notification.wav' } },
+      payload: { aps: { contentAvailable: true, 'mutable-content': 1 } },
       headers: { 'apns-priority': '10' },
     },
   };
