@@ -82,47 +82,85 @@ app.post('/send-emergency', async (req, res) => {
   }
 });
 
+// ذاكرة مؤقتة لمنع سباق البيانات (Race Condition) والتكرار
+const processedNotifications = new Set();
+// تنظيف الذاكرة المؤقتة كل ساعة لمنع استهلاك الذاكرة بشكل مستمر
+setInterval(() => processedNotifications.clear(), 60 * 60 * 1000);
+
 // مراقبة Firestore لإرسال الإشعارات التلقائية
 db.collection('notifications').onSnapshot(snapshot => {
   snapshot.docChanges().forEach(async (change) => {
     if (change.type === 'added') {
+      const notificationId = change.doc.id;
       const data = change.doc.data();
 
-      // 1. منع تكرار الإرسال
-      if (data.fcmSent === true) return;
+      // 1. منع تكرار الإرسال عبر الذاكرة المؤقتة والحالة في قاعدة البيانات
+      if (data.fcmSent === true || processedNotifications.has(notificationId)) return;
+      
+      processedNotifications.add(notificationId);
 
       try {
-        // 2. جلب توكن المستخدم المستهدف
+        // 2. التحقق من أن المرسل ليس هو نفسه المستلم (منع الإشعارات الذاتية)
+        const senderId = data.senderId || (data.data && data.data.senderId); // قد يكون داخل خريطة data
+        if (senderId && senderId === data.userId) {
+          console.log(`ℹ️ تخطي الإشعار لأن المرسل هو نفسه المستلم (${data.userId})`);
+          // تحديث الحالة حتى لا يتم معالجته لاحقاً
+          await db.collection('notifications').doc(notificationId).update({ fcmSent: true });
+          return;
+        }
+
+        // 3. جلب توكن المستخدم المستهدف
         const userDoc = await db.collection('users').doc(data.userId).get();
         if (userDoc.exists && userDoc.data().fcmToken) {
+          
+          // تجهيز بيانات FCM. يجب أن تكون كل القيم من نوع String
+          let fcmDataPayload = {
+            type: data.type || 'general',
+            notificationId: notificationId
+          };
 
-          // 3. التحقق من أن المرسل ليس هو نفسه المستلم (إذا كان الحقل متوفراً)
-          // ملاحظة: الحقل senderId يجب أن يكون موجوداً في وثيقة الإشعار في Firestore
-          if (data.senderId && data.senderId === data.userId) {
-            console.log(`ℹ️ تخطي الإشعار لأن المرسل هو نفسه المستلم (${data.userId})`);
-            return;
+          // نقل كل البيانات الموجودة في الجذر أو في حقل data إلى الـ payload
+          if (data.data && typeof data.data === 'object') {
+             for (const [key, value] of Object.entries(data.data)) {
+                if (value !== null && value !== undefined) {
+                   fcmDataPayload[key] = String(value);
+                }
+             }
+          }
+          // إضافة الحقول المباشرة إذا لزم الأمر
+          ['chatId', 'requestId', 'bloodType', 'hospital', 'phone', 'patientName', 'collection', 'targetRole'].forEach(key => {
+             if (data[key] !== null && data[key] !== undefined) {
+                 fcmDataPayload[key] = String(data[key]);
+             }
+          });
+
+          // إضافة imageUrl لتفعيل الإشعارات المصورة
+          if (data.imageUrl || (data.data && data.data.imageUrl)) {
+              fcmDataPayload.imageUrl = String(data.imageUrl || data.data.imageUrl);
           }
 
           const message = {
             notification: { title: data.title, body: data.body },
             token: userDoc.data().fcmToken,
-            data: {
-              type: data.type || 'general',
-              notificationId: change.doc.id // لمعرفه هوية الإشعار ومنع التكرار في الهاتف
-            }
+            data: fcmDataPayload
           };
+          
           await fcm.send(message);
 
-          // تحديث الوثيقة فوراً لمنع أي Snapshot آخر من معالجتها
-          await db.collection('notifications').doc(change.doc.id).update({
+          // تحديث الوثيقة في قاعدة البيانات
+          await db.collection('notifications').doc(notificationId).update({
             fcmSent: true,
             sentAt: admin.firestore.FieldValue.serverTimestamp()
           });
 
           console.log(`✅ تم إرسال إشعار للمستخدم ${data.userId}`);
+        } else {
+           // المتلقي لا يملك توكن (مستخدم غير مسجل الدخول ربما)، نسجلها كـ sent لتفادي محاولة إرسالها كل مرة
+           await db.collection('notifications').doc(notificationId).update({ fcmSent: true });
         }
       } catch (err) {
         console.error("❌ خطأ أثناء معالجة إشعار Firestore:", err.message);
+        processedNotifications.delete(notificationId); // إزالة من الذاكرة في حالة الخطأ لإعادة المحاولة لاحقاً
       }
     }
   });

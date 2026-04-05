@@ -30,7 +30,6 @@ class NotificationService extends GetxController {
   final List<StreamSubscription> _subscriptions = [];
   final Set<String> _processedIds = {}; 
   final Set<String> _processedNotificationKeys = {}; 
-  DateTime _sessionStartTime = DateTime.now().subtract(const Duration(seconds: 15));
 
   static UserRole? _currentUserRole() {
     try {
@@ -81,9 +80,7 @@ class NotificationService extends GetxController {
 
   void _initListeners() {
     debugPrint('📡 NotificationService: Re-initializing Listeners...');
-    _sessionStartTime = DateTime.now().subtract(const Duration(seconds: 5)); 
     _startListeningToUnreadCount();
-    _startListeningToNewNotifications();
   }
 
   void _cleanupSubscriptions() {
@@ -176,235 +173,7 @@ class NotificationService extends GetxController {
     _subscriptions.add(sub);
   }
 
-  void _startListeningToNewNotifications() {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
 
-    final AuthController authController = Get.find<AuthController>();
-    final role = authController.currentUser.value?.role;
-    final roleTarget = _roleTarget(role);
-    final isAdmin = role == UserRole.admin || role == UserRole.superAdmin;
-
-    _listenToStream(FirebaseFirestore.instance
-        .collection('notifications')
-        .where('userId', isEqualTo: userId)
-        .where('isRead', isEqualTo: false)
-        .orderBy('createdAt', descending: true)
-        .limit(1));
-
-    if (isAdmin) {
-      _listenToStream(FirebaseFirestore.instance
-          .collection('notifications')
-          .where('targetRole', isEqualTo: 'admin')
-          .where('isRead', isEqualTo: false)
-          .orderBy('createdAt', descending: true)
-          .limit(1));
-
-      _listenToStream(FirebaseFirestore.instance
-          .collection('notifications')
-          .where('targetRole', isEqualTo: 'superAdmin')
-          .where('isRead', isEqualTo: false)
-          .orderBy('createdAt', descending: true)
-          .limit(1));
-    } else if (roleTarget != null && roleTarget.isNotEmpty) {
-      _listenToStream(FirebaseFirestore.instance
-          .collection('notifications')
-          .where('targetRole', isEqualTo: roleTarget)
-          .where('isRead', isEqualTo: false)
-          .orderBy('createdAt', descending: true)
-          .limit(1));
-    }
-
-    _listenToStream(FirebaseFirestore.instance
-        .collection('notifications')
-        .where('targetRole', isEqualTo: 'all')
-        .where('isRead', isEqualTo: false)
-        .orderBy('createdAt', descending: true)
-        .limit(1));
-  }
-
-
-  void _listenToStream(Query query) {
-    final subscription = query.snapshots().listen((snapshot) {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
-      for (var change in snapshot.docChanges) {
-        if (change.type == DocumentChangeType.added) {
-          final docId = change.doc.id;
-
-          if (change.doc.metadata.hasPendingWrites) {
-            continue;
-          }
-          
-          final data = change.doc.data() as Map<String, dynamic>;
-          final excludedUserId = data['excludeUserId']?.toString();
-          if (userId != null && excludedUserId != null && excludedUserId == userId) {
-            continue;
-          }
-
-          final Timestamp? createdAt = data['createdAt'] as Timestamp?;
-          if (createdAt == null) {
-            continue;
-          }
-          final dedupeKey = '$docId:${createdAt.millisecondsSinceEpoch}';
-
-          if (_processedIds.contains(docId) || _processedNotificationKeys.contains(dedupeKey)) {
-            continue;
-          }
-          
-          if (createdAt.toDate().isBefore(_sessionStartTime)) {
-            continue;
-          }
-
-          debugPrint('🔔 New Notification: ${data['title']} (ID: $docId)');
-          _processedIds.add(docId);
-          _processedNotificationKeys.add(dedupeKey);
-          _processNotificationData(data);
-        }
-      }
-    }, onError: (error) {
-      debugPrint('❌ Notification Stream Error: $error');
-    });
-
-    _subscriptions.add(subscription);
-  }
-
-  void _processNotificationData(Map<String, dynamic> data) {
-    String payload = data['type'] ?? '';
-    final String type = data['type']?.toString() ?? '';
-
-    final String? chatId = data['chatId'] ?? data['data']?['chatId'];
-    final String? senderName = data['senderName'] ?? data['data']?['senderName'];
-    final String? senderId = data['senderId'] ?? data['data']?['senderId'];
-    final String? requestId = data['requestId'] ?? data['data']?['requestId'];
-    final String? donationId = data['donationId'] ?? data['data']?['donationId'];
-
-    if (chatId != null) {
-      payload = 'chatId:$chatId,userName:${senderName ?? ""},targetUserId:${senderId ?? ""}';
-    } else if (type == 'blood_emergency' || type == 'blood_encouragement') {
-      final String? bloodType = data['bloodType'] ?? data['data']?['bloodType'];
-      final String? hospital = data['hospital'] ?? data['data']?['hospital'];
-      final String? phone = data['phone'] ?? data['data']?['phone'];
-      final bool isGuest = (data['isGuest'] ?? data['data']?['isGuest']).toString() == 'true';
-      payload = 'blood_emergency:reqId=$requestId,type=$bloodType,hosp=$hospital,ph=$phone,isGuest=$isGuest';
-    } else if (type == 'donor_responding') {
-      final bool isGuest = (data['isGuest'] ?? data['data']?['isGuest']).toString() == 'true';
-      payload = 'admin_request_detail:id=$requestId,isGuest=$isGuest';
-    } else if (type == 'donor_response_withdrawn') {
-      payload = requestId != null ? 'admin_request_detail:id=$requestId,isGuest=false' : 'admin_request_detail';
-    } else if (type == 'donor_confirmed') {
-      final String? bloodType = data['bloodType'] ?? data['data']?['bloodType'];
-      final String? hospital = data['hospital'] ?? data['data']?['hospital'];
-      final String? phone = data['phone'] ?? data['data']?['phone'];
-      payload = 'blood_emergency:reqId=$requestId,type=$bloodType,hosp=$hospital,ph=$phone,isGuest=false';
-    } else if (type == 'blood_donation_completed') {
-      payload = 'blood_donation_completed:id=$requestId';
-    } else if (type == 'funeral_ghusl') {
-      final String? gender = data['gender'] ?? data['data']?['gender'];
-      final String? location = data['location'] ?? data['data']?['location'];
-      final String? phone = data['phone'] ?? data['data']?['phone'];
-      payload = 'funeral_ghusl:id=$requestId,gender=$gender,loc=$location,ph=$phone';
-    } else if (type == 'request_update' || type == 'new_request' || type == 'status_change' || type == 'service_rating' || type == 'new_task') {
-      payload = requestId != null ? 'request_update:id=$requestId' : 'request_update';
-    } else if (type == 'new_donation') {
-      payload = donationId != null ? 'new_donation:id=$donationId' : 'new_donation';
-    }
-
-    _showLocalNotification(
-      title: data['title'] ?? 'إشعار جديد',
-      body: data['body'] ?? '',
-      payload: payload,
-      type: type,
-      imageUrl: data['imageUrl'] ?? data['data']?['imageUrl'], // دعم رابط الصورة من Cloudinary
-    );
-  }
-
-  static Future<String?> _downloadAndSaveImage(String url, String fileName) async {
-    if (url.isEmpty) return null;
-    try {
-      final Directory directory = await getTemporaryDirectory();
-      final String filePath = '${directory.path}/$fileName';
-      final http.Response response = await http.get(Uri.parse(url));
-      final File file = File(filePath);
-      await file.writeAsBytes(response.bodyBytes);
-      return filePath;
-    } catch (e) {
-      debugPrint('❌ [NotificationService] Error downloading image: $e');
-      return null;
-    }
-  }
-
-  void _showLocalNotification({
-    required String title, 
-    required String body, 
-    String? payload,
-    String? type,
-    String? imageUrl,
-  }) async {
-    final bool isChat = type == 'new_message' || type == 'group_message' || type == 'guest_message';
-    final String channelId = isChat ? _chatChannelId : _notificationChannelId;
-    final String channelName = isChat ? _chatChannelName : _notificationChannelName;
-    final String soundName = isChat ? _chatSoundName : _notificationSoundName;
-
-    String? largeIconPath;
-    BigPictureStyleInformation? bigPictureStyle;
-
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      largeIconPath = await _downloadAndSaveImage(imageUrl, 'notif_img_${DateTime.now().millisecondsSinceEpoch}.jpg');
-      if (largeIconPath != null) {
-        bigPictureStyle = BigPictureStyleInformation(
-          FilePathAndroidBitmap(largeIconPath),
-          largeIcon: FilePathAndroidBitmap(largeIconPath),
-          contentTitle: title,
-          summaryText: body,
-          htmlFormatContentTitle: true,
-          htmlFormatSummaryText: true,
-        );
-      }
-    }
-
-    _notificationsPlugin.show(
-      id: title.hashCode,
-      title: title,
-      body: body,
-      notificationDetails: NotificationDetails(
-        android: AndroidNotificationDetails(
-          channelId,
-          channelName,
-          channelDescription: isChat ? 'إشعارات الرسائل الجديدة' : 'إشعارات جمعية ناس الخير العامة',
-          importance: Importance.max,
-          priority: Priority.max,
-          icon: '@mipmap/launcher_icon',
-          largeIcon: largeIconPath != null ? FilePathAndroidBitmap(largeIconPath) : const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
-          styleInformation: bigPictureStyle ?? BigTextStyleInformation(
-            body,
-            htmlFormatBigText: false,
-            contentTitle: title,
-            htmlFormatContentTitle: false,
-            summaryText: 'ناس الخير',
-            htmlFormatSummaryText: false,
-          ),
-          color: const Color(0xFF00C853),
-          playSound: true,
-          sound: RawResourceAndroidNotificationSound(soundName),
-          enableLights: true,
-          ledColor: const Color(0xFF00C853),
-          ledOnMs: 1000,
-          ledOffMs: 500,
-          showWhen: true,
-          ticker: 'ناس الخير',
-          subText: 'جمعية ناس الخير',
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          sound: isChat ? '$_chatSoundName.wav' : '$_notificationSoundName.wav',
-          attachments: largeIconPath != null ? [DarwinNotificationAttachment(largeIconPath)] : [],
-        ),
-      ),
-      payload: payload,
-    );
-  }
 
   @override
   void onClose() {
@@ -519,6 +288,21 @@ class NotificationService extends GetxController {
     }
   }
 
+  static Future<String?> _downloadAndSaveImage(String url, String fileName) async {
+    if (url.isEmpty) return null;
+    try {
+      final Directory directory = await getTemporaryDirectory();
+      final String filePath = '${directory.path}/$fileName';
+      final http.Response response = await http.get(Uri.parse(url));
+      final File file = File(filePath);
+      await file.writeAsBytes(response.bodyBytes);
+      return filePath;
+    } catch (e) {
+      debugPrint('❌ [NotificationService] Error downloading image: $e');
+      return null;
+    }
+  }
+
   static void _handleForegroundMessage(RemoteMessage message) async {
     debugPrint('🔔 [NotificationService] FCM Foreground Message Received');
     final notification = message.notification;
@@ -582,17 +366,30 @@ class NotificationService extends GetxController {
 
   static String? _serializePayload(Map<String, dynamic> data) {
     if (data.isEmpty) return null;
-    if (data['chatId'] != null) {
-      return 'chatId:${data['chatId']},userName:${data['senderName'] ?? ""},targetUserId:${data['senderId'] ?? ""}';
-    }
     final String type = data['type']?.toString() ?? '';
     final String? requestId = data['requestId'] ?? data['data']?['requestId'];
-    if (type == 'blood_emergency' || type == 'blood_encouragement') {
+    
+    if (data['chatId'] != null) {
+      return 'chatId:${data['chatId']},userName:${data['senderName'] ?? ""},targetUserId:${data['senderId'] ?? ""}';
+    } else if (type == 'blood_emergency' || type == 'blood_encouragement') {
        return 'blood_emergency:reqId=$requestId,type=${data['bloodType']},hosp=${data['hospital']},ph=${data['phone']},isGuest=${data['isGuest'] == 'true'}';
+    } else if (type == 'donor_responding') {
+      return 'admin_request_detail:id=$requestId,isGuest=${data['isGuest'] == 'true'}';
+    } else if (type == 'donor_response_withdrawn') {
+      return requestId != null ? 'admin_request_detail:id=$requestId,isGuest=false' : 'admin_request_detail';
+    } else if (type == 'donor_confirmed') {
+      return 'blood_emergency:reqId=$requestId,type=${data['bloodType']},hosp=${data['hospital']},ph=${data['phone']},isGuest=false';
+    } else if (type == 'blood_donation_completed') {
+      return 'blood_donation_completed:id=$requestId';
+    } else if (type == 'funeral_ghusl') {
+      return 'funeral_ghusl:id=$requestId,gender=${data['gender']},loc=${data['location']},ph=${data['phone']}';
+    } else if (type == 'request_update' || type == 'new_request' || type == 'status_change' || type == 'service_rating' || type == 'new_task') {
+      return requestId != null ? 'request_update:id=$requestId' : 'request_update';
+    } else if (type == 'new_donation') {
+      final donationId = data['donationId'] ?? data['data']?['donationId'];
+      return donationId != null ? 'new_donation:id=$donationId' : 'new_donation';
     }
-    if (type == 'new_task' || type == 'request_update') {
-       return 'request_update:id=$requestId';
-    }
+    
     return data['type']?.toString();
   }
 
@@ -834,7 +631,6 @@ class NotificationService extends GetxController {
       'data': data ?? {},
       if (data != null && data['excludeUserId'] != null) 'excludeUserId': data['excludeUserId'],
       if (data != null && data['chatId'] != null) 'chatId': data['chatId'],
-      if (data != null && data['senderId'] != null) 'senderId': data['senderId'],
       if (data != null && data['senderName'] != null) 'senderName': data['senderName'],
       if (data != null && data['requestId'] != null) 'requestId': data['requestId'],
       if (data != null && data['collection'] != null) 'collection': data['collection'],
@@ -843,6 +639,7 @@ class NotificationService extends GetxController {
       if (data != null && data['hospital'] != null) 'hospital': data['hospital'],
       if (data != null && data['phone'] != null) 'phone': data['phone'],
       if (data != null && data['patientName'] != null) 'patientName': data['patientName'],
+      'senderId': data?['senderId'] ?? currentUserId,
       'isRead': false,
       'readBy': [],
       'createdAt': FieldValue.serverTimestamp(),
@@ -857,12 +654,14 @@ class NotificationService extends GetxController {
     Map<String, dynamic>? data,
     String? excludeUserId,
   }) async {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     final payload = <String, dynamic>{
       'targetRole': role,
       'type': type,
       'title': title,
       'body': body,
       'data': data ?? {},
+      'senderId': data?['senderId'] ?? currentUserId,
       'isRead': false,
       'readBy': [],
       'createdAt': FieldValue.serverTimestamp(),
@@ -882,7 +681,8 @@ class NotificationService extends GetxController {
     Map<String, dynamic>? data,
     String? excludeUserId,
   }) async {
-    final effectiveExcludeUserId = excludeUserId ?? FirebaseAuth.instance.currentUser?.uid;
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final effectiveExcludeUserId = excludeUserId ?? currentUserId;
     final requestId = data?['requestId'];
     final projectId = data?['projectId'];
 
@@ -892,6 +692,7 @@ class NotificationService extends GetxController {
       'title': title,
       'body': body,
       'data': data ?? {},
+      'senderId': data?['senderId'] ?? currentUserId,
       'isRead': false,
       'readBy': [],
       'createdAt': FieldValue.serverTimestamp(),
