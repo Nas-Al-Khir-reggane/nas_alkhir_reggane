@@ -1,0 +1,13 @@
+{
+  "name": "nas-alkheir-notifications",
+  "version": "1.0.0",
+  "description": "FCM Notification Server for Nas Al-Kheir App",
+  "main": "send_notification.js",
+  "scripts": {
+    "start": "node send_notification.js"
+  },
+  "dependencies": {
+    "express": "^4.22.1",
+    "firebase-admin": "^13.7.0"
+  }
+}
