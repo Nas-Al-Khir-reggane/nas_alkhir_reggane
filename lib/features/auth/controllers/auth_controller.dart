@@ -323,6 +323,18 @@ class AuthController extends GetxController with WidgetsBindingObserver {
     _userSubscription?.cancel();
     _userSubscription = null;
 
+    final userUid = FirebaseAuth.instance.currentUser?.uid;
+    if (userUid != null) {
+      try {
+        // حذف التوكن من قاعدة البيانات لمنع وصول إشعارات الحساب القديم للجهاز الحالي
+        await FirebaseFirestore.instance.collection('users').doc(userUid).update({
+          'fcmToken': FieldValue.delete(),
+        });
+      } catch (e) {
+        debugPrint('⚠️ خطأ في مسح توكن الإشعارات: $e');
+      }
+    }
+
     // مسح كاش الدردشة لمنع تسريب رسائل المستخدم لمستخدم آخر
     try {
       final prefs = await SharedPreferences.getInstance();
