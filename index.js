@@ -94,73 +94,101 @@ db.collection('notifications').onSnapshot(snapshot => {
       const notificationId = change.doc.id;
       const data = change.doc.data();
 
-      // 1. منع تكرار الإرسال عبر الذاكرة المؤقتة والحالة في قاعدة البيانات
+      // 1. منع تكرار الإرسال
       if (data.fcmSent === true || processedNotifications.has(notificationId)) return;
       
       processedNotifications.add(notificationId);
 
       try {
-        // 2. التحقق من أن المرسل ليس هو نفسه المستلم (منع الإشعارات الذاتية)
-        const senderId = data.senderId || (data.data && data.data.senderId); // قد يكون داخل خريطة data
-        if (senderId && senderId === data.userId) {
-          console.log(`ℹ️ تخطي الإشعار لأن المرسل هو نفسه المستلم (${data.userId})`);
-          // تحديث الحالة حتى لا يتم معالجته لاحقاً
-          await db.collection('notifications').doc(notificationId).update({ fcmSent: true });
-          return;
+        const senderId = data.senderId || (data.data && data.data.senderId);
+
+        // تجهيز بيانات FCM
+        let fcmDataPayload = {
+          type: String(data.type || 'general'),
+          notificationId: String(notificationId)
+        };
+
+        if (data.data && typeof data.data === 'object') {
+           for (const [key, value] of Object.entries(data.data)) {
+              if (value !== null && value !== undefined) fcmDataPayload[key] = String(value);
+           }
+        }
+        ['chatId', 'requestId', 'bloodType', 'hospital', 'phone', 'patientName', 'collection', 'targetRole'].forEach(key => {
+           if (data[key] !== null && data[key] !== undefined) fcmDataPayload[key] = String(data[key]);
+        });
+        if (data.imageUrl || (data.data && data.data.imageUrl)) {
+            fcmDataPayload.imageUrl = String(data.imageUrl || data.data.imageUrl);
         }
 
-        // 3. جلب توكن المستخدم المستهدف
-        const userDoc = await db.collection('users').doc(data.userId).get();
-        if (userDoc.exists && userDoc.data().fcmToken) {
-          
-          // تجهيز بيانات FCM. يجب أن تكون كل القيم من نوع String
-          let fcmDataPayload = {
-            type: data.type || 'general',
-            notificationId: notificationId
-          };
+        let targetTokens = [];
 
-          // نقل كل البيانات الموجودة في الجذر أو في حقل data إلى الـ payload
-          if (data.data && typeof data.data === 'object') {
-             for (const [key, value] of Object.entries(data.data)) {
-                if (value !== null && value !== undefined) {
-                   fcmDataPayload[key] = String(value);
-                }
-             }
+        if (data.userId) {
+          // أ- إشعار موجه لشخص واحد محدد
+          if (senderId && senderId === data.userId) {
+            console.log(`ℹ️ تخطي الإشعار الفردي لأنه موجه لنفس المرسل (${data.userId})`);
+            await db.collection('notifications').doc(notificationId).update({ fcmSent: true });
+            return;
           }
-          // إضافة الحقول المباشرة إذا لزم الأمر
-          ['chatId', 'requestId', 'bloodType', 'hospital', 'phone', 'patientName', 'collection', 'targetRole'].forEach(key => {
-             if (data[key] !== null && data[key] !== undefined) {
-                 fcmDataPayload[key] = String(data[key]);
+          const userDoc = await db.collection('users').doc(data.userId).get();
+          if (userDoc.exists && userDoc.data().fcmToken) {
+             targetTokens.push(userDoc.data().fcmToken);
+          }
+        } else if (data.targetRole) {
+          // ب- إشعار موجه لمجموعة (role أو all)
+          let usersQuery = db.collection('users');
+          
+          if (data.targetRole !== 'all') {
+            if (data.targetRole === 'admin') {
+              usersQuery = usersQuery.where('role', 'in', ['admin', 'superAdmin', 'superadmin']);
+            } else {
+              usersQuery = usersQuery.where('role', '==', data.targetRole);
+            }
+          }
+          
+          const usersSnap = await usersQuery.get();
+          usersSnap.forEach(userDoc => {
+             const userData = userDoc.data();
+             // استثناء المرسل نفسه أو من لا يملك توكن
+             if (userData.fcmToken && userDoc.id !== senderId) {
+                targetTokens.push(userData.fcmToken);
              }
           });
-
-          // إضافة imageUrl لتفعيل الإشعارات المصورة
-          if (data.imageUrl || (data.data && data.data.imageUrl)) {
-              fcmDataPayload.imageUrl = String(data.imageUrl || data.data.imageUrl);
+          
+          if (targetTokens.length > 0) {
+            console.log(`ℹ️ تم تجميع ${targetTokens.length} توكن للمجموعة ${data.targetRole}`);
           }
+        }
 
+        // إرسال الإشعارات لمن لديه توكن
+        if (targetTokens.length > 0) {
           const message = {
             notification: { title: data.title, body: data.body },
-            token: userDoc.data().fcmToken,
-            data: fcmDataPayload
+            data: fcmDataPayload,
           };
           
-          await fcm.send(message);
+          if (targetTokens.length === 1) {
+            message.token = targetTokens[0];
+            await fcm.send(message);
+          } else {
+            // إرسال جماعي (يصل إلى 500 توكن في المرة الواحدة)
+            message.tokens = targetTokens.slice(0, 500);
+            await fcm.sendEachForMulticast(message);
+          }
 
-          // تحديث الوثيقة في قاعدة البيانات
-          await db.collection('notifications').doc(notificationId).update({
-            fcmSent: true,
-            sentAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-
-          console.log(`✅ تم إرسال إشعار للمستخدم ${data.userId}`);
+          console.log(`✅ تم رسال الإشعار لـ ${targetTokens.length} مستخدم/مستخدمين.`);
         } else {
-           // المتلقي لا يملك توكن (مستخدم غير مسجل الدخول ربما)، نسجلها كـ sent لتفادي محاولة إرسالها كل مرة
-           await db.collection('notifications').doc(notificationId).update({ fcmSent: true });
+          console.log(`⚠️ لم يتم إرسال الإشعار لأنه لا توجد توكنز مستهدفة صالحة.`);
         }
+
+        // تحديث الوثيقة كمنتهية
+        await db.collection('notifications').doc(notificationId).update({
+          fcmSent: true,
+          sentAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
       } catch (err) {
         console.error("❌ خطأ أثناء معالجة إشعار Firestore:", err.message);
-        processedNotifications.delete(notificationId); // إزالة من الذاكرة في حالة الخطأ لإعادة المحاولة لاحقاً
+        processedNotifications.delete(notificationId);
       }
     }
   });
