@@ -241,6 +241,14 @@ class NotificationService extends GetxController {
       await androidPlugin?.createNotificationChannel(generalChannel);
       await androidPlugin?.createNotificationChannel(chatChannel);
 
+      // ─── منع iOS من عرض إشعار نظامي في الـ Foreground ───
+      // لأن الـ handler يعرض إشعاراً محلياً بنفسه (بتحكم كامل بالصوت والشكل)
+      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+        alert: false,
+        badge: false,
+        sound: false,
+      );
+
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
       FirebaseMessaging.onMessageOpenedApp.listen(_handleBackgroundMessage);
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -884,74 +892,15 @@ class NotificationService extends GetxController {
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // ─── لا نعرض إشعاراً محلياً هنا ───
+  // السبب: عندما يكون التطبيق في الخلفية أو مغلقاً تماماً،
+  // نظام Android يعرض الإشعار تلقائياً من حقل `notification` في رسالة FCM.
+  // إذا أضفنا إشعاراً محلياً هنا، سيظهر إشعاران (مزدوج).
+  //
+  // هذا الـ handler يُستخدم فقط لمعالجة البيانات في الخلفية إن لزم الأمر.
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   } catch (_) {}
-  
-  final data = message.data;
-  final String title = data['title'] ?? message.notification?.title ?? 'جمعية ناس الخير';
-  final String body = data['body'] ?? message.notification?.body ?? 'إشعار جديد بانتظارك';
-  final String type = data['type']?.toString() ?? '';
-  final String? imageUrl = data['imageUrl'] ?? data['data']?['imageUrl'];
 
-  final bool isChat = type == 'new_message' || type == 'group_message' || type == 'guest_message';
-  final String channelId = isChat ? 'nas_alkhair_chats' : 'nas_alkhair_v2';
-  final String soundName = isChat ? 'new_message' : 'notification';
-
-  final FlutterLocalNotificationsPlugin backgroundNotificationsPlugin = FlutterLocalNotificationsPlugin();
-
-  const AndroidInitializationSettings androidInit = AndroidInitializationSettings('@mipmap/launcher_icon');
-  const InitializationSettings initSettings = InitializationSettings(android: androidInit);
-
-  await backgroundNotificationsPlugin.initialize(settings: initSettings);
-
-  String? largeIconPath;
-  BigPictureStyleInformation? bigPictureStyle;
-
-  if (imageUrl != null && imageUrl.isNotEmpty) {
-    try {
-      final Directory directory = await getTemporaryDirectory();
-      final String filePath = '${directory.path}/bg_notif_${DateTime.now().millisecond}.jpg';
-      final http.Response response = await http.get(Uri.parse(imageUrl));
-      final File file = File(filePath);
-      await file.writeAsBytes(response.bodyBytes);
-      largeIconPath = filePath;
-      
-      bigPictureStyle = BigPictureStyleInformation(
-        FilePathAndroidBitmap(largeIconPath),
-        largeIcon: FilePathAndroidBitmap(largeIconPath),
-        contentTitle: title,
-        summaryText: body,
-      );
-    } catch (e) {
-      debugPrint('❌ [BackgroundHandler] Image error: $e');
-    }
-  }
-
-  await backgroundNotificationsPlugin.show(
-    id: DateTime.now().millisecond + 100,
-    title: title,
-    body: body,
-    notificationDetails: NotificationDetails(
-      android: AndroidNotificationDetails(
-        channelId,
-        isChat ? 'إشعارات المحادثة' : 'إشعارات عامة',
-        importance: Importance.max,
-        priority: Priority.max,
-        icon: '@mipmap/launcher_icon',
-        largeIcon: largeIconPath != null ? FilePathAndroidBitmap(largeIconPath) : null,
-        styleInformation: bigPictureStyle,
-        playSound: true,
-        sound: RawResourceAndroidNotificationSound(soundName),
-        enableVibration: true,
-      ),
-      iOS: DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-        attachments: largeIconPath != null ? [DarwinNotificationAttachment(largeIconPath)] : [],
-      ),
-    ),
-    payload: type,
-  );
+  debugPrint('📩 [BackgroundHandler] FCM message received: type=${message.data['type']}');
 }

@@ -22,7 +22,6 @@ try {
 } catch (e) {
   console.error("❌ خطأ فادح في معالجة إعدادات Firebase:");
   console.error(e.message);
-  console.error("💡 تأكد من أن محتوى FIREBASE_CONFIG في Render هو نص JSON سليم (يبدأ بـ { وينتهي بـ }).");
   process.exit(1);
 }
 
@@ -52,19 +51,17 @@ setInterval(() => {
 }, 10 * 60 * 1000);
 
 // ======================================================
-// دالة مساعدة: استخراج كل توكنات المستخدم
+// دالة مساعدة: استخراج كل توكنات المستخدم (بدون تكرار)
 // ======================================================
 function extractTokens(userData) {
   const tokens = new Set();
 
-  // الحقل الجديد (مصفوفة)
   if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
     userData.fcmTokens.forEach(t => {
       if (t && typeof t === 'string' && t.length > 10) tokens.add(t);
     });
   }
 
-  // الحقل القديم – للتوافق مع المستخدمين الذين لم يُحدِّثوا التطبيق بعد
   if (userData.fcmToken && typeof userData.fcmToken === 'string' && userData.fcmToken.length > 10) {
     tokens.add(userData.fcmToken);
   }
@@ -73,7 +70,7 @@ function extractTokens(userData) {
 }
 
 // ======================================================
-// دالة مساعدة: إرسال FCM مع تنظيف التوكنات الميتة
+// دالة مساعدة: إرسال FCM مع حقل notification (ضروري للتطبيق المغلق)
 // ======================================================
 async function sendFCM(tokens, notification, dataPayload) {
   if (!tokens || tokens.length === 0) {
@@ -84,21 +81,44 @@ async function sendFCM(tokens, notification, dataPayload) {
   const uniqueTokens = [...new Set(tokens)];
   console.log(`📨 إرسال إلى ${uniqueTokens.length} جهاز...`);
 
-  // ⚠️ نستخدم data-only message (بدون حقل notification)
-  // لكي يتحكم التطبيق بالكامل في عرض الإشعار ولا يعرض النظام إشعاراً مزدوجاً
-  const enrichedData = {
-    ...dataPayload,
-    title: notification.title || 'جمعية ناس الخير',
-    body: notification.body || '',
-  };
+  // ─── تحديد نوع الصوت بناءً على نوع الإشعار ───
+  const type = dataPayload.type || '';
+  const isChat = type === 'new_message' || type === 'group_message' || type === 'guest_message';
+  const channelId = isChat ? 'nas_alkhair_chats' : 'nas_alkhair_v2';
+  const soundName = isChat ? 'new_message' : 'notification';
 
+  // ─── الرسالة تحتوي notification + data ───
+  // notification: يعرضها النظام عند إغلاق التطبيق (حرج!)
+  // data: يستخدمها التطبيق عند فتحه لعرض تفاصيل إضافية
   const message = {
-    data: enrichedData,
+    notification: {
+      title: notification.title || 'جمعية ناس الخير',
+      body: notification.body || '',
+    },
+    data: dataPayload,
     android: {
       priority: 'high',
+      notification: {
+        channelId: channelId,
+        sound: soundName,
+        defaultVibrateTimings: true,
+        notificationPriority: 'PRIORITY_MAX',
+        visibility: 'PUBLIC',
+      }
     },
     apns: {
-      payload: { aps: { contentAvailable: true, 'mutable-content': 1 } },
+      payload: {
+        aps: {
+          alert: {
+            title: notification.title || 'جمعية ناس الخير',
+            body: notification.body || '',
+          },
+          sound: soundName + '.wav',
+          badge: 1,
+          'content-available': 1,
+          'mutable-content': 1,
+        }
+      },
       headers: { 'apns-priority': '10' },
     },
   };
@@ -117,20 +137,20 @@ async function sendFCM(tokens, notification, dataPayload) {
       }
     }
   } else {
-    // تقسيم التوكنات على دفعات من 500
     for (let i = 0; i < uniqueTokens.length; i += 500) {
       const batch = uniqueTokens.slice(i, i + 500);
       try {
         const response = await fcm.sendEachForMulticast({ ...message, tokens: batch });
         console.log(`✅ نجح: ${response.successCount}, فشل: ${response.failureCount} من ${batch.length}`);
 
-        // جمع التوكنات المعطلة لحذفها
         response.responses.forEach((resp, idx) => {
           if (!resp.success) {
             const errCode = resp.error?.code;
             if (errCode === 'messaging/registration-token-not-registered' ||
                 errCode === 'messaging/invalid-registration-token') {
               deadTokens.push(batch[idx]);
+            } else {
+              console.error(`  → خطأ في التوكن ${idx}: ${resp.error?.message}`);
             }
           }
         });
@@ -140,16 +160,16 @@ async function sendFCM(tokens, notification, dataPayload) {
     }
   }
 
-  // تنظيف التوكنات الميتة من Firestore
+  // تنظيف التوكنات الميتة
   if (deadTokens.length > 0) {
     console.log(`🧹 حذف ${deadTokens.length} توكن منتهي الصلاحية...`);
     try {
       const usersSnap = await db.collection('users').get();
-      const batch = db.batch();
+      const writeBatch = db.batch();
       usersSnap.forEach(doc => {
         const data = doc.data();
-        const tokens = extractTokens(data);
-        const hasDeadToken = deadTokens.some(dead => tokens.includes(dead));
+        const userTokens = extractTokens(data);
+        const hasDeadToken = deadTokens.some(dead => userTokens.includes(dead));
         if (hasDeadToken) {
           const updates = {};
           if (deadTokens.includes(data.fcmToken)) {
@@ -159,11 +179,11 @@ async function sendFCM(tokens, notification, dataPayload) {
             updates.fcmTokens = admin.firestore.FieldValue.arrayRemove(...deadTokens);
           }
           if (Object.keys(updates).length > 0) {
-            batch.update(doc.ref, updates);
+            writeBatch.update(doc.ref, updates);
           }
         }
       });
-      await batch.commit();
+      await writeBatch.commit();
     } catch (e) {
       console.error('⚠️ خطأ في تنظيف التوكنات الميتة:', e.message);
     }
@@ -171,7 +191,7 @@ async function sendFCM(tokens, notification, dataPayload) {
 }
 
 // ======================================================
-// ذاكرة مؤقتة لمنع التكرار (idempotency)
+// ذاكرة مؤقتة لمنع التكرار
 // ======================================================
 const processedNotifications = new Set();
 setInterval(() => {
@@ -197,7 +217,7 @@ db.collection('notifications').onSnapshot(snapshot => {
     try {
       const senderId = data.senderId || data.data?.senderId || null;
 
-      // تجهيز payload البيانات (FCM يطلب قيماً نصية فقط)
+      // تجهيز payload البيانات
       const fcmDataPayload = {
         notificationId: String(notificationId),
         type: String(data.type || 'general'),
@@ -227,7 +247,6 @@ db.collection('notifications').onSnapshot(snapshot => {
 
       // ── أ: إشعار لمستخدم محدد (userId) ──────────────────
       if (data.userId) {
-        // لا نرسل للمرسل نفسه
         if (senderId && senderId === data.userId) {
           console.log(`⏭️ تخطي: إشعار ذاتي للمستخدم ${data.userId}`);
           await db.collection('notifications').doc(notificationId).update({ fcmSent: true });
@@ -247,15 +266,15 @@ db.collection('notifications').onSnapshot(snapshot => {
 
         if (data.targetRole === 'admin') {
           query = query.where('role', 'in', ['admin', 'superAdmin', 'superadmin']);
-        } else if (data.targetRole !== 'all') {
+        } else if (data.targetRole === 'all') {
+          // كل المستخدمين بدون فلترة الدور
+        } else {
           query = query.where('role', '==', data.targetRole);
         }
 
         const usersSnap = await query.get();
         usersSnap.forEach(userDoc => {
-          // استثناء المرسل
           if (userDoc.id === senderId) return;
-          // استثناء مستخدم محدد إضافاً (excludeUserId)
           if (data.excludeUserId && userDoc.id === data.excludeUserId) return;
           targetTokens.push(...extractTokens(userDoc.data()));
         });
@@ -278,7 +297,6 @@ db.collection('notifications').onSnapshot(snapshot => {
 
     } catch (err) {
       console.error(`❌ خطأ في معالجة الإشعار (${notificationId}):`, err.message);
-      // إعادة الإشعار للقائمة للمحاولة مجدداً في الدقيقة القادمة
       processedNotifications.delete(notificationId);
     }
   });
