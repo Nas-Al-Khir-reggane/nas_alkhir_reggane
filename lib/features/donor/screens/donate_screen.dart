@@ -250,7 +250,7 @@ class _DonateScreenState extends State<DonateScreen> {
             ),
 
             const SizedBox(height: 16),
-            Text('إثبات التبرع (اختياري)', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            Text('إثبات التبرع (إلزامي) *', style: TextStyle(color: AppTheme.primaryGreen, fontSize: 13, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Obx(() => Container(
               decoration: AppTheme.glassDecoration,

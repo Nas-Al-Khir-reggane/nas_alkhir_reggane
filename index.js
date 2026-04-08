@@ -104,6 +104,9 @@ async function sendFCM(tokens, notification, dataPayload) {
         defaultVibrateTimings: true,
         notificationPriority: 'PRIORITY_MAX',
         visibility: 'PUBLIC',
+        // ─── مفتاح حل مشكلة الطوفان ───
+        // tag يضمن أن الإشعارات من نفس النوع تستبدل بعضها بدل التراكم
+        tag: `nas_${dataPayload.type || 'general'}_${dataPayload.notificationId || 'unknown'}`,
       }
     },
     apns: {
@@ -117,9 +120,14 @@ async function sendFCM(tokens, notification, dataPayload) {
           badge: 1,
           'content-available': 1,
           'mutable-content': 1,
+          // ─── apns-collapse-id يمنع التراكم على iOS أيضاً ───
+          'thread-id': `nas_${dataPayload.type || 'general'}`,
         }
       },
-      headers: { 'apns-priority': '10' },
+      headers: {
+        'apns-priority': '10',
+        'apns-collapse-id': `nas_${dataPayload.notificationId || 'unknown'}`,
+      },
     },
   };
 
@@ -199,10 +207,28 @@ setInterval(() => {
   console.log('🧹 تم تنظيف الذاكرة المؤقتة للإشعارات.');
 }, 60 * 60 * 1000);
 
+// ─── علم لمنع معالجة الوثائق القديمة عند بدء التشغيل ───
+let initialLoadDone = false;
+
 // ======================================================
 // مراقبة Firestore → إرسال FCM
 // ======================================================
-db.collection('notifications').onSnapshot(snapshot => {
+db.collection('notifications')
+  .orderBy('createdAt', 'desc')
+  .limit(50) // فقط آخر 50 إشعاراً لتجنب طوفان عند إعادة التشغيل
+  .onSnapshot(snapshot => {
+
+  // ─── أول snapshot بعد بدء التشغيل: تجاهل كل الوثائق القديمة ───
+  if (!initialLoadDone) {
+    initialLoadDone = true;
+    console.log(`🔄 تجاهل ${snapshot.docChanges().length} وثيقة قديمة عند بدء التشغيل.`);
+    // علّم الوثائق بدون fcmSent حتى لا تُعاد معالجتها
+    snapshot.docChanges().forEach(change => {
+      processedNotifications.add(change.doc.id);
+    });
+    return;
+  }
+
   snapshot.docChanges().forEach(async (change) => {
     if (change.type !== 'added') return;
 

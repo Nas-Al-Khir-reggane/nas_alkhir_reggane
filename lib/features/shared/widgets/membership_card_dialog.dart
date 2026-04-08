@@ -165,10 +165,10 @@ class MembershipCardWidget extends StatelessWidget {
                       borderRadius: BorderRadius.circular(50),
                     ),
                     child: Text(
-                      'nesselkheir-${user.id.substring(user.id.length - 6).toUpperCase()}',
+                      user.memberId ?? 'nesselkheir-${user.id.substring(user.id.length - 6).toUpperCase()}',
                       style: GoogleFonts.tajawal(
                         color: Colors.white,
-                        fontSize: 10, // تصغير حجم الخط قليلاً ليتناسب مع الطول الجديد
+                        fontSize: user.memberId != null ? 14 : 10,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
                       ),

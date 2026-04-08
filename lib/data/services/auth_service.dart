@@ -52,8 +52,42 @@ class AuthService {
 
   // حفظ بيانات المستخدم في Firestore (يدعم إكمال الملف المفقود)
   Future<void> saveUserToFirestore(UserModel user) async {
-    await _firestore.collection(AppConstants.usersCollection).doc(user.id).set(user.toMap());
-    await saveCachedUserModel(user);
+    UserModel finalUser = user;
+
+    // ✨ توليد رقم عضوية متسلسل إذا لم يكن موجوداً
+    if (finalUser.memberId == null || finalUser.memberId!.isEmpty) {
+      try {
+        final nextId = await _getNextMemberId();
+        finalUser = finalUser.copyWith(memberId: nextId);
+      } catch (e) {
+        debugPrint("Error generating memberId: $e");
+        // نواصل الحفظ حتى لو فشل ترقيم العضوية لتجنب فقدان البيانات
+      }
+    }
+
+    await _firestore.collection(AppConstants.usersCollection).doc(finalUser.id).set(finalUser.toMap());
+    await saveCachedUserModel(finalUser);
+  }
+
+  // 🔢 توليد الرقم التسلسلي القادم (nas01, nas02...)
+  Future<String> _getNextMemberId() async {
+    final counterRef = _firestore.collection('metadata').doc('user_counter');
+    
+    return await _firestore.runTransaction((transaction) async {
+      DocumentSnapshot snapshot = await transaction.get(counterRef);
+
+      if (!snapshot.exists) {
+        transaction.set(counterRef, {'count': 1});
+        return 'nas01';
+      }
+
+      int newCount = (snapshot.data() as Map<String, dynamic>)['count'] + 1;
+      transaction.update(counterRef, {'count': newCount});
+      
+      // تنسيق الرقم مع صفر حشو
+      String paddedNumber = newCount.toString().padLeft(2, '0');
+      return 'nas$paddedNumber';
+    });
   }
 
   // تسجيل الخروج

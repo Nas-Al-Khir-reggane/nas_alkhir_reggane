@@ -377,9 +377,15 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   }
 
   Widget _buildPendingSliver() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection(AppConstants.usersCollection).where('isApproved', isEqualTo: false).snapshots(),
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection(AppConstants.usersCollection).where('isApproved', isEqualTo: false).orderBy('createdAt', descending: true).snapshots(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return SliverToBoxAdapter(child: Center(child: Padding(
+            padding: const EdgeInsets.all(40.0),
+            child: SelectableText('حدث خطأ: ${snapshot.error}', style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+          )));
+        }
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SliverToBoxAdapter(child: Center(child: Padding(
             padding: EdgeInsets.all(40.0),
@@ -388,7 +394,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         }
         
         var docs = snapshot.data?.docs.where((doc) {
-          var data = doc.data() as Map<String, dynamic>;
+          var data = doc.data();
           if (data['role'] == 'rejected') return false; // Hide rejected
           return true;
         }).toList() ?? [];
@@ -506,9 +512,15 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   }
 
   Widget _buildAllUsersSliver() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection(AppConstants.usersCollection).where('isApproved', isEqualTo: true).snapshots(),
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection(AppConstants.usersCollection).where('isApproved', isEqualTo: true).orderBy('createdAt', descending: true).snapshots(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return SliverToBoxAdapter(child: Center(child: Padding(
+            padding: const EdgeInsets.all(40.0),
+            child: SelectableText('حدث خطأ: ${snapshot.error}', style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+          )));
+        }
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SliverToBoxAdapter(child: Center(child: Padding(
             padding: EdgeInsets.all(40.0),
@@ -517,7 +529,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         }
         
         var docs = snapshot.data?.docs.where((doc) {
-          var data = doc.data() as Map<String, dynamic>;
+          var data = doc.data();
           UserModel user = UserModel.fromMap(data, doc.id);
           
           String rName = user.name.toLowerCase();
@@ -570,6 +582,25 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                                   if (isSuperAdmin && user.bloodType != null) ...[
                                     const SizedBox(width: 8),
                                     _buildBloodTypeBadge(user),
+                                  ],
+                                  if (user.isVerified) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.verified_user_rounded, size: 12, color: Colors.blue),
+                                          const SizedBox(width: 4),
+                                          Text(user.memberId ?? '', style: const TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                    ),
                                   ],
                                   if (isSuperAdmin) ...[
                                     const SizedBox(width: 8),
@@ -916,6 +947,81 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                 if (user.otherServices != null && user.otherServices!.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   _buildUserInfoRow(Icons.add_task_rounded, "خدمات أخرى", user.otherServices!),
+                ],
+              ],
+              if (user.nationalIdUrl != null && user.nationalIdUrl!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.vignette_rounded, color: AppTheme.goldAccent, size: 18),
+                    const SizedBox(width: 8),
+                    Text("بطاقة التعريف الوطنية:", style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    if (user.isVerified)
+                      _buildStatusBadge('موثق ✅', Colors.blue)
+                    else
+                      _buildStatusBadge('بانتظار التوثيق', AppTheme.warningColor),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: () {
+                    Get.dialog(
+                      Dialog(
+                        backgroundColor: Colors.transparent,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.network(user.nationalIdUrl!, fit: BoxFit.contain),
+                            ),
+                            const SizedBox(height: 16),
+                            IconButton(
+                              onPressed: () => Get.back(),
+                              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    height: 180,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppTheme.glassBorder),
+                      image: DecorationImage(
+                        image: NetworkImage(user.nationalIdUrl!),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.fullscreen, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+                if (!user.isVerified && _adminCtl.currentUser?.role == UserRole.superAdmin) ...[
+                  const SizedBox(height: 16),
+                  Obx(() => AppTheme.gradientButton(
+                    text: "توثيق الهوية وتعيين كود العضوية",
+                    icon: Icons.verified_rounded,
+                    isLoading: _adminCtl.isLoading.value,
+                    onPressed: () async {
+                      await _adminCtl.verifyUserIdentity(user.id);
+                      Get.back();
+                    },
+                  )),
                 ],
               ],
               const SizedBox(height: 30),

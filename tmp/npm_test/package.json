@@ -1,0 +1,19 @@
+{
+  "name": "npm_test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@dzcode-io/leblad": "^1.0.3",
+    "dz-communes": "^1.0.1",
+    "dz-wilaya": "^1.0.0",
+    "dz-wilayas": "^1.0.2"
+  }
+}

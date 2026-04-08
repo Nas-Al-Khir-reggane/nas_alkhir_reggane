@@ -1105,6 +1105,53 @@ class AdminController extends GetxController {
     }
   }
 
+  // ✨ توثيق هوية المستخدم وتعيين كود العضوية
+  Future<void> verifyUserIdentity(String userId) async {
+    if (!_requireSuperAdmin('توثيق الهوية')) return;
+    isLoading.value = true;
+    try {
+      final userRef = _firestore.collection(AppConstants.usersCollection).doc(userId);
+      final userSnap = await userRef.get();
+      
+      if (!userSnap.exists) throw 'المستخدم غير موجود';
+      
+      final userData = userSnap.data() as Map<String, dynamic>;
+      String? currentMemberId = userData['memberId'];
+      
+      await _firestore.runTransaction((tx) async {
+        // إذا لم يكن لديه كود عضوية، نقوم بتوليد واحد
+        if (currentMemberId?.isEmpty ?? true) {
+          final counterRef = _firestore.collection('metadata').doc('user_counter');
+          final counterSnap = await tx.get(counterRef);
+          
+          int newCount = 1;
+          if (counterSnap.exists) {
+            newCount = (counterSnap.data() as Map<String, dynamic>)['count'] + 1;
+            tx.update(counterRef, {'count': newCount});
+          } else {
+            tx.set(counterRef, {'count': 1});
+          }
+          
+          currentMemberId = 'nas${newCount.toString().padLeft(2, '0')}';
+        }
+        
+        tx.update(userRef, {
+          'isVerified': true,
+          'memberId': currentMemberId,
+          'verifiedAt': FieldValue.serverTimestamp(),
+        });
+      });
+
+      Get.snackbar('✅ تم التوثيق', 'تم توثيق هوية المستخدم وتعيين كود العضوية ($currentMemberId) بنجاح.',
+          backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
+          colorText: AppTheme.successColor);
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل عملية التوثيق: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   Future<void> updateAdditionalRoles(String userId, List<String> additionalRoles) async {
     if (!_requireSuperAdmin('تعديل الصلاحيات الإضافية')) return;
     try {

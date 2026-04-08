@@ -10,6 +10,9 @@ import '../../../data/models/user_model.dart';
 import '../../../core/services/theme_service.dart';
 import '../../../core/routes/app_routes.dart';
 import '../widgets/user_avatar.dart';
+import '../../../data/services/cloudinary_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../widgets/role_switcher_widget.dart';
 import '../widgets/membership_card_dialog.dart';
 
@@ -195,6 +198,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: Text(user.role.displayName, style: GoogleFonts.tajawal(color: Theme.of(context).colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w800)),
                     ),
+                    const SizedBox(width: 8),
+                    _buildVerificationBadge(user),
                     if (ownProfile) ...[
                       const SizedBox(width: 8),
                       GestureDetector(
@@ -254,6 +259,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (isWorker) ...[
             const SizedBox(height: 20),
             FadeInUp(child: _buildWorkerStatsCard(user)),
+          ],
+
+          if (ownProfile) ...[
+            const SizedBox(height: 20),
+            FadeInUp(child: _buildVerificationCard(user)),
           ],
           
           const SizedBox(height: 30),
@@ -895,6 +905,141 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildVerificationBadge(UserModel user) {
+    bool isTrueVerified = user.isVerified;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: (isTrueVerified ? Colors.blue : Colors.grey).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: (isTrueVerified ? Colors.blue : Colors.grey).withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isTrueVerified ? Icons.verified_rounded : Icons.info_outline_rounded,
+            color: isTrueVerified ? Colors.blue : Colors.grey,
+            size: 14,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isTrueVerified ? "موثق" : "غير موثق",
+            style: GoogleFonts.tajawal(
+              color: isTrueVerified ? Colors.blue : Colors.grey,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerificationCard(UserModel user) {
+    if (user.isVerified) return const SizedBox.shrink();
+
+    final hasPendingId = user.nationalIdUrl != null && user.nationalIdUrl!.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: AppTheme.cardShadow,
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.privacy_tip_rounded, color: Colors.blue, size: 24),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('توثيق الهوية الرسمية', style: GoogleFonts.tajawal(fontWeight: FontWeight.w900, fontSize: 15)),
+                    Text('مطلوب للحصول على رقم العضوية الموحد (ID) والمشاركة الرسمية.', 
+                       style: GoogleFonts.tajawal(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (hasPendingId)
+             Container(
+              padding: const EdgeInsets.all(12),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.timer_outlined, color: Colors.orange, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text('تم رفع البطاقة. بانتظار مراجعة المنسق العام لتوثيق الحساب.', style: GoogleFonts.tajawal(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.bold))),
+                ],
+              ),
+            )
+          else
+            Column(
+              children: [
+                Text('⚠️ البطاقة الوطنية ضرورية لتوثيق انخراطك في الجمعية. يتم فحصها من قبل الإدارة فقط.', 
+                  style: GoogleFonts.tajawal(fontSize: 10, color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                AppTheme.gradientButton(
+                  text: 'رفع بطاقة التعريف الوطنية',
+                  icon: Icons.upload_file_rounded,
+                  onPressed: _pickAndUploadNationalId,
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadNationalId() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+      );
+
+      if (image == null) return;
+
+      Get.dialog(const Center(child: CircularProgressIndicator()), barrierDismissible: false);
+
+      final url = await CloudinaryService.uploadMedia(File(image.path));
+      
+      if (url != null) {
+        await FirebaseFirestore.instance.collection('users').doc(authController.currentUser.value?.id).update({
+          'nationalIdUrl': url,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        
+        await authController.refreshUser();
+        if (Get.isDialogOpen ?? false) Get.back();
+        Get.snackbar('تم الرفع بنجاح', 'سيتم مراجعة هويتك من قبل المنسق العام قريباً ✨', 
+          backgroundColor: Colors.green.withValues(alpha: 0.15));
+      } else {
+        if (Get.isDialogOpen ?? false) Get.back();
+        Get.snackbar('خطأ', 'فشل رفع الصورة');
+      }
+    } catch (e) {
+      if (Get.isDialogOpen ?? false) Get.back();
+      Get.snackbar('خطأ', 'حدث خطأ أثناء عملية الرفع: $e');
+    }
   }
 
   void _showLogoutConfirmation() {

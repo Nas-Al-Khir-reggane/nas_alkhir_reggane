@@ -222,6 +222,14 @@ class DonorController extends GetxController {
       return;
     }
 
+    // ✅ التحقق من وجود وصل التبرع (إلزامي)
+    if (selectedProofImage.value == null) {
+      Get.snackbar('وثيقة الإثبات مطلوبة', 'يرجى رفع صورة وصل التبرع لإتمام العملية',
+          backgroundColor: Colors.orange.withValues(alpha: 0.15),
+          colorText: Colors.black);
+      return;
+    }
+
     isLoading.value = true;
     try {
       final dName = isAnonymous ? 'متبرع مجهول' : donorName;

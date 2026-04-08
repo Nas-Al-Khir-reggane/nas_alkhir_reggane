@@ -229,10 +229,14 @@ class BeneficiaryController extends GetxController {
           });
         }
 
-        await FirebaseFirestore.instance
-            .collection('service_types')
-            .doc(data['type'])
-            .update({'popularity': FieldValue.increment(1)});
+        try {
+          await FirebaseFirestore.instance
+              .collection('service_types')
+              .doc(data['type'])
+              .update({'popularity': FieldValue.increment(1)});
+        } catch (e) {
+          debugPrint('Error updating popularity: $e');
+        }
 
         await _notifyAdminsOnNewRequest(docRef.id, data['type']);
 

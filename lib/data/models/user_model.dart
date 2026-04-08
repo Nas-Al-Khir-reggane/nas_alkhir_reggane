@@ -43,6 +43,9 @@ class UserModel {
   final String gender; // ✨ حقل الجنس
   final String? avatarSeed; // ✨ مفتاح توليد الأفاتار الرقمي
   final String? avatarType; // ✨ نوع الأفاتار الرقمي (مثلاً: human, robot)
+  final String? memberId; // ✨ الرقم التسلسي للعضوية (nas01, nas02...)
+  final bool isVerified; // ✨ حالة توثيق الحساب بالبطاقة الوطنية
+  final String? nationalIdUrl; // ✨ رابط صورة بطاقة التعريف الوطنية
   
   // Worker specific fields
   final String? workerRole;
@@ -80,6 +83,9 @@ class UserModel {
     this.lastDonatedAt,
     this.isDonorAvailable = true,
     this.bloodDonationsCount = 0,
+    this.memberId,
+    this.isVerified = false,
+    this.nationalIdUrl,
     this.workerRole,
     this.volunteerServices = const [],
     this.ghuslExpertise,
@@ -120,7 +126,11 @@ class UserModel {
       'lastDonatedAt': lastDonatedAt != null ? Timestamp.fromDate(lastDonatedAt!) : null,
       'isDonorAvailable': isDonorAvailable,
       'bloodDonationsCount': bloodDonationsCount,
+      'memberId': memberId,
+      'isVerified': isVerified,
+      'nationalIdUrl': nationalIdUrl,
       'workerRole': workerRole,
+
       'volunteerServices': volunteerServices,
       'ghuslExpertise': ghuslExpertise,
       'otherServices': otherServices,
@@ -173,6 +183,9 @@ class UserModel {
       lastDonatedAt: (map['lastDonatedAt'] as Timestamp?)?.toDate(),
       isDonorAvailable: map['isDonorAvailable'] ?? true,
       bloodDonationsCount: map['bloodDonationsCount'] ?? 0,
+      memberId: map['memberId'],
+      isVerified: map['isVerified'] ?? false,
+      nationalIdUrl: map['nationalIdUrl'],
       workerRole: map['workerRole'],
       volunteerServices: List<String>.from(map['volunteerServices'] ?? []),
       ghuslExpertise: map['ghuslExpertise'],
@@ -213,6 +226,9 @@ class UserModel {
     DateTime? lastDonatedAt,
     bool? isDonorAvailable,
     int? bloodDonationsCount,
+    String? memberId,
+    bool? isVerified,
+    String? nationalIdUrl,
     String? workerRole,
     List<String>? volunteerServices,
     String? ghuslExpertise,
@@ -251,6 +267,9 @@ class UserModel {
       lastDonatedAt: lastDonatedAt ?? this.lastDonatedAt,
       isDonorAvailable: isDonorAvailable ?? this.isDonorAvailable,
       bloodDonationsCount: bloodDonationsCount ?? this.bloodDonationsCount,
+      memberId: memberId ?? this.memberId,
+      isVerified: isVerified ?? this.isVerified,
+      nationalIdUrl: nationalIdUrl ?? this.nationalIdUrl,
       workerRole: workerRole ?? this.workerRole,
       volunteerServices: volunteerServices ?? this.volunteerServices,
       ghuslExpertise: ghuslExpertise ?? this.ghuslExpertise,

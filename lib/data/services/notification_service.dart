@@ -332,10 +332,25 @@ class NotificationService extends GetxController {
     }
   }
 
+  // ─── ذاكرة مؤقتة لمنع تكرار الإشعارات المحلية ───
+  static final Set<String> _foregroundDedup = {};
+
   static void _handleForegroundMessage(RemoteMessage message) async {
     debugPrint('🔔 [NotificationService] FCM Foreground Message Received');
     final notification = message.notification;
     final data = message.data;
+
+    // ─── منع التكرار: استخدام notificationId كمفتاح فريد ───
+    final String? notifId = data['notificationId'];
+    if (notifId != null && notifId.isNotEmpty) {
+      if (_foregroundDedup.contains(notifId)) {
+        debugPrint('⏭️ [Foreground] تجاهل إشعار مكرر: $notifId');
+        return;
+      }
+      _foregroundDedup.add(notifId);
+      // تنظيف الذاكرة بعد دقيقة لمنع تسريب الذاكرة
+      Future.delayed(const Duration(minutes: 1), () => _foregroundDedup.remove(notifId));
+    }
 
     final String title = notification?.title ?? data['title'] ?? 'إشعار جديد';
     final String body = notification?.body ?? data['body'] ?? '';
@@ -347,11 +362,14 @@ class NotificationService extends GetxController {
     final String channelName = isChat ? _chatChannelName : _notificationChannelName;
     final String soundName = isChat ? _chatSoundName : _notificationSoundName;
 
+    // ─── ID ثابت للإشعار: يستبدل الإشعار القديم من نفس النوع بدل التراكم ───
+    final int stableId = (notifId ?? '${title}_$body').hashCode & 0x7FFFFFFF;
+
     String? largeIconPath;
     BigPictureStyleInformation? bigPictureStyle;
 
     if (imageUrl != null && imageUrl.isNotEmpty) {
-      largeIconPath = await _downloadAndSaveImage(imageUrl, 'fground_notif_${DateTime.now().millisecond}.jpg');
+      largeIconPath = await _downloadAndSaveImage(imageUrl, 'fground_notif_${stableId}.jpg');
       if (largeIconPath != null) {
         bigPictureStyle = BigPictureStyleInformation(
           FilePathAndroidBitmap(largeIconPath),
@@ -363,7 +381,7 @@ class NotificationService extends GetxController {
     }
 
     _notificationsPlugin.show(
-      id: DateTime.now().millisecond, 
+      id: stableId,
       title: title,
       body: body,
       notificationDetails: NotificationDetails(
@@ -380,6 +398,8 @@ class NotificationService extends GetxController {
           ticker: 'ناس الخير',
           enableVibration: true,
           showWhen: true,
+          // tag يمنع تراكم الإشعارات من نفس المصدر
+          tag: 'nas_${type}_$notifId',
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,
