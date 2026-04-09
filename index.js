@@ -76,8 +76,10 @@ async function sendFCM(tokens, notification, dataPayload) {
   // ─── تحديد نوع الصوت بناءً على نوع الإشعار ───
   const type = dataPayload.type || '';
   const isChat = type === 'new_message' || type === 'group_message' || type === 'guest_message';
-  const channelId = isChat ? 'nas_alkhair_chats' : 'nas_alkhair_v2';
-  const soundName = isChat ? 'new_message' : 'notification';
+  const isEmergency = type === 'blood_emergency' || type === 'sos_trigger' || type.includes('emergency');
+  
+  const channelId = isEmergency ? 'nas_alkhair_emergency' : (isChat ? 'nas_alkhair_chats' : 'nas_alkhair_v2');
+  const soundName = isEmergency ? 'siren' : (isChat ? 'new_message' : 'notification');
 
   // ─── الرسالة تحتوي notification + data ───
   // notification: يعرضها النظام عند إغلاق التطبيق (حرج!)

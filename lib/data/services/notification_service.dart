@@ -14,6 +14,7 @@ import '../models/user_model.dart';
 import '../../firebase_options.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'dart:typed_data';
 
 const String _notificationChannelId = 'nas_alkhair_v2';
 const String _notificationChannelName = 'جمعية ناس الخير';
@@ -21,10 +22,14 @@ const String _notificationChannelName = 'جمعية ناس الخير';
 const String _chatChannelId = 'nas_alkhair_chats';
 const String _chatChannelName = 'رسائل المحادثات';
 
+const String _emergencyChannelId = 'nas_alkhair_emergency';
+const String _emergencyChannelName = 'طوارئ واستغاثة';
+
 class NotificationService extends GetxController {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
   static const String _notificationSoundName = 'notification';
   static const String _chatSoundName = 'new_message';
+  static const String _emergencySoundName = 'siren';
 
   final RxInt unreadCount = 0.obs;
   final List<StreamSubscription> _subscriptions = [];
@@ -238,8 +243,21 @@ class NotificationService extends GetxController {
         enableVibration: true,
       );
 
+      // قناة الطوارئ (بصوت صفارة الإنذار وأقصى أولوية)
+      const AndroidNotificationChannel emergencyChannel = AndroidNotificationChannel(
+        _emergencyChannelId,
+        _emergencyChannelName,
+        description: 'إشعارات الحالات الطارئة والتبرع بالدم',
+        importance: Importance.max,
+        playSound: true,
+        sound: RawResourceAndroidNotificationSound(_emergencySoundName),
+        enableVibration: true,
+        vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]), // اهتزاز قوي
+      );
+
       await androidPlugin?.createNotificationChannel(generalChannel);
       await androidPlugin?.createNotificationChannel(chatChannel);
+      await androidPlugin?.createNotificationChannel(emergencyChannel);
 
       // ─── منع iOS من عرض إشعار نظامي في الـ Foreground ───
       // لأن الـ handler يعرض إشعاراً محلياً بنفسه (بتحكم كامل بالصوت والشكل)
@@ -358,9 +376,10 @@ class NotificationService extends GetxController {
     final String? imageUrl = data['imageUrl'] ?? data['data']?['imageUrl'];
 
     final bool isChat = type == 'new_message' || type == 'group_message' || type == 'guest_message';
-    final String channelId = isChat ? _chatChannelId : _notificationChannelId;
-    final String channelName = isChat ? _chatChannelName : _notificationChannelName;
-    final String soundName = isChat ? _chatSoundName : _notificationSoundName;
+    final bool isEmergency = type == 'blood_emergency' || type == 'sos_trigger' || type.contains('emergency');
+    final String channelId = isEmergency ? _emergencyChannelId : (isChat ? _chatChannelId : _notificationChannelId);
+    final String channelName = isEmergency ? _emergencyChannelName : (isChat ? _chatChannelName : _notificationChannelName);
+    final String soundName = isEmergency ? _emergencySoundName : (isChat ? _chatSoundName : _notificationSoundName);
 
     // ─── ID ثابت للإشعار: يستبدل الإشعار القديم من نفس النوع بدل التراكم ───
     final int stableId = (notifId ?? '${title}_$body').hashCode & 0x7FFFFFFF;
