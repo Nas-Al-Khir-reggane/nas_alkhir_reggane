@@ -72,7 +72,7 @@ Future<void> sendEmergencyNotification() async {
     }
 
     final response = await http.post(
-      Uri.parse('https://nas-alkhir-reggane.onrender.com/send-emergency'),
+      Uri.parse('https://nas-alkhir-reggane.vercel.app/send-emergency'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'token': deviceToken,
@@ -106,13 +106,13 @@ class NasAlKheirApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeService().themeMode,
-      locale: const Locale('ar'),
-      fallbackLocale: const Locale('ar'),
-      supportedLocales: const [
+      locale: Locale('ar'),
+      fallbackLocale: Locale('ar'),
+      supportedLocales: [
         Locale('ar'),
         Locale('en')
       ],
-      localizationsDelegates: const [
+      localizationsDelegates: [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,

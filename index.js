@@ -35,20 +35,12 @@ const db = admin.firestore();
 const fcm = admin.messaging();
 
 // ======================================================
-// Keep-Alive (Free Tier)
+// مسار التأكد من عمل السيرفر
 // ======================================================
-const APP_URL = 'https://nas-alkhir-reggane.onrender.com';
-app.get('/', (req, res) => res.send('🚀 خادم إشعارات "ناس الخير" يعمل بنجاح!'));
+app.get('/', (req, res) => res.send('🚀 خادم إشعارات "ناس الخير" يعمل بنجاح على Vercel!'));
 
-setInterval(() => {
-  const http = require('http');
-  console.log('📡 Keep-Alive: Pinging server...');
-  http.get(APP_URL, (res) => {
-    console.log(`📡 Keep-Alive Status: ${res.statusCode}`);
-  }).on('error', (err) => {
-    console.error('❌ Keep-Alive Error:', err.message);
-  });
-}, 10 * 60 * 1000);
+// تم تعطيل كود Keep-Alive لأنه غير مدعوم في Vercel ولست بحاجة إليه (Serverless)
+// setInterval(() => { ... }, 10 * 60 * 1000);
 
 // ======================================================
 // دالة مساعدة: استخراج كل توكنات المستخدم (بدون تكرار)
