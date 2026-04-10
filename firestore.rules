@@ -58,6 +58,7 @@ service cloud.firestore {
         'isAvailable',
         'lastActivity',
         'fcmToken',
+        'fcmTokens',
         'lastTokenUpdate',
         'userId',
         'notes',
