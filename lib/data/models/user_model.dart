@@ -37,7 +37,7 @@ class UserModel {
   final String? bloodType; // حقل زمرة الدم الجديد
   final bool receiveBloodAlerts; // خيار استقبال تنبيهات التبرع بالدم
   final DateTime? lastDonatedAt; // تاريخ آخر تبرع بالدم
-  final bool isDonorAvailable; // هل المستخدم جاهز للتبرع حالياً؟
+  bool get isDonorAvailable => canDonateBloodSmart; // هل المستخدم جاهز للتبرع حالياً؟ (تلقائي) ✨
   final int bloodDonationsCount; // عدد تبرعات الدم الناجحة ✨
   final String? activeBloodRequestId; // ✨ معرف طلب الدم النشط للمتبرع
   final String gender; // ✨ حقل الجنس
@@ -81,7 +81,6 @@ class UserModel {
     this.bloodType,
     this.receiveBloodAlerts = true,
     this.lastDonatedAt,
-    this.isDonorAvailable = true,
     this.bloodDonationsCount = 0,
     this.memberId,
     this.isVerified = false,
@@ -181,7 +180,6 @@ class UserModel {
       bloodType: map['bloodType'],
       receiveBloodAlerts: map['receiveBloodAlerts'] ?? true,
       lastDonatedAt: (map['lastDonatedAt'] as Timestamp?)?.toDate(),
-      isDonorAvailable: map['isDonorAvailable'] ?? true,
       bloodDonationsCount: map['bloodDonationsCount'] ?? 0,
       memberId: map['memberId'],
       isVerified: map['isVerified'] ?? false,
@@ -265,7 +263,6 @@ class UserModel {
       bloodType: bloodType ?? this.bloodType,
       receiveBloodAlerts: receiveBloodAlerts ?? this.receiveBloodAlerts,
       lastDonatedAt: lastDonatedAt ?? this.lastDonatedAt,
-      isDonorAvailable: isDonorAvailable ?? this.isDonorAvailable,
       bloodDonationsCount: bloodDonationsCount ?? this.bloodDonationsCount,
       memberId: memberId ?? this.memberId,
       isVerified: isVerified ?? this.isVerified,

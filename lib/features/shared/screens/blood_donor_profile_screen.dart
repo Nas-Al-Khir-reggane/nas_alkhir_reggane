@@ -295,18 +295,30 @@ class _BloodDonorProfileScreenState extends State<BloodDonorProfileScreen> {
                   user.receiveBloodAlerts,
                   (val) => adminController.updateUserDonorSettings(receiveAlerts: val),
                 ),
-                const Divider(height: 1, indent: 20, endIndent: 20),
-                _buildToggleItem(
-                  'جاهزية التبرع حالياً', 
-                  'يمكنك تعطيلها مؤقتاً إذا كنت غير قادر على التبرع', 
-                  user.isDonorAvailable,
-                  (val) => adminController.updateUserDonorSettings(isAvailable: val),
+                _buildStatusItem(
+                  'نظام الجاهزية التلقائي', 
+                  'تتم إدارة جاهزيتك طبياً بناءً على تاريخ آخر تبرع والجنس.', 
+                  user.isDonorAvailable ? Icons.check_circle_outline : Icons.timer_outlined,
+                  user.isDonorAvailable ? Colors.green : Colors.orange,
                 ),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatusItem(String title, String subtitle, IconData icon, Color color) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+        child: Icon(icon, color: color, size: 20),
+      ),
+      title: Text(title, style: GoogleFonts.tajawal(fontWeight: FontWeight.bold, fontSize: 14)),
+      subtitle: Text(subtitle, style: GoogleFonts.tajawal(fontSize: 11, color: AppTheme.textSecondary)),
     );
   }
 

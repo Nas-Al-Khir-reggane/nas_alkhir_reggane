@@ -1599,7 +1599,7 @@ class AdminController extends GetxController {
 
       final validDonors = usersSnap.docs.where((doc) {
         final userData = doc.data() as Map<String, dynamic>;
-        if (userData['isApproved'] != true || userData['receiveBloodAlerts'] != true || userData['isDonorAvailable'] != true) return false;
+        if (userData['isApproved'] != true || userData['receiveBloodAlerts'] != true) return false;
         if (targetWilaya != null && targetWilaya.isNotEmpty) {
           final userWilaya = (userData['wilaya'] ?? '').toString();
           if (userWilaya != targetWilaya) return false;
@@ -2218,7 +2218,6 @@ class AdminController extends GetxController {
       await _firestore.collection(AppConstants.usersCollection).doc(donorId).update({
         'bloodDonationsCount': FieldValue.increment(1),
         'lastDonatedAt': FieldValue.serverTimestamp(),
-        'isDonorAvailable': false,
         'activeBloodRequestId': FieldValue.delete(),
       });
 
@@ -2462,18 +2461,16 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> updateUserDonorSettings({bool? receiveAlerts, bool? isAvailable}) async {
+  Future<void> updateUserDonorSettings({bool? receiveAlerts}) async {
     try {
       final user = _authController.currentUser.value;
       if (user == null) return;
       Map<String, dynamic> updates = {};
       if (receiveAlerts != null) updates['receiveBloodAlerts'] = receiveAlerts;
-      if (isAvailable != null) updates['isDonorAvailable'] = isAvailable;
       if (updates.isEmpty) return;
       await _firestore.collection(AppConstants.usersCollection).doc(user.id).update(updates);
       _authController.currentUser.value = user.copyWith(
         receiveBloodAlerts: receiveAlerts ?? user.receiveBloodAlerts,
-        isDonorAvailable: isAvailable ?? user.isDonorAvailable,
       );
       Get.snackbar('✅ تم', 'تم حفظ الإعدادات');
     } catch (e) {
@@ -2486,7 +2483,6 @@ class AdminController extends GetxController {
       await _firestore.collection(AppConstants.usersCollection).doc(userId).update({
         'bloodDonationsCount': FieldValue.increment(1),
         'lastDonatedAt': FieldValue.serverTimestamp(),
-        'isDonorAvailable': false,
       });
     } catch (e) {
       debugPrint('ConfirmDonation Error: $e');

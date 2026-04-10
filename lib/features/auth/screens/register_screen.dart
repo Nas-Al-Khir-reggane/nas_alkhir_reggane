@@ -8,6 +8,7 @@ import '../../../data/models/user_model.dart';
 import '../../../core/utils/default_avatars.dart';
 import '../controllers/auth_controller.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:intl/intl.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -38,6 +39,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final List<String> _selectedServices = []; 
   String? _ghuslExpertise; 
   final _otherServicesController = TextEditingController(); 
+  
+  DateTime? _lastDonationDate;
+  bool _hasNeverDonated = false;
 
   bool _isCompletingProfile = false;
   String? _existingUid;
@@ -150,6 +154,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 12),
                     _buildBloodTypeDropdown(),
+                    const SizedBox(height: 12),
+                    _buildLastDonationDatePicker(),
 
                     const SizedBox(height: 12),
                     _buildTextField(
@@ -234,6 +240,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     return;
                                   }
 
+                                  if (!_hasNeverDonated && _lastDonationDate == null) {
+                                    Get.snackbar('تنبيه', 'يرجى تحديد تاريخ آخر تبرع أو اختيار "لم يسبق لي التبرع"', 
+                                      backgroundColor: Colors.orange.withValues(alpha: 0.15));
+                                    return;
+                                  }
+
                                     if (_isCompletingProfile) {
                                       authController.completeProfile(
                                         uid: _existingUid!,
@@ -251,6 +263,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         volunteerServices: _selectedServices,
                                         ghuslExpertise: _ghuslExpertise,
                                         otherServices: _otherServicesController.text.trim(),
+                                        lastDonatedAt: _lastDonationDate,
                                       );
                                     } else {
                                       authController.register(
@@ -269,6 +282,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         volunteerServices: _selectedServices,
                                         ghuslExpertise: _ghuslExpertise,
                                         otherServices: _otherServicesController.text.trim(),
+                                        lastDonatedAt: _lastDonationDate,
                                       );
                                     }
                                 }
@@ -537,6 +551,83 @@ class _RegisterScreenState extends State<RegisterScreen> {
       items: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
       onChanged: (v) => setState(() => _selectedBloodType = v),
       validator: (v) => v == null ? 'فصيلة الدم حقل إجباري' : null,
+    );
+  }
+
+  Widget _buildLastDonationDatePicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('تاريخ آخر تبرع', Icons.calendar_today_rounded),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Checkbox(
+              value: _hasNeverDonated,
+              activeColor: Theme.of(context).colorScheme.primary,
+              onChanged: (val) {
+                setState(() {
+                  _hasNeverDonated = val ?? false;
+                  if (_hasNeverDonated) _lastDonationDate = null;
+                });
+              },
+            ),
+            const Text('لم يسبق لي التبرع بالدم', style: TextStyle(fontSize: 13, fontFamily: 'Tajawal')),
+          ],
+        ),
+        if (!_hasNeverDonated) ...[
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () async {
+              final date = await showDatePicker(
+                context: context,
+                initialDate: _lastDonationDate ?? DateTime.now(),
+                firstDate: DateTime(2000),
+                lastDate: DateTime.now(),
+                locale: const Locale('ar', 'DZ'),
+                builder: (context, child) {
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: ColorScheme.light(
+                        primary: Theme.of(context).colorScheme.primary,
+                        onPrimary: Colors.white,
+                        surface: Theme.of(context).cardColor,
+                        onSurface: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    child: child!,
+                  );
+                },
+              );
+              if (date != null) setState(() => _lastDonationDate = date);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.event_available_rounded, size: 20, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 12),
+                  Text(
+                    _lastDonationDate == null 
+                        ? 'انقر لاختيار تاريخ آخر تبرع *' 
+                        : 'تاريخ آخر تبرع: ${DateFormat('yyyy-MM-dd').format(_lastDonationDate!)}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: _lastDonationDate == null ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.onSurface,
+                      fontFamily: 'Tajawal'
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 

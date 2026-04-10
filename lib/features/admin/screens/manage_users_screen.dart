@@ -889,8 +889,8 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   }
 
   Widget _buildBloodTypeBadge(UserModel user) {
-    bool isResting = !user.canDonateBloodSmart;
-    Color color = (user.isDonorAvailable && !isResting) ? AppTheme.errorColor : AppTheme.textHint;
+    bool isAvailable = user.isDonorAvailable;
+    Color color = isAvailable ? AppTheme.errorColor : AppTheme.textHint;
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -905,7 +905,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           Icon(Icons.bloodtype_rounded, size: 12, color: color),
           const SizedBox(width: 4),
           Text(user.bloodType ?? '?', style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'Outfit')),
-          if (isResting) ...[
+          if (!isAvailable && user.lastDonatedAt != null) ...[
             const SizedBox(width: 4),
             Icon(Icons.timer_outlined, size: 12, color: color),
           ],

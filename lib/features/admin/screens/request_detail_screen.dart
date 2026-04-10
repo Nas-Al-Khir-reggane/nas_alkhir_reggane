@@ -1016,10 +1016,10 @@ class RequestDetailScreen extends StatelessWidget {
         const SizedBox(height: 20),
         Row(
           children: [
-            const Icon(Icons.history_edu_rounded, color: AppTheme.textSecondary, size: 20),
+            Icon(Icons.history_edu_rounded, color: AppTheme.textSecondary, size: 20),
             const SizedBox(width: 8),
             Text('المتبرعون الذين تم إخطارهم (${req.notifiedDonors.length})',
-                style: const TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.bold, fontSize: 13)),
+                style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.bold, fontSize: 13)),
           ],
         ),
         const Divider(color: Colors.white10, height: 20),
@@ -1069,7 +1069,7 @@ class RequestDetailScreen extends StatelessWidget {
                     ),
                   if (userId.isNotEmpty)
                     IconButton(
-                      icon: const Icon(Icons.person_search_outlined, color: AppTheme.textHint, size: 18),
+                      icon: Icon(Icons.person_search_outlined, color: AppTheme.textHint, size: 18),
                       onPressed: () {
                         if (adminController.currentUser?.role == UserRole.superAdmin) {
                           Get.toNamed('/profile', arguments: userId);

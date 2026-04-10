@@ -313,15 +313,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _buildDetailTile(Icons.home_work_outlined, "العنوان", user.address, Colors.purple),
                   
                   const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Divider()),
-                  _buildSectionLabel('بيانات التبرع بالدم'),
-                  if (canViewSensitiveInfo)
-                    _buildDetailTile(Icons.bloodtype_rounded, "فصيلة الدم", user.bloodType ?? "غير محدد", Colors.redAccent),
-                  _buildDetailTile(Icons.event_available_rounded, "تاريخ آخر تبرع", 
-                    user.lastDonatedAt != null ? intl.DateFormat('yyyy/MM/dd').format(user.lastDonatedAt!) : "لم يسبق التبرع", 
-                    Colors.green),
-                  _buildDetailTile(Icons.volunteer_activism_rounded, "الجاهزية الحالية", 
-                    user.isDonorAvailable ? "متاح حالياً" : "غير متاح مؤقتاً", 
-                    user.isDonorAvailable ? Colors.green : Colors.orange),
+                  _buildMedicalStatusCard(user),
                 ],
               ),
             ),
@@ -386,14 +378,120 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// 🩸 بطاقة الحالة الطبية الموحدة لجميع المستخدمين
+  Widget _buildMedicalStatusCard(UserModel user) {
+    return FadeInUp(
+      delay: const Duration(milliseconds: 300),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.medical_services_rounded, color: Colors.redAccent, size: 24),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('الحالة الطبية والجاهزية', 
+                        style: GoogleFonts.tajawal(fontWeight: FontWeight.w900, fontSize: 16)),
+                      Text('بيانات التبرع بالدم الخاصة بك', 
+                        style: GoogleFonts.tajawal(fontSize: 12, color: AppTheme.textSecondary)),
+                    ],
+                  ),
+                ),
+                if (user.bloodType != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(user.bloodType!, 
+                      style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                  ),
+              ],
+            ),
+            const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider(height: 1)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildMedicalMiniStat(
+                  Icons.event_available_rounded, 
+                  'آخر تبرع', 
+                  user.lastDonatedAt != null ? intl.DateFormat('yyyy/MM/dd').format(user.lastDonatedAt!) : 'لم يسبق',
+                  Colors.blue,
+                ),
+                _buildMedicalMiniStat(
+                  Icons.volunteer_activism_rounded, 
+                  'الجاهزية', 
+                  user.isDonorAvailable ? 'متاح' : 'استراحة',
+                  user.isDonorAvailable ? Colors.green : Colors.orange,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Get.toNamed(AppRoutes.bloodDonorProfile),
+                icon: const Icon(Icons.analytics_rounded, size: 18),
+                label: Text('عرض السجل الطبي الكامل', style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMedicalMiniStat(IconData icon, String label, String value, Color color) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 16),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: GoogleFonts.tajawal(fontSize: 10, color: AppTheme.textSecondary)),
+            Text(value, style: GoogleFonts.tajawal(fontSize: 12, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildRestPeriodCard(UserModel user) {
     final now = DateTime.now();
     final difference = now.difference(user.lastDonatedAt!);
     final daysSince = difference.inDays;
     
-    if (daysSince >= 90) return const SizedBox.shrink(); // Blood donation usually needs 3 months break
+    // منطق متوافق مع UserModel: 90 يوم للنساء، 60 يوم للرجال
+    final requiredDays = user.gender == 'أنثى' ? 90 : 60;
     
-    final daysRemaining = 90 - daysSince;
+    if (daysSince >= requiredDays) return const SizedBox.shrink(); 
+    
+    final daysRemaining = requiredDays - daysSince;
 
     return Container(
       margin: const EdgeInsets.only(top: 20),
@@ -626,7 +724,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String? selectedBloodType = user.bloodType;
     bool receiveAlertsInDialog = user.receiveBloodAlerts;
     DateTime? lastDonatedAtInDialog = user.lastDonatedAt;
-    bool isDonorAvailableInDialog = user.isDonorAvailable;
     String? selectedImageUrl = user.profileImage;
     String? currentSeed = user.avatarSeed ?? user.id;
     String currentType = user.avatarType ?? 'avataaars';
@@ -692,7 +789,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       
                       const SizedBox(height: 12),
                       _buildSwitchTile('تنبيهات التبرع بالدم', 'استقبال إشعارات الحالات المستعجلة', receiveAlertsInDialog, (v) => setStateDialog(() => receiveAlertsInDialog = v)),
-                      _buildSwitchTile('أنا متاح للتبرع', 'تعطيله في حال المرض أو السفر', isDonorAvailableInDialog, (v) => setStateDialog(() => isDonorAvailableInDialog = v)),
 
                       const SizedBox(height: 40),
                       AppTheme.gradientButton(
@@ -713,7 +809,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               'bloodType': selectedBloodType,
                               'receiveBloodAlerts': receiveAlertsInDialog,
                               'lastDonatedAt': lastDonatedAtInDialog != null ? Timestamp.fromDate(lastDonatedAtInDialog!) : null,
-                              'isDonorAvailable': isDonorAvailableInDialog,
                               'profileImage': selectedImageUrl,
                               'avatarSeed': currentSeed,
                               'avatarType': currentType,

@@ -204,6 +204,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
     List<String> volunteerServices = const [],
     String? ghuslExpertise,
     String? otherServices,
+    DateTime? lastDonatedAt,
   }) async {
     try {
       isLoading.value = true;
@@ -227,6 +228,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
         volunteerServices: volunteerServices,
         ghuslExpertise: ghuslExpertise,
         otherServices: otherServices,
+        lastDonatedAt: lastDonatedAt,
         createdAt: DateTime.now(),
       );
       UserModel? user = await _authService.signUp(email, password, userData);
@@ -276,6 +278,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
     List<String> volunteerServices = const [],
     String? ghuslExpertise,
     String? otherServices,
+    DateTime? lastDonatedAt,
   }) async {
     try {
       isLoading.value = true;
@@ -297,6 +300,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
         volunteerServices: volunteerServices,
         ghuslExpertise: ghuslExpertise,
         otherServices: otherServices,
+        lastDonatedAt: lastDonatedAt,
         createdAt: DateTime.now(),
       );
 
