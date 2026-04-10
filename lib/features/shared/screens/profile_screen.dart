@@ -18,6 +18,7 @@ import '../widgets/membership_card_dialog.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:animate_do/animate_do.dart';
+import '../../../core/utils/share_helper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -329,6 +330,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (ownProfile) ...[
             const SizedBox(height: 20),
             FadeInUp(child: _buildThemeSelector(context)),
+            const SizedBox(height: 12),
+            FadeInUp(child: _buildQuickLinksCard(context)),
             const SizedBox(height: 24),
             FadeInUp(
               child: SizedBox(
@@ -1062,6 +1065,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (Get.isDialogOpen ?? false) Get.back();
       Get.snackbar('خطأ', 'حدث خطأ أثناء عملية الرفع: $e');
     }
+  }
+
+  Widget _buildQuickLinksCard(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Column(
+        children: [
+          _buildLinkTile(
+            context,
+            icon: Icons.privacy_tip_rounded,
+            title: 'سياسة الخصوصية',
+            color: Colors.green,
+            onTap: () => Get.toNamed(AppRoutes.privacyPolicy),
+          ),
+          Divider(height: 1, indent: 60, color: Theme.of(context).dividerColor.withValues(alpha: 0.3)),
+          _buildLinkTile(
+            context,
+            icon: Icons.share_rounded,
+            title: 'شارك التطبيق',
+            color: Colors.orange,
+            onTap: () => ShareHelper.shareApp(),
+          ),
+          Divider(height: 1, indent: 60, color: Theme.of(context).dividerColor.withValues(alpha: 0.3)),
+          _buildLinkTile(
+            context,
+            icon: Icons.info_rounded,
+            title: 'حول التطبيق',
+            color: Colors.blue,
+            onTap: () => Get.toNamed(AppRoutes.about),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLinkTile(BuildContext context, {required IconData icon, required String title, required Color color, required VoidCallback onTap}) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+        child: Icon(icon, color: color, size: 20),
+      ),
+      title: Text(title, style: GoogleFonts.tajawal(fontWeight: FontWeight.w600, fontSize: 13)),
+      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+      onTap: onTap,
+    );
   }
 
   void _showLogoutConfirmation() {

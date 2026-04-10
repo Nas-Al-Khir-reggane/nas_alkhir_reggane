@@ -43,3 +43,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Logs & Temporary outputs
+*.txt
+build_output/
+analyze.txt
+build_error.txt
+build_final_attempt.txt
+build_final_attempt_revised.txt
+build_retry.txt
+main_analyze.txt
+worker_analyze.txt

@@ -14,6 +14,7 @@ import '../models/user_model.dart';
 import '../../firebase_options.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 const String _notificationChannelId = 'nas_alkhair_v2';
 const String _notificationChannelName = 'جمعية ناس الخير';
@@ -199,7 +200,13 @@ class NotificationService extends GetxController {
             ?.requestPermissions(alert: true, badge: true, sound: true);
       }
 
-      tz.initializeTimeZones(); 
+      tz.initializeTimeZones();
+      try {
+        final timeZoneName = (await FlutterTimezone.getLocalTimezone()).identifier;
+        tz.setLocalLocation(tz.getLocation(timeZoneName));
+      } catch(e) {
+        debugPrint('⚠️ [NotificationService] Could not set local timezone: $e');
+      }
       const androidInit = AndroidInitializationSettings('@mipmap/launcher_icon');
       const darwinInit = DarwinInitializationSettings(
         requestAlertPermission: true,
@@ -215,6 +222,9 @@ class NotificationService extends GetxController {
 
       final androidPlugin = _notificationsPlugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+          
+      // جدولة الإشعارات الذكية
+      _scheduleSmartNotifications();
 
       // القناة العامة
       const AndroidNotificationChannel generalChannel = AndroidNotificationChannel(
@@ -657,6 +667,125 @@ class NotificationService extends GetxController {
     var scheduled = tz.TZDateTime(tz.local, now.year, now.month, 1, 10);
     if (scheduled.isBefore(now)) scheduled = tz.TZDateTime(tz.local, now.year, now.month + 1, 1, 10);
     return scheduled;
+  }
+
+  static Future<void> _scheduleSmartNotifications() async {
+    try {
+      // الجمعة 10 صباحا
+      await _notificationsPlugin.zonedSchedule(
+        id: 9991,
+        title: 'جمعة مباركة 🕌',
+        body: 'تفقد حملات التبرع والمساهمة في عمل الخير اليوم!',
+        scheduledDate: _nextInstanceOfFriday(10),
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'smart_reminders',
+            'التذكيرات الذكية',
+            playSound: true,
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
+
+      // الأحد 6 مساء لنداء الدم (أُبقي للتوافق إن لزم، لكن لدينا تذكير يومي للدم الآن)
+      await _notificationsPlugin.zonedSchedule(
+        id: 9992,
+        title: 'قطرة دم تنقذ حياة 🩸',
+        body: 'تفقد حالات التبرع بالدم العاجلة، قد تكون فصيلتك هامة اليوم.',
+        scheduledDate: _nextInstanceOfSunday(18),
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'smart_reminders',
+            'التذكيرات الذكية',
+            playSound: true,
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
+
+      // تذكير يومي للصدقة والأحاديث النبوية (9:00 صباحاً)
+      await _notificationsPlugin.zonedSchedule(
+        id: 9993,
+        title: 'فضل البذل والعطاء 🌟',
+        body: 'قال رسول الله ﷺ: "ما نقصت صدقة من مال". تبرعك اليوم قد يفك كربة ويكشف غمة.',
+        scheduledDate: _nextInstanceOfTime(9, 0),
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'smart_reminders',
+            'التذكيرات الذكية',
+            playSound: true,
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+
+      // تذكير يومي للتبرع بالدم (5:30 مساءً)
+      await _notificationsPlugin.zonedSchedule(
+        id: 9994,
+        title: 'قطرة دم = حياة 🩸',
+        body: '﴿وَمَنْ أَحْيَاهَا فَكَأَنَّمَا أَحْيَا النَّاسَ جَمِيعًا﴾. هناك مرضى في المستشفيات بأمس الحاجة لقطرة دم، تفقد قسم الطوارئ.',
+        scheduledDate: _nextInstanceOfTime(17, 30),
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'smart_reminders',
+            'التذكيرات الذكية',
+            playSound: true,
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    } catch(e) {
+      debugPrint('❌ [NotificationService] _scheduleSmartNotifications: $e');
+    }
+  }
+
+  static tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
+    tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    tz.TZDateTime scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    return scheduledDate;
+  }
+
+  static tz.TZDateTime _nextInstanceOfFriday(int hour) {
+    tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    tz.TZDateTime scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour);
+    while (scheduledDate.weekday != DateTime.friday) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 7));
+    }
+    return scheduledDate;
+  }
+
+  static tz.TZDateTime _nextInstanceOfSunday(int hour) {
+    tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    tz.TZDateTime scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour);
+    while (scheduledDate.weekday != DateTime.sunday) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 7));
+    }
+    return scheduledDate;
   }
 
   static Future<void> sendNotification({

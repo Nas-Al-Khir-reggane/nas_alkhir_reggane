@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../shared/widgets/user_avatar.dart';
 import '../../../core/animations/scroll_animations.dart';
+import '../../../data/services/export_service.dart';
 
 class ManageUsersScreen extends StatefulWidget {
   const ManageUsersScreen({super.key});
@@ -112,17 +113,40 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryGreen.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+          InkWell(
+            onTap: _exportData,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.3)),
+              ),
+              child: const Icon(Icons.file_download_outlined, color: AppTheme.primaryGreen),
             ),
-            child: const Icon(Icons.people_alt_rounded, color: AppTheme.primaryGreen),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _exportData() async {
+    try {
+      Get.dialog(const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen)), barrierDismissible: false);
+      
+      var snapshot = await FirebaseFirestore.instance.collection(AppConstants.usersCollection).get();
+      List<UserModel> allUsers = snapshot.docs.map((doc) => UserModel.fromMap(doc.data(), doc.id)).toList();
+      
+      if (Get.isDialogOpen ?? false) Get.back(); // close loading
+      
+      await ExportService.exportUsersToExcel(allUsers);
+      
+    } catch(e) {
+      if (Get.isDialogOpen ?? false) Get.back();
+      debugPrint('Export Error: $e');
+      Get.snackbar('خطأ', 'فشل تجهيز البيانات للتصدير', backgroundColor: Colors.red.withValues(alpha: 0.15), colorText: Colors.white);
+    }
   }
 
   Widget _buildUserCounter() {

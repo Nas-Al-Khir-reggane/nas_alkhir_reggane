@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../animations/app_transitions.dart';
 import '../../features/auth/screens/splash_screen.dart';
+import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/pending_approval_screen.dart';
@@ -39,6 +40,8 @@ import '../../features/chat/screens/chat_screen.dart';
 import '../../features/shared/screens/profile_screen.dart';
 import '../../features/shared/screens/blood_emergency_detail_screen.dart';
 import '../../features/shared/screens/blood_donor_profile_screen.dart';
+import '../../features/shared/screens/privacy_policy_screen.dart';
+import '../../features/shared/screens/about_screen.dart';
 import '../../data/models/service_request_model.dart';
 import '../../data/models/project_model.dart';
 import '../../data/models/user_model.dart';
@@ -47,6 +50,7 @@ import 'role_middleware.dart';
 
 class AppRoutes {
   static const String splash = '/';
+  static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String register = '/register';
   static const String pending = '/pending';
@@ -89,6 +93,8 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String bloodEmergency = '/blood-emergency';
   static const String bloodDonorProfile = '/blood-donor-profile';
+  static const String privacyPolicy = '/privacy-policy';
+  static const String about = '/about';
 
   static List<GetPage> getPages() {
     return _rawPages.map((page) {
@@ -118,6 +124,7 @@ class AppRoutes {
 
   static final List<GetPage> _rawPages = [
     GetPage(name: splash, page: () => const SplashScreen()),
+    GetPage(name: onboarding, page: () => const OnboardingScreen()),
     GetPage(name: login, page: () => const LoginScreen()),
     GetPage(name: register, page: () => const RegisterScreen()),
     GetPage(name: pending, page: () => const PendingApprovalScreen()),
@@ -293,6 +300,8 @@ class AppRoutes {
     GetPage(name: profile, page: () => const ProfileScreen(), middlewares: [AuthMiddleware()]),
     GetPage(name: bloodEmergency, page: () => const BloodEmergencyDetailScreen(), middlewares: [AuthMiddleware()]),
     GetPage(name: bloodDonorProfile, page: () => const BloodDonorProfileScreen(), middlewares: [AuthMiddleware()]),
+    GetPage(name: privacyPolicy, page: () => const PrivacyPolicyScreen()),
+    GetPage(name: about, page: () => const AboutScreen()),
   ];
 }
 

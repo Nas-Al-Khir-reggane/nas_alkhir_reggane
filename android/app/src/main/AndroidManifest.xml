@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.nasalkheir.nas_alkheir_app">
 
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -14,10 +15,24 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- إبقاء التطبيق حياً في الخلفية -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
     <application
         android:label="ناس الخير"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
+
+        <!-- إضافة تعريف الخدمة هنا لحل مشكلة الانهيار -->
+        <service
+            android:name="id.flutter.flutter_background_service.BackgroundService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false"
+            tools:replace="android:exported" />
 
         <!-- Default Notification Channel (Matches NotificationService) -->
         <meta-data

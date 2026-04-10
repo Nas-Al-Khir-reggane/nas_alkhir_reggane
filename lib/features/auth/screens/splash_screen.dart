@@ -4,6 +4,8 @@ import 'package:animate_do/animate_do.dart';
 import '../../../core/widgets/app_logo.dart';
 import '../controllers/auth_controller.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/routes/app_routes.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -23,6 +25,14 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _startNavigation() async {
     await Future.delayed(const Duration(milliseconds: 4000));
+    
+    // تحقق إذا كانت هذه أول مرة — اعرض شاشة الترحيب
+    final seenOnboarding = await OnboardingScreen.hasSeenOnboarding();
+    if (!seenOnboarding) {
+      Get.offAllNamed(AppRoutes.onboarding);
+      return;
+    }
+    
     _authController.checkAuthState();
   }
 

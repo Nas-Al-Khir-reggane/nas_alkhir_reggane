@@ -1,6 +1,10 @@
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'core/routes/app_routes.dart';
@@ -8,20 +12,39 @@ import 'core/bindings/initial_binding.dart';
 import 'firebase_options.dart';
 import 'core/constants/app_constants.dart';
 import 'data/services/notification_service.dart';
+import 'data/services/background_keepalive_service.dart';
+import 'data/services/battery_optimizer_service.dart';
+import 'data/services/app_update_service.dart';
+import 'data/services/review_prompt_service.dart';
 import 'core/services/theme_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+/// مثيل Firebase Analytics عام
+final FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // صائد أخطاء Flutter (لحل مشكلة الشاشة الحمراء)
+  // تهيئة Firebase أولاً لتفعيل Crashlytics
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
+
+  // تفعيل Crashlytics لالتقاط كل الأعطال
   FlutterError.onError = (details) {
-    FlutterError.presentError(details);
+    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
     debugPrint('🛑 Flutter Error: ${details.exception}');
-    debugPrint('🛑 StackTrace: ${details.stack}');
+  };
+  
+  // التقاط أخطاء Dart غير المُعالجة
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
   };
 
   try {
@@ -31,11 +54,7 @@ void main() async {
     
     timeago.setLocaleMessages('ar', timeago.ArMessages());
     
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-    }
+    // Firebase تم تهيئته مسبقاً قبل runApp
     
     FirebaseMessaging messaging = FirebaseMessaging.instance;
 
@@ -55,7 +74,25 @@ void main() async {
       debugPrint('⚠️ Notification Init Failed: $e');
     });
 
+    // تهيئة خدمة الخلفية الدائمة (Foreground Service)
+    await BackgroundKeepAliveService.initialize();
+    
+    // تفعيل WakeLock لمنع نوم المعالج
+    BackgroundKeepAliveService.enableWakeLock();
+
     runApp(const NasAlKheirApp());
+
+    // بعد رسم الشاشة الأولى
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = Get.context;
+      if (context != null) {
+        BatteryOptimizerService.requestOptimizations(context);
+      }
+      // فحص التحديثات تلقائياً
+      AppUpdateService.checkForUpdate();
+      // تشغيل خدمة تقييم التطبيق
+      ReviewPromptService.trackLaunchAndPrompt();
+    });
   } catch (e, stack) {
     debugPrint('💥 Critical Startup Error: $e');
     debugPrint('💥 StackTrace: $stack');
