@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -244,7 +245,7 @@ class NotificationService extends GetxController {
       );
 
       // قناة الطوارئ (بصوت صفارة الإنذار وأقصى أولوية)
-      const AndroidNotificationChannel emergencyChannel = AndroidNotificationChannel(
+      final AndroidNotificationChannel emergencyChannel = AndroidNotificationChannel(
         _emergencyChannelId,
         _emergencyChannelName,
         description: 'إشعارات الحالات الطارئة والتبرع بالدم',
@@ -678,6 +679,29 @@ class NotificationService extends GetxController {
     return scheduled;
   }
 
+  // ======================================================
+  // استدعاء سيرفر Vercel لإرسال FCM فوراً
+  // ======================================================
+  static const String _vercelBaseUrl = 'https://nas-alkhir-reggane.vercel.app';
+
+  static Future<void> _triggerVercelFCM(String notificationId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_vercelBaseUrl/send-notification'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'notificationId': notificationId}),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ [Vercel] FCM sent for $notificationId');
+      } else {
+        debugPrint('⚠️ [Vercel] Status ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('❌ [Vercel] FCM trigger failed: $e');
+    }
+  }
+
   static Future<void> sendNotification({
     required String userId,
     required String type,
@@ -691,7 +715,7 @@ class NotificationService extends GetxController {
       return;
     }
 
-    await FirebaseFirestore.instance.collection('notifications').add({
+    final docRef = await FirebaseFirestore.instance.collection('notifications').add({
       'userId': userId,
       'type': type,
       'title': title,
@@ -712,6 +736,9 @@ class NotificationService extends GetxController {
       'readBy': [],
       'createdAt': FieldValue.serverTimestamp(),
     });
+
+    // استدعاء Vercel فوراً لإرسال FCM
+    _triggerVercelFCM(docRef.id);
   }
 
   static Future<void> notifyRole({
@@ -739,7 +766,10 @@ class NotificationService extends GetxController {
     if (data != null && data['bloodType'] != null) payload['bloodType'] = data['bloodType'];
     if (data != null && data['hospital'] != null) payload['hospital'] = data['hospital'];
     if (data != null && data['phone'] != null) payload['phone'] = data['phone'];
-    await FirebaseFirestore.instance.collection('notifications').add(payload);
+    final docRef = await FirebaseFirestore.instance.collection('notifications').add(payload);
+
+    // استدعاء Vercel فوراً لإرسال FCM
+    _triggerVercelFCM(docRef.id);
   }
 
   static Future<void> notifyAll({
@@ -769,7 +799,10 @@ class NotificationService extends GetxController {
     if (requestId != null) payload['requestId'] = requestId;
     if (projectId != null) payload['projectId'] = projectId;
 
-    await FirebaseFirestore.instance.collection('notifications').add(payload);
+    final docRef = await FirebaseFirestore.instance.collection('notifications').add(payload);
+
+    // استدعاء Vercel فوراً لإرسال FCM
+    _triggerVercelFCM(docRef.id);
   }
 
   static Future<void> notifyAllAdmins({
@@ -803,7 +836,10 @@ class NotificationService extends GetxController {
       }
       if (excludeUserId != null) payload['excludeUserId'] = excludeUserId;
 
-      await FirebaseFirestore.instance.collection('notifications').add(payload);
+      final docRef = await FirebaseFirestore.instance.collection('notifications').add(payload);
+
+      // استدعاء Vercel فوراً لإرسال FCM
+      _triggerVercelFCM(docRef.id);
     } catch (e) {
       debugPrint('❌ [NotificationService] notifyAllAdmins error: $e');
     }
@@ -827,7 +863,10 @@ class NotificationService extends GetxController {
       };
       if (data?['requestId'] != null) payload['requestId'] = data!['requestId'];
 
-      await FirebaseFirestore.instance.collection('notifications').add(payload);
+      final docRef = await FirebaseFirestore.instance.collection('notifications').add(payload);
+
+      // استدعاء Vercel فوراً لإرسال FCM
+      _triggerVercelFCM(docRef.id);
     } catch (e) {
       debugPrint('❌ [NotificationService] notifyAllWorkers error: $e');
     }
