@@ -44,14 +44,47 @@
 
             <div class="download-container glass-panel">
                 <p class="version-info" id="versionInfo">جاري البحث عن أحدث إصدار...</p>
-                <div class="buttons-container">
-                    <a href="#" class="download-btn premium-btn disabled" id="btn-main-download">
+                <div class="buttons-container multi-downloads">
+                    <a href="#" class="download-btn premium-btn disabled" id="btn-universal">
                         <div class="btn-icon">
                             <i class="fa-brands fa-android"></i>
                         </div>
                         <div class="btn-text">
-                            <span class="btn-title">تحميل التطبيق</span>
-                            <span class="btn-desc">متاح لأجهزة الأندرويد</span>
+                            <span class="btn-title">النسخة الشاملة (لجميع الهواتف)</span>
+                            <span class="btn-desc">حجم كامل (~80MB) يضمن التوافق التام</span>
+                        </div>
+                        <i class="fa-solid fa-download download-icon"></i>
+                    </a>
+                    
+                    <a href="#" class="download-btn secondary-btn disabled" id="btn-arm64">
+                         <div class="btn-icon">
+                            <i class="fa-solid fa-mobile-screen"></i>
+                        </div>
+                        <div class="btn-text">
+                            <span class="btn-title">الهواتف الحديثة</span>
+                            <span class="btn-desc">أداء سريع (arm64-v8a)</span>
+                        </div>
+                        <i class="fa-solid fa-download download-icon"></i>
+                    </a>
+
+                    <a href="#" class="download-btn secondary-btn disabled" id="btn-armeabi">
+                        <div class="btn-icon">
+                            <i class="fa-solid fa-mobile"></i>
+                        </div>
+                        <div class="btn-text">
+                            <span class="btn-title">الهواتف القديمة</span>
+                            <span class="btn-desc">نسخة اقتصادية (armeabi-v7a)</span>
+                        </div>
+                        <i class="fa-solid fa-download download-icon"></i>
+                    </a>
+
+                    <a href="#" class="download-btn secondary-btn disabled" id="btn-x86_64">
+                         <div class="btn-icon">
+                            <i class="fa-solid fa-tablet-screen-button"></i>
+                        </div>
+                        <div class="btn-text">
+                            <span class="btn-title">للمحاكيات والتابلت</span>
+                            <span class="btn-desc">أجهزة خاصة (x86_64)</span>
                         </div>
                         <i class="fa-solid fa-download download-icon"></i>
                     </a>

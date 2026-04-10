@@ -7,7 +7,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const versionInfo = document.getElementById('versionInfo');
     const loadingSpinner = document.getElementById('loading-spinner');
     const errorMsg = document.getElementById('error-message');
-    const mainDownloadBtn = document.getElementById('btn-main-download');
+    const btnUniversal = document.getElementById('btn-universal');
+    const btnArm64 = document.getElementById('btn-arm64');
+    const btnArmeabi = document.getElementById('btn-armeabi');
+    const btnX86 = document.getElementById('btn-x86_64');
+    const allBtns = [btnUniversal, btnArm64, btnArmeabi, btnX86];
 
     // =========================================
     //  حركات الظهور عند التمرير (Intersection Observer)
@@ -29,15 +33,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     // =========================================
     //  مشهد ما بعد التحميل (Cinematic Celebration)
     // =========================================
-    mainDownloadBtn.addEventListener('click', (e) => {
-        if (mainDownloadBtn.classList.contains('disabled')) {
-            e.preventDefault();
-            return;
-        }
-        // اعرض المشهد السينمائي بعد لحظة
-        setTimeout(() => {
-            showCelebration();
-        }, 400);
+    allBtns.forEach(btn => {
+        if (!btn) return;
+        btn.addEventListener('click', (e) => {
+            if (btn.classList.contains('disabled')) {
+                e.preventDefault();
+                return;
+            }
+            // اعرض المشهد السينمائي بعد لحظة
+            setTimeout(() => {
+                showCelebration();
+            }, 400);
+        });
     });
 
     // =========================================
@@ -55,25 +62,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         versionInfo.innerHTML = `<i class="fa-solid fa-circle-check" style="color: var(--emerald-primary);"></i> الإصدار الأحدث: ${data.tag_name} | صدر في: ${new Date(data.published_at).toLocaleDateString('ar-EG')}`;
         versionInfo.style.color = 'var(--emerald-primary)';
 
-        let foundAsset = false;
+        let foundAssetsCount = 0;
 
         if (data.assets && data.assets.length > 0) {
             for (const asset of data.assets) {
-                if (asset.name.toLowerCase().endsWith('.apk')) {
-                    mainDownloadBtn.href = asset.browser_download_url;
-                    mainDownloadBtn.classList.remove('disabled');
-                    mainDownloadBtn.style.background = '';
-                    foundAsset = true;
-                    break;
+                const name = decodeURIComponent(asset.name); // في حالة كان مشفراً
+                let targetBtn = null;
+                
+                if (name.includes('شاملة')) targetBtn = btnUniversal;
+                else if (name.includes('حديثة')) targetBtn = btnArm64;
+                else if (name.includes('قديمة')) targetBtn = btnArmeabi;
+                else if (name.includes('لوحية') || name.includes('محاكيات')) targetBtn = btnX86;
+                else if (name.endsWith('.apk') && !foundAssetsCount) {
+                    // إذا لم نتمكن من تحديد النسخة، نضعها في الرئيسية مؤقتاً
+                    targetBtn = btnUniversal;
+                }
+
+                if (targetBtn) {
+                    targetBtn.href = asset.browser_download_url;
+                    targetBtn.classList.remove('disabled');
+                    targetBtn.style.background = ''; // Allow CSS to control it
+                    foundAssetsCount++;
                 }
             }
         }
 
         loadingSpinner.style.display = 'none';
 
-        if (!foundAsset) {
+        if (foundAssetsCount === 0) {
             errorMsg.style.display = 'flex';
-            errorMsg.querySelector('span').textContent = 'الإصدار موجود، لكن لم يتم رفع النسخة القابلة للتحميل بعد.';
+            errorMsg.querySelector('span').textContent = 'الإصدار موجود، لكن لم يتم رفع نسخ التطبيق القابلة للتحميل بعد.';
         }
 
     } catch (error) {
