@@ -1637,7 +1637,23 @@ class AdminController extends GetxController {
         Get.snackbar('لا يوجد مستجيبون حالياً', 'لم يتم العثور على متبرعين متاحين بنفس شروط الفصيلة والموقع حالياً.');
       } else {
         Get.snackbar('✅ تم الإرسال', 'تم إرسال نداء الاستغاثة إلى $count متبرع متوافق.');
-        _showNotifiedDonorsList(notifiedDonors);
+        // تحديث الحالة في قاعدة البيانات لتثبيت القائمة
+      final List<Map<String, dynamic>> notifiedDonorsData = notifiedDonors.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          'id': doc.id,
+          'name': data['name'] ?? 'متبرع',
+          'phone': data['phone'] ?? '',
+          'bloodType': data['bloodType'] ?? '',
+        };
+      }).toList();
+
+      await _firestore
+          .collection(AppConstants.serviceRequestsCollection)
+          .doc(requestId)
+          .update({'notifiedDonors': notifiedDonorsData});
+
+      _showNotifiedDonorsList(notifiedDonors);
       }
     } catch (e) {
       Get.snackbar('تعذر إرسال النداء', _localizedErrorMessage(e, fallback: 'فشل إرسال نداء الاستغاثة. يرجى المحاولة لاحقاً.'));

@@ -27,6 +27,7 @@ class ServiceRequestModel {
   final List<Map<String, dynamic>> donorResponses; // [{name, phone, respondedAt, userId}]
   final double? latitude;
   final double? longitude;
+  final List<Map<String, dynamic>> notifiedDonors; // [{id, name, phone, bloodType}]
   final String? roomNumber; // رقم الغرفة في دار السبيل ✨
 
   ServiceRequestModel({
@@ -54,6 +55,7 @@ class ServiceRequestModel {
     required this.updatedAt,
     this.attachments = const [],
     this.donorResponses = const [],
+    this.notifiedDonors = const [],
     this.latitude,
     this.longitude,
     this.roomNumber,
@@ -85,6 +87,7 @@ class ServiceRequestModel {
       'updatedAt': Timestamp.fromDate(updatedAt),
       'attachments': attachments,
       'donorResponses': donorResponses,
+      'notifiedDonors': notifiedDonors,
       'latitude': latitude,
       'longitude': longitude,
       'roomNumber': roomNumber,
@@ -132,6 +135,9 @@ class ServiceRequestModel {
       donorResponses: (map['donorResponses'] ?? map['donor_responses']) != null 
           ? List<Map<String, dynamic>>.from(map['donorResponses'] ?? map['donor_responses']) 
           : const [],
+      notifiedDonors: (map['notifiedDonors'] ?? map['notified_donors']) != null 
+          ? List<Map<String, dynamic>>.from(map['notifiedDonors'] ?? map['notified_donors']) 
+          : const [],
       latitude: (map['latitude'] as num?)?.toDouble(),
       longitude: (map['longitude'] as num?)?.toDouble(),
       roomNumber: map['roomNumber'] ?? map['room_number'],
@@ -163,6 +169,7 @@ class ServiceRequestModel {
     DateTime? updatedAt,
     List<String>? attachments,
     List<Map<String, dynamic>>? donorResponses,
+    List<Map<String, dynamic>>? notifiedDonors,
     String? roomNumber,
   }) {
     return ServiceRequestModel(
@@ -190,6 +197,7 @@ class ServiceRequestModel {
       updatedAt: updatedAt ?? this.updatedAt,
       attachments: attachments ?? this.attachments,
       donorResponses: donorResponses ?? this.donorResponses,
+      notifiedDonors: notifiedDonors ?? this.notifiedDonors,
       roomNumber: roomNumber ?? this.roomNumber,
     );
   }

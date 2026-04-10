@@ -105,8 +105,10 @@ class RequestDetailScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 _buildInfoCard(context, liveReq),
                 const SizedBox(height: 20),
-                if (liveReq.type == 'blood_donation' || liveReq.typeName.contains('دم'))
+                if (liveReq.type == 'blood_donation' || liveReq.typeName.contains('دم')) ...[
                   _buildRespondersSection(context, liveReq),
+                  _buildNotifiedDonorsSection(context, liveReq),
+                ],
                 const SizedBox(height: 24),
                 Text('الإجراءات المتاحة', 
                   style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
@@ -1002,6 +1004,85 @@ class RequestDetailScreen extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildNotifiedDonorsSection(BuildContext context, ServiceRequestModel req) {
+    if (req.notifiedDonors.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            const Icon(Icons.history_edu_rounded, color: AppTheme.textSecondary, size: 20),
+            const SizedBox(width: 8),
+            Text('المتبرعون الذين تم إخطارهم (${req.notifiedDonors.length})',
+                style: const TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.bold, fontSize: 13)),
+          ],
+        ),
+        const Divider(color: Colors.white10, height: 20),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          ),
+          child: ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: req.notifiedDonors.length,
+            separatorBuilder: (context, index) => const Divider(color: Colors.white10, height: 12),
+            itemBuilder: (context, index) {
+              final donor = req.notifiedDonors[index];
+              final name = (donor['name'] ?? 'متبرع').toString();
+              final phone = (donor['phone'] ?? '').toString();
+              final String bloodType = (donor['bloodType'] ?? '').toString();
+              final String userId = (donor['id'] ?? '').toString();
+
+              return Row(
+                children: [
+                   Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.errorColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(bloodType, style: const TextStyle(color: AppTheme.errorColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name, style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  ),
+                  if (phone.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.phone_outlined, color: AppTheme.primaryGreen, size: 18),
+                      onPressed: () => launchUrl(Uri.parse('tel:$phone')),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  if (userId.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.person_search_outlined, color: AppTheme.textHint, size: 18),
+                      onPressed: () {
+                        if (adminController.currentUser?.role == UserRole.superAdmin) {
+                          Get.toNamed('/profile', arguments: userId);
+                        }
+                      },
+                      visualDensity: VisualDensity.compact,
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
