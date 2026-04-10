@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:get/get.dart';
 import '../../../data/models/user_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/routes/app_routes.dart';
+import '../../auth/controllers/auth_controller.dart';
 
 class UserAvatar extends StatelessWidget {
   final UserModel user;
@@ -43,7 +46,18 @@ class UserAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        if (onTap != null) {
+          onTap!();
+        } else {
+          try {
+            final auth = Get.find<AuthController>();
+            if (auth.currentUser.value?.role == UserRole.superAdmin) {
+              Get.toNamed(AppRoutes.profile, arguments: user);
+            }
+          } catch (_) {}
+        }
+      },
       child: Stack(
         children: [
           _buildAvatarBody(),

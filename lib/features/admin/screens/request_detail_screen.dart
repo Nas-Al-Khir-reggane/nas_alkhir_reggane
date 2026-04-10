@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../data/models/service_request_model.dart';
+import '../../../data/models/user_model.dart';
 import '../controllers/admin_controller.dart';
 import '../widgets/share_emergency_generator.dart';
 
@@ -321,7 +322,15 @@ class RequestDetailScreen extends StatelessWidget {
 
               return Column(
                 children: [
-                  _buildInfoRow(Icons.person_outline, 'المستفيد', name, 
+                  _buildInfoRow(
+                    Icons.person_outline, 
+                    'المستفيد', 
+                    name, 
+                    onTap: () {
+                      if (adminController.currentUser?.role == UserRole.superAdmin && req.requesterId.isNotEmpty) {
+                        Get.toNamed('/profile', arguments: req.requesterId);
+                      }
+                    },
                     trailing: phone != '(غير متوفر)' ? IconButton(
                       icon: const Icon(Icons.phone_forwarded, color: AppTheme.primaryGreen, size: 20),
                       onPressed: () => launchUrl(Uri.parse('tel:$phone')),
@@ -410,17 +419,24 @@ class RequestDetailScreen extends StatelessWidget {
               children: [
                 Text('المتطوع المسند إليه', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 12,
-                      backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
-                      child: Text(req.assignedToName!.isNotEmpty ? req.assignedToName![0] : '؟', 
-                        style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(req.assignedToName!, style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
-                  ],
+                GestureDetector(
+                  onTap: () {
+                    if (adminController.currentUser?.role == UserRole.superAdmin && req.assignedTo != null) {
+                      Get.toNamed('/profile', arguments: req.assignedTo);
+                    }
+                  },
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 12,
+                        backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                        child: Text(req.assignedToName!.isNotEmpty ? req.assignedToName![0] : '؟', 
+                          style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(req.assignedToName!, style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -430,26 +446,29 @@ class RequestDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value, {Widget? trailing}) {
+  Widget _buildInfoRow(IconData icon, String label, String value, {Widget? trailing, VoidCallback? onTap}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: AppTheme.primaryGreen.withValues(alpha: 0.15), size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontFamily: 'Tajawal')),
-                const SizedBox(height: 2),
-                Text(value, style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
-              ],
+      child: InkWell(
+        onTap: onTap,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: AppTheme.primaryGreen.withValues(alpha: 0.15), size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontFamily: 'Tajawal')),
+                  const SizedBox(height: 2),
+                  Text(value, style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+                ],
+              ),
             ),
-          ),
-          ...?(trailing == null ? null : [trailing]),
-        ],
+            ...?(trailing == null ? null : [trailing]),
+          ],
+        ),
       ),
     );
   }
@@ -917,58 +936,65 @@ class RequestDetailScreen extends StatelessWidget {
                   final time = respondedAt is Timestamp ? respondedAt.toDate() : DateTime.now();
                   final isAssigned = assignedDonorId.isNotEmpty && assignedDonorId == userId;
 
-                  return Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 15,
-                        backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15),
-                        child: Text(name[0], style: const TextStyle(color: AppTheme.errorColor, fontSize: 12, fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(name, style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
-                            Text(intl.DateFormat('HH:mm - yyyy/MM/dd').format(time),
-                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 10)),
-                          ],
+                  return GestureDetector(
+                    onTap: () {
+                      if (adminController.currentUser?.role == UserRole.superAdmin) {
+                        Get.toNamed('/profile', arguments: userId);
+                      }
+                    },
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 15,
+                          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15),
+                          child: Text(name[0], style: const TextStyle(color: AppTheme.errorColor, fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
-                      ),
-                      if (phone.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.phone_outlined, color: AppTheme.primaryGreen, size: 18),
-                          onPressed: () => launchUrl(Uri.parse('tel:$phone')),
-                        ),
-                      const SizedBox(width: 4),
-                      if (isAssigned)
-                        const Icon(Icons.verified_user_rounded, color: AppTheme.primaryGreen, size: 24)
-                      else if (!isTerminal)
-                        IconButton(
-                          icon: Icon(
-                            Icons.check_circle_rounded, 
-                            color: assignedDonorId.isNotEmpty ? Colors.grey : AppTheme.primaryGreen
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(name, style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
+                              Text(intl.DateFormat('HH:mm - yyyy/MM/dd').format(time),
+                                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 10)),
+                            ],
                           ),
-                          tooltip: assignedDonorId.isNotEmpty ? 'تم تأمين متبرع مسبقاً' : 'تأكيد هذا المتبرع',
-                          onPressed: assignedDonorId.isNotEmpty ? null : () {
-                            Get.defaultDialog(
-                              title: 'تأكيد المتبرع',
-                              middleText: 'هل تريد إسناد هذه المهمة للمتبرع ($name) وتنبيهه؟',
-                              textCancel: 'تراجع',
-                              textConfirm: 'تأكيد',
-                              confirmTextColor: Colors.white,
-                              onConfirm: () {
-                                adminController.confirmDonor(
-                                  requestId: req.id,
-                                  donorId: userId,
-                                  donorName: name,
-                                );
-                                Get.back();
-                              },
-                            );
-                          },
                         ),
-                    ],
+                        if (phone.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.phone_outlined, color: AppTheme.primaryGreen, size: 18),
+                            onPressed: () => launchUrl(Uri.parse('tel:$phone')),
+                          ),
+                        const SizedBox(width: 4),
+                        if (isAssigned)
+                          const Icon(Icons.verified_user_rounded, color: AppTheme.primaryGreen, size: 24)
+                        else if (!isTerminal)
+                          IconButton(
+                            icon: Icon(
+                              Icons.check_circle_rounded, 
+                              color: assignedDonorId.isNotEmpty ? Colors.grey : AppTheme.primaryGreen
+                            ),
+                            tooltip: assignedDonorId.isNotEmpty ? 'تم تأمين متبرع مسبقاً' : 'تأكيد هذا المتبرع',
+                            onPressed: assignedDonorId.isNotEmpty ? null : () {
+                              Get.defaultDialog(
+                                title: 'تأكيد المتبرع',
+                                middleText: 'هل تريد إسناد هذه المهمة للمتبرع ($name) وتنبيهه؟',
+                                textCancel: 'تراجع',
+                                textConfirm: 'تأكيد',
+                                confirmTextColor: Colors.white,
+                                onConfirm: () {
+                                  adminController.confirmDonor(
+                                    requestId: req.id,
+                                    donorId: userId,
+                                    donorName: name,
+                                  );
+                                  Get.back();
+                                },
+                              );
+                            },
+                          ),
+                      ],
+                    ),
                   );
                 },
               ),

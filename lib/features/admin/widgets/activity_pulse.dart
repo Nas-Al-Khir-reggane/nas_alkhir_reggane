@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../../core/theme/app_theme.dart';
 import '../controllers/admin_controller.dart';
+import '../../../data/models/user_model.dart';
 import '../../../data/models/worker_update_model.dart';
 
 class ActivityPulse extends StatelessWidget {
@@ -70,34 +71,41 @@ class ActivityPulse extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. صورة المتطوع مع مؤشر الحالة
-          Stack(
-            children: [
-              Container(
-                width: 44, height: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2), width: 2),
-                ),
-                child: CircleAvatar(
-                  backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                  backgroundImage: (avatar != null && avatar.isNotEmpty) 
-                      ? CachedNetworkImageProvider(avatar) as ImageProvider 
-                      : null,
-                  child: (avatar == null || avatar.isEmpty) ? const Icon(Icons.person, size: 20) : null,
-                ),
-              ),
-              Positioned(
-                right: 0, bottom: 0,
-                child: Container(
-                  width: 12, height: 12,
+          GestureDetector(
+            onTap: () {
+              if (controller.currentUser?.role == UserRole.superAdmin) {
+                Get.toNamed('/profile', arguments: update.workerId);
+              }
+            },
+            child: Stack(
+              children: [
+                Container(
+                  width: 44, height: 44,
                   decoration: BoxDecoration(
-                    color: Colors.green,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
+                    border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2), width: 2),
+                  ),
+                  child: CircleAvatar(
+                    backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                    backgroundImage: (avatar != null && avatar.isNotEmpty) 
+                        ? CachedNetworkImageProvider(avatar) as ImageProvider 
+                        : null,
+                    child: (avatar == null || avatar.isEmpty) ? const Icon(Icons.person, size: 20) : null,
                   ),
                 ),
-              ),
-            ],
+                Positioned(
+                  right: 0, bottom: 0,
+                  child: Container(
+                    width: 12, height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           
           const SizedBox(width: 14),

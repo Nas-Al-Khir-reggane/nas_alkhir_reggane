@@ -9,6 +9,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../data/models/user_model.dart';
 import '../controllers/worker_management_controller.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../../chat/screens/chat_screen.dart'; // استيراد شاشة الدردشة
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -317,33 +318,43 @@ class WorkersScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // الأفاتار مع مؤشر التوفر
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: roleColor.withValues(alpha: 0.15),
-                    backgroundImage: (worker.profileImage != null && worker.profileImage!.isNotEmpty)
-                        ? CachedNetworkImageProvider(worker.profileImage!) as ImageProvider
-                        : null,
-                    child: (worker.profileImage == null || worker.profileImage!.isEmpty)
-                        ? Text(worker.name.isNotEmpty ? worker.name.substring(0, 1) : '?',
-                            style: TextStyle(color: roleColor, fontSize: 22, fontWeight: FontWeight.w700))
-                        : null,
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    child: Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: worker.isAvailable ? AppTheme.successColor : AppTheme.warningColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Theme.of(context).cardColor, width: 2),
+              GestureDetector(
+                onTap: () {
+                  final authController = Get.find<AuthController>();
+                  if (authController.currentUser.value?.role == UserRole.superAdmin) {
+                    Get.toNamed('/profile', arguments: worker);
+                  } else {
+                    Get.toNamed('/admin/worker-detail', arguments: worker);
+                  }
+                },
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: roleColor.withValues(alpha: 0.15),
+                      backgroundImage: (worker.profileImage != null && worker.profileImage!.isNotEmpty)
+                          ? CachedNetworkImageProvider(worker.profileImage!) as ImageProvider
+                          : null,
+                      child: (worker.profileImage == null || worker.profileImage!.isEmpty)
+                          ? Text(worker.name.isNotEmpty ? worker.name.substring(0, 1) : '?',
+                              style: TextStyle(color: roleColor, fontSize: 22, fontWeight: FontWeight.w700))
+                          : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: worker.isAvailable ? AppTheme.successColor : AppTheme.warningColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Theme.of(context).cardColor, width: 2),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(

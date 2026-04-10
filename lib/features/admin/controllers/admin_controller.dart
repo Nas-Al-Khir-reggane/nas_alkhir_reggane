@@ -17,6 +17,7 @@ import '../../auth/controllers/auth_controller.dart';
 import '../../../data/services/notification_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 enum MetricType { donations, requests, projects, team }
 
@@ -34,6 +35,7 @@ class AdminController extends GetxController {
   RxInt availableVehicles = 0.obs;
   RxInt totalBeneficiaries = 0.obs;
   RxInt totalRegisteredUsers = 0.obs; // العداد الإجمالي الجديد
+  RxInt pendingVerificationsCount = 0.obs; // عداد التوثيقات المعلقة
   RxInt unseenUrgentCount = 0.obs;
   RxBool isLoading = false.obs;
   RxBool shouldShowSwipeHint = false.obs;
@@ -355,7 +357,23 @@ class AdminController extends GetxController {
       }),
     );
 
-    // --- 8. أحدث الطلبات (Real-time List) ---
+    // --- 8. التوثيقات المعلقة ---
+    _statsSubs.add(
+      _firestore
+          .collection(AppConstants.usersCollection)
+          .where('isApproved', isEqualTo: true)
+          .where('isVerified', isEqualTo: false)
+          .snapshots()
+          .listen((snap) {
+            // تصفية المحتوى الذي يحتوي على صورة بطاقة الهوية فقط
+            pendingVerificationsCount.value = snap.docs.where((doc) {
+              final data = doc.data();
+              return data['nationalIdUrl'] != null && data['nationalIdUrl'].toString().isNotEmpty;
+            }).length;
+          }),
+    );
+
+    // --- 9. أحدث الطلبات (Real-time List) ---
     _statsSubs.add(
       _firestore
           .collection(AppConstants.serviceRequestsCollection)
@@ -1602,6 +1620,7 @@ class AdminController extends GetxController {
       }).toList();
 
       int count = 0;
+      List<QueryDocumentSnapshot> notifiedDonors = [];
       for (var doc in validDonors) {
         if (doc.id == _authController.currentUser.value?.id) continue;
         await NotificationService.sendNotification(
@@ -1611,12 +1630,14 @@ class AdminController extends GetxController {
           body: 'مريض في $hospital بانتظار فصيلة $bloodType. ساهم في الأجر.',
           data: {'requestId': requestId, 'bloodType': bloodType, 'hospital': hospital, 'phone': phone}
         );
+        notifiedDonors.add(doc);
         count++;
       }
       if (count == 0) {
         Get.snackbar('لا يوجد مستجيبون حالياً', 'لم يتم العثور على متبرعين متاحين بنفس شروط الفصيلة والموقع حالياً.');
       } else {
         Get.snackbar('✅ تم الإرسال', 'تم إرسال نداء الاستغاثة إلى $count متبرع متوافق.');
+        _showNotifiedDonorsList(notifiedDonors);
       }
     } catch (e) {
       Get.snackbar('تعذر إرسال النداء', _localizedErrorMessage(e, fallback: 'فشل إرسال نداء الاستغاثة. يرجى المحاولة لاحقاً.'));
@@ -1624,6 +1645,88 @@ class AdminController extends GetxController {
       isLoading.value = false;
     }
   }
+
+  void _showNotifiedDonorsList(List<QueryDocumentSnapshot> donors) {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Get.theme.canvasColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'المتبرعون الذين تم إشعارهم (${donors.length})',
+                  style: TextStyle(
+                    fontSize: 18, 
+                    fontWeight: FontWeight.bold,
+                    color: Get.theme.textTheme.titleLarge?.color,
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.close, color: Get.theme.iconTheme.color),
+                  onPressed: () => Get.back(),
+                )
+              ],
+            ),
+            const Divider(),
+            Expanded(
+              child: ListView.builder(
+                itemCount: donors.length,
+                itemBuilder: (context, index) {
+                  final data = donors[index].data() as Map<String, dynamic>;
+                  final name = data['name'] ?? 'متبرع غير معروف';
+                  final phone = data['phone'] ?? '';
+                  final bloodType = data['bloodType'] ?? '';
+                  final wilaya = data['wilaya'] ?? '';
+                  
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.red.shade100,
+                      child: Text(bloodType, style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.bold, fontSize: 12)),
+                    ),
+                    title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, color: Get.theme.textTheme.bodyLarge?.color)),
+                    subtitle: Text(wilaya.isNotEmpty ? wilaya : 'لا يوجد ولاية', style: TextStyle(color: Get.theme.textTheme.bodySmall?.color)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (phone.toString().isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.call, color: Colors.green),
+                            onPressed: () async {
+                              final uri = Uri.parse('tel:$phone');
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri);
+                              }
+                            },
+                          ),
+                        if (phone.toString().isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.message, color: Colors.blue),
+                            onPressed: () async {
+                              final uri = Uri.parse('sms:$phone');
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri);
+                              }
+                            },
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      isScrollControlled: false,
+    );
+  }
+
 
   Future<void> respondToBloodAlert({required String requestId, required String donorName, required String donorPhone}) async {
     if (isLoading.value) return; // 🛡️ حماية الضغط المزدوج

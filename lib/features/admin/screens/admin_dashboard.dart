@@ -288,10 +288,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
               Get.back();
               Get.toNamed('/beneficiary/new-request');
             }),
-            _buildActionItem(Icons.create_new_folder, 'إضافة مشروع جديد', () {
-              Get.back();
-              ProjectsScreen.showAddProjectSheet(context);
-            }),
+            if (controller.isSuperAdmin)
+              _buildActionItem(Icons.create_new_folder, 'إضافة مشروع جديد', () {
+                Get.back();
+                ProjectsScreen.showAddProjectSheet(context);
+              }),
             _buildActionItem(Icons.person_add, 'إضافة متطوع جديد', () {
               Get.back();
               WorkersScreen.showAddWorkerSheet(context);
@@ -463,6 +464,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 Text('${controller.urgentRequests.length} طلب طارئ ينتظر',
                                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
                                 const Text('اضغط للمعالجة الفورية الآن', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                            const Spacer(),
+                            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink()),
+
+            // --- Verification Pending Banner ---
+            Obx(() => controller.pendingVerificationsCount.value > 0 && controller.isSuperAdmin
+                ? FadeIn(
+                    child: GestureDetector(
+                      onTap: () {
+                        // Navigate to Manage Users
+                        Get.toNamed(AppRoutes.adminUsers);
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 25),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [Color(0xFF00796B), Color(0xFF00ACC1)]),
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: [BoxShadow(color: Colors.teal.withValues(alpha: 0.15), blurRadius: 15, offset: const Offset(0, 5))],
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.vignette_rounded, color: Colors.white, size: 28),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('${controller.pendingVerificationsCount.value} طلب توثيق هوية',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+                                const Text('يرجى مراجعة وتوثيق بطاقات التعريف', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
                               ],
                             ),
                             const Spacer(),

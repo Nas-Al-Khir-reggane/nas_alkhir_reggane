@@ -59,7 +59,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                   _buildHeader(),
                   _buildUserCounter(),
                   _buildCustomToggle(),
-                  if (_currentIndex == 1) ...[
+                  if (_currentIndex == 2) ...[
                     _buildSearchBar(),
                     _buildBloodTypeFilters(),
                     _buildWorkerFilters(),
@@ -69,7 +69,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
             ),
             
             // List Section - Takes the remaining space
-            _currentIndex == 0 ? _buildPendingSliver() : _buildAllUsersSliver(),
+            _currentIndex == 0 
+                ? _buildPendingSliver() 
+                : (_currentIndex == 1 ? _buildVerificationSliver() : _buildAllUsersSliver()),
             
             const SliverToBoxAdapter(child: SizedBox(height: 40)),
           ],
@@ -84,23 +86,32 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                color: AppTheme.textPrimary,
-                onPressed: () => Get.back(),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('إدارة المستخدمين', style: TextStyle(color: AppTheme.textPrimary, fontSize: 22, fontWeight: FontWeight.w900)),
-                  Text('التحكم في حسابات وصلاحيات الأعضاء', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                ],
-              ),
-            ],
+          Expanded(
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                  color: AppTheme.textPrimary,
+                  onPressed: () => Get.back(),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('إدارة المستخدمين', 
+                        style: TextStyle(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w900),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text('التحكم في حسابات وصلاحيات الأعضاء', 
+                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -137,8 +148,12 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                 child: const Icon(Icons.person_pin_rounded, color: AppTheme.primaryGreen, size: 20),
               ),
               const SizedBox(width: 12),
-              Text('إجمالي المشتركين المسجلين:', 
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontFamily: 'Tajawal')),
+              Flexible(
+                child: Text('إجمالي المشتركين المسجلين:', 
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontFamily: 'Tajawal'),
+                  maxLines: 1, 
+                  overflow: TextOverflow.ellipsis),
+              ),
               const Spacer(),
               Obx(() => ScrollAnimations.numberCounter(
                 value: _adminCtl.totalRegisteredUsers.value,
@@ -173,8 +188,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         ),
         child: Row(
           children: [
-            _buildToggleOption(0, 'في الانتظار', Icons.hourglass_empty_rounded),
-            _buildToggleOption(1, 'كل المستخدمين', Icons.group_outlined),
+            _buildToggleOption(0, 'طلبات التسجيل', Icons.person_add_rounded),
+            _buildToggleOption(1, 'توثيق الهوية', Icons.vignette_rounded),
+            _buildToggleOption(2, 'كل المستخدمين', Icons.group_outlined),
           ],
         ),
       ),
@@ -199,14 +215,18 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: isSelected ? Colors.black : AppTheme.textHint, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: TextStyle(
-                  color: isSelected ? Colors.black : AppTheme.textHint,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 14,
+              Icon(icon, color: isSelected ? Colors.black : AppTheme.textHint, size: 16),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isSelected ? Colors.black : AppTheme.textHint,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 11,
+                  ),
                 ),
               ),
             ],
@@ -373,6 +393,157 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           side: BorderSide(color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder),
         ),
       ),
+    );
+  }
+
+  Widget _buildVerificationSliver() {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection(AppConstants.usersCollection)
+          .where('isApproved', isEqualTo: true)
+          .where('isVerified', isEqualTo: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return SliverToBoxAdapter(
+              child: Center(
+                  child: Padding(
+            padding: const EdgeInsets.all(40.0),
+            child: SelectableText('حدث خطأ: ${snapshot.error}',
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center),
+          )));
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SliverToBoxAdapter(
+              child: Center(
+                  child: Padding(
+            padding: EdgeInsets.all(40.0),
+            child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+          )));
+        }
+
+        var docs = snapshot.data?.docs.where((doc) {
+          var data = doc.data();
+          return data['nationalIdUrl'] != null &&
+              data['nationalIdUrl'].toString().isNotEmpty;
+        }).toList() ?? [];
+
+        if (docs.isEmpty) {
+          return SliverFillRemaining(
+              child: _buildEmptyState('لا توجد طلبات توثيق بانتظار المراجعة'));
+        }
+
+        return SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                var data = docs[index].data();
+                UserModel user = UserModel.fromMap(data, docs[index].id);
+
+                return FadeInUp(
+                  duration: const Duration(milliseconds: 400),
+                  delay: Duration(milliseconds: 50 * (index % 10)),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: AppTheme.glassDecoration,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            _buildAvatar(user),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(user.name,
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: AppTheme.textPrimary)),
+                                  Text(user.phone,
+                                      style: TextStyle(
+                                          color: AppTheme.textHint,
+                                          fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            _buildStatusBadge(
+                                'بانتظار المراجعة', AppTheme.warningColor),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text("صورة بطاقة التعريف الوطنية:",
+                            style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 10),
+                        GestureDetector(
+                          onTap: () => _showUserDetails(user),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              height: 150,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: AppTheme.backgroundColor,
+                                border: Border.all(color: AppTheme.glassBorder),
+                              ),
+                              child: Hero(
+                                tag: 'id_card_${user.id}',
+                                child: Image.network(
+                                  user.nationalIdUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Center(
+                                          child: Icon(Icons.error_outline,
+                                              color: AppTheme.errorColor)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: AppTheme.gradientButton(
+                                text: "توثيق وتوليد رقم العضوية",
+                                icon: Icons.verified_rounded,
+                                onPressed: () =>
+                                    _adminCtl.verifyUserIdentity(user.id),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            IconButton(
+                              onPressed: () => _showUserDetails(user),
+                              icon: Icon(Icons.info_outline,
+                                  color: AppTheme.goldAccent),
+                              style: IconButton.styleFrom(
+                                backgroundColor:
+                                    AppTheme.goldAccent.withValues(alpha: 0.1),
+                                padding: const EdgeInsets.all(12),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              childCount: docs.length,
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -574,40 +745,37 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                             children: [
                               Text(user.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textPrimary)),
                               const SizedBox(height: 4),
-                              Row(
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
-                                  Icon(Icons.badge_outlined, color: AppTheme.primaryGreen, size: 14),
-                                  const SizedBox(width: 4),
-                                  Text(user.role.displayName, style: TextStyle(color: AppTheme.primaryGreen, fontSize: 11, fontWeight: FontWeight.bold)),
-                                  if (isSuperAdmin && user.bloodType != null) ...[
-                                    const SizedBox(width: 8),
+                                  // Role Badge
+                                  _buildBadge(
+                                    text: user.role.displayName,
+                                    icon: Icons.shield_outlined,
+                                    color: AppTheme.primaryGreen,
+                                  ),
+
+                                  // Blood Type Badge
+                                  if (isSuperAdmin && user.bloodType != null) 
                                     _buildBloodTypeBadge(user),
-                                  ],
-                                  if (user.isVerified) ...[
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(Icons.verified_user_rounded, size: 12, color: Colors.blue),
-                                          const SizedBox(width: 4),
-                                          Text(user.memberId ?? '', style: const TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
-                                        ],
-                                      ),
+
+                                  // Verification / Member ID Badge
+                                  if (user.isVerified) 
+                                    _buildBadge(
+                                      text: user.memberId ?? 'موثق',
+                                      icon: Icons.verified_user_rounded,
+                                      color: Colors.blue,
                                     ),
-                                  ],
-                                  if (isSuperAdmin) ...[
-                                    const SizedBox(width: 8),
-                                    Icon(Icons.phone_outlined, color: AppTheme.textHint, size: 14),
-                                    const SizedBox(width: 4),
-                                    Text(user.phone, style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
-                                  ],
+
+                                  // Phone Badge
+                                  if (isSuperAdmin)
+                                    _buildBadge(
+                                      text: user.phone,
+                                      icon: Icons.phone_outlined,
+                                      color: AppTheme.textHint,
+                                    ),
                                 ],
                               )
                             ],
@@ -677,23 +845,42 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     );
   }
 
+  Widget _buildBadge({required String text, required IconData icon, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(text, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'Outfit')),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBloodTypeBadge(UserModel user) {
     bool isResting = !user.canDonateBloodSmart;
     Color color = (user.isDonorAvailable && !isResting) ? AppTheme.errorColor : AppTheme.textHint;
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.bloodtype, size: 12, color: color),
-          const SizedBox(width: 2),
-          Text(user.bloodType ?? '?', style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+          Icon(Icons.bloodtype_rounded, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(user.bloodType ?? '?', style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'Outfit')),
           if (isResting) ...[
             const SizedBox(width: 4),
             Icon(Icons.timer_outlined, size: 12, color: color),

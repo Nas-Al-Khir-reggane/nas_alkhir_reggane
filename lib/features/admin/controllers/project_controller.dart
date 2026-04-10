@@ -17,6 +17,7 @@ import 'package:intl/intl.dart';
 import '../../../data/services/offline_queue_service.dart';
 import '../../../data/services/connectivity_service.dart';
 import '../../../data/services/notification_service.dart';
+import '../../../data/models/user_model.dart';
 
 class ProjectController extends GetxController {
   RxList<ProjectModel> allProjects = <ProjectModel>[].obs;
@@ -74,6 +75,14 @@ class ProjectController extends GetxController {
     bool isSubscription = false, 
     bool isMonthlyGoal = false, 
   }) async {
+    final currentUser = Get.find<AuthController>().currentUser.value;
+    if (currentUser?.role != UserRole.superAdmin) {
+      Get.snackbar('❌ وصول مرفوض', 'إضافة المشاريع متاحة للمنسق العام فقط',
+          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15),
+          colorText: AppTheme.errorColor);
+      return;
+    }
+
     if (isLoading.value) return; // 🛡️ حماية الضغط المزدوج
     final data = {
       'name': name,

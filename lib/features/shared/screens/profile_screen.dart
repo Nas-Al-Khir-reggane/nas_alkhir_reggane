@@ -198,6 +198,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: Text(user.role.displayName, style: GoogleFonts.tajawal(color: Theme.of(context).colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w800)),
                     ),
+                    if (user.memberId != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1B5E20).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF1B5E20).withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.pin_rounded, color: Color(0xFF1B5E20), size: 12),
+                            const SizedBox(width: 4),
+                            Text(
+                              user.memberId!,
+                              style: GoogleFonts.tajawal(color: const Color(0xFF1B5E20), fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(width: 8),
                     _buildVerificationBadge(user),
                     if (ownProfile) ...[

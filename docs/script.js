@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    
+
     const REPO_OWNER = 'ahmed-majija';
     const REPO_NAME = 'nas_alkhir_reggane';
     const API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`;
@@ -52,13 +52,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // =========================================
     try {
         const response = await fetch(API_URL);
-        
+
         if (!response.ok) {
             throw new Error('لا يوجد إصدارات عامة متاحة بعد.');
         }
 
         const data = await response.json();
-        
+
         versionInfo.innerHTML = `<i class="fa-solid fa-circle-check" style="color: var(--emerald-primary);"></i> الإصدار الأحدث: ${data.tag_name} | صدر في: ${new Date(data.published_at).toLocaleDateString('ar-EG')}`;
         versionInfo.style.color = 'var(--emerald-primary)';
 
@@ -68,11 +68,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             for (const asset of data.assets) {
                 const name = decodeURIComponent(asset.name); // في حالة كان مشفراً
                 let targetBtn = null;
-                
-                if (name.includes('شاملة')) targetBtn = btnUniversal;
-                else if (name.includes('حديثة')) targetBtn = btnArm64;
-                else if (name.includes('قديمة')) targetBtn = btnArmeabi;
-                else if (name.includes('لوحية') || name.includes('محاكيات')) targetBtn = btnX86;
+
+                if (name.includes('CHAMILA')) targetBtn = btnUniversal;
+                else if (name.includes('NEW.PHONE')) targetBtn = btnArm64;
+                else if (name.includes('OLD.PHONE')) targetBtn = btnArmeabi;
+                else if (name.includes('TABLET') || name.includes('محاكيات')) targetBtn = btnX86;
                 else if (name.endsWith('.apk') && !foundAssetsCount) {
                     // إذا لم نتمكن من تحديد النسخة، نضعها في الرئيسية مؤقتاً
                     targetBtn = btnUniversal;
@@ -97,10 +97,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
         loadingSpinner.style.display = 'none';
         errorMsg.style.display = 'flex';
-        
+
         versionInfo.textContent = 'في انتظار أول إصدار (Release)';
         versionInfo.style.color = 'var(--text-muted)';
-        
+
         console.error("خطأ في جلب الإصدار:", error);
     }
 });
@@ -113,7 +113,7 @@ let particleAnimationId = null;
 function initParticles() {
     const canvas = document.getElementById('particlesCanvas');
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
