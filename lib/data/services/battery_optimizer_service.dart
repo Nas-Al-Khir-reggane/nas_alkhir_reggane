@@ -1,9 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../features/shared/widgets/stability_guide_dialog.dart';
 
 /// خدمة تجاوز توفير الطاقة
 /// تطلب من المستخدم السماح للتطبيق بالعمل بدون قيود
@@ -12,167 +13,84 @@ class BatteryOptimizerService {
   static const String _prefKey = 'battery_optimization_asked';
   static const String _prefDismissCount = 'battery_dismiss_count';
 
+  /// توثيق روابط الإعدادات الخاصة بالشركات المصنعة (OEM Intents)
+  static const Map<String, String> _oemIntents = {
+    'Xiaomi': 'intent:#Intent;component=com.miui.securitycenter/com.miui.permcenter.autostart.AutoStartManagementActivity;end',
+    'samsung': 'intent:#Intent;component=com.samsung.android.lool/com.samsung.android.sm.ui.battery.BatteryActivity;end',
+    'Huawei': 'intent:#Intent;component=com.huawei.systemmanager/com.huawei.systemmanager.optimize.process.ProtectActivity;end',
+    'OPPO': 'intent:#Intent;component=com.coloros.safecenter/com.coloros.safecenter.permission.startup.StartupAppListActivity;end',
+    'VIVO': 'intent:#Intent;component=com.vivo.permissionmanager/com.vivo.permissionmanager.activity.BgStartUpManagerActivity;end',
+    'Realme': 'intent:#Intent;component=com.coloros.safecenter/com.coloros.safecenter.permission.startup.StartupAppListActivity;end',
+  };
+
   /// تُستدعى عند بدء التطبيق — تطلب الأذونات إذا لم تُطلب من قبل
   static Future<void> requestOptimizations(BuildContext context) async {
     if (!Platform.isAndroid) return;
 
     final prefs = await SharedPreferences.getInstance();
     final alreadyAsked = prefs.getBool(_prefKey) ?? false;
-
-    // إذا لم يُسأل من قبل أو رفض أقل من 3 مرات
     final dismissCount = prefs.getInt(_prefDismissCount) ?? 0;
 
-    if (alreadyAsked && dismissCount >= 3) {
-      // المستخدم رفض 3 مرات، لا نزعجه أكثر
+    if (alreadyAsked && dismissCount >= 5) {
+      // رفعنا عدد التنبيهات إلى 5 لأهميتها في الهواتف الحديثة
       return;
     }
 
-    // تحقق إذا كان التطبيق بالفعل مستثنى من توفير الطاقة
-    final isIgnoring = await Permission.ignoreBatteryOptimizations.isGranted;
-    if (isIgnoring) {
+    // تحقق من الحالة الحالية
+    final isBatteryIgnoring = await Permission.ignoreBatteryOptimizations.isGranted;
+    final isNotifGranted = await Permission.notification.isGranted;
+
+    if (isBatteryIgnoring && isNotifGranted) {
       await prefs.setBool(_prefKey, true);
-      debugPrint('✅ [Battery] Already ignoring battery optimizations');
+      debugPrint('✅ [Battery] Everything is stable.');
       return;
     }
-
-    // حذفنا التأخير الداخلي لكي يتحكم به الـ AuthController بشكل مستقر
 
     if (!context.mounted) return;
 
-    // عرض حوار الشرح أولاً
-    _showExplanationDialog(context, prefs, dismissCount);
+    // عرض الدليل التفاعلي الجديد
+    _showStabilityGuide(context, prefs, dismissCount);
   }
 
-  /// حوار الشرح المبسّط بالعربية
-  static void _showExplanationDialog(
+  /// عرض الدليل التفاعلي الجديد بملء الشاشة والزجاجي
+  static void _showStabilityGuide(
     BuildContext context,
     SharedPreferences prefs,
     int dismissCount,
-  ) {
-    final manufacturer = _getManufacturer();
+  ) async {
+    final manufacturer = await _getManufacturer();
+
+    if (!context.mounted) return;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.battery_alert_rounded, color: Colors.orange.shade700, size: 28),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'إعداد مهم للطوارئ',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'لكي تصلك إشعارات الطوارئ ونداءات التبرع بالدم في أي وقت، '
-                'يجب السماح للتطبيق بالعمل في الخلفية.',
-                style: TextStyle(fontSize: 15, height: 1.7),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.shade100),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.warning_amber_rounded, color: Colors.red, size: 22),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'بدون هذا الإعداد، قد لا تصلك نداءات الاستغاثة العاجلة!',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (manufacturer != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'هاتفك: $manufacturer',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                prefs.setInt(_prefDismissCount, dismissCount + 1);
-              },
-              child: Text('لاحقاً', style: TextStyle(color: Colors.grey.shade500)),
-            ),
-            ElevatedButton.icon(
-              onPressed: () async {
-                Navigator.of(ctx).pop();
-                await _requestAllOptimizations(prefs);
-              },
-              icon: const Icon(Icons.security_rounded, size: 18),
-              label: const Text('السماح الآن'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade600,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              ),
-            ),
-          ],
+        child: StabilityGuideDialog(
+          oemIntents: _oemIntents,
+          manufacturer: manufacturer,
         ),
       ),
-    );
+    ).then((_) {
+      // تحديث عدد مرات التجاهل
+      prefs.setInt(_prefDismissCount, dismissCount + 1);
+    });
   }
 
-  /// تنفيذ كل طلبات تجاوز التحسين
-  static Future<void> _requestAllOptimizations(SharedPreferences prefs) async {
+  /// كشف الشركة المصنعة للهاتف بدقة باستخدام device_info_plus
+  static Future<String?> _getManufacturer() async {
     try {
-      // 1. طلب النظام الرسمي: تجاوز Battery Optimization
-      final status = await Permission.ignoreBatteryOptimizations.request();
-      debugPrint('🔋 [Battery] Permission status: $status');
-
-      // 2. We skip using optimize_battery OEM intents to avoid build errors. 
-      // The system battery optimization request above handles the main Doze exception.
-      
-      await prefs.setBool(_prefKey, true);
+      if (Platform.isAndroid) {
+        DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+        AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+        return androidInfo.manufacturer;
+      }
+      return null;
     } catch (e) {
-      debugPrint('❌ [Battery] Optimization request failed: $e');
-    }
-  }
-
-  /// كشف الشركة المصنعة للهاتف
-  static String? _getManufacturer() {
-    try {
-      // يتم الحصول عليه من Platform environment على Android
-      final manufacturer = Platform.environment['MANUFACTURER'] ??
-          Platform.environment['BRAND'];
-      return manufacturer;
-    } catch (_) {
+      debugPrint('⚠️ [Battery] Could not detect manufacturer: $e');
       return null;
     }
   }
 }
+

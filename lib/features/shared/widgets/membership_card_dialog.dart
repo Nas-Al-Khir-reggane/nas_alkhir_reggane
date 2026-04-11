@@ -1,8 +1,5 @@
 import 'dart:io';
-import 'dart:ui' as ui;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,7 +7,6 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../data/models/user_model.dart';
-import '../../../core/theme/app_theme.dart';
 
 class MembershipCardWidget extends StatelessWidget {
   final UserModel user;
@@ -38,13 +34,13 @@ class MembershipCardWidget extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: [
               cardColor, // استخدام اللون المختار
-              cardColor.withOpacity(0.8),
-              cardColor.withOpacity(0.6),
+              cardColor.withValues(alpha: 0.8),
+              cardColor.withValues(alpha: 0.6),
             ],
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -61,7 +57,7 @@ class MembershipCardWidget extends StatelessWidget {
                 height: 200,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                 ),
               ),
             ),
@@ -75,7 +71,7 @@ class MembershipCardWidget extends StatelessWidget {
                   height: 150,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
-                    color: Colors.white.withOpacity(0.03),
+                    color: Colors.white.withValues(alpha: 0.03),
                   ),
                 ),
               ),
@@ -93,7 +89,7 @@ class MembershipCardWidget extends StatelessWidget {
                       Image.asset(
                         'assets/images/nas_alkhir_app.png',
                         height: 50,
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -126,11 +122,11 @@ class MembershipCardWidget extends StatelessWidget {
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
                     ),
                     child: CircleAvatar(
                       radius: 50, // تصغير قطر الصورة قليلاً (كان 55)
-                      backgroundColor: Colors.white.withOpacity(0.1),
+                      backgroundColor: Colors.white.withValues(alpha: 0.1),
                       backgroundImage: user.profileImage != null && user.profileImage!.isNotEmpty
                           ? NetworkImage(user.profileImage!)
                           : null,
@@ -161,7 +157,7 @@ class MembershipCardWidget extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(50),
                     ),
                     child: Text(
@@ -215,14 +211,14 @@ class MembershipCardWidget extends StatelessWidget {
                           Text(
                             'التوقيع الرسمي',
                             style: GoogleFonts.tajawal(
-                              color: Colors.white.withOpacity(0.6),
+                              color: Colors.white.withValues(alpha: 0.6),
                               fontSize: 8,
                             ),
                           ),
                           Text(
                             'معا نبني .. معا نرحم',
                             style: GoogleFonts.marckScript( // Using a script font for signature feel
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontSize: 14,
                             ),
                           ),
@@ -305,7 +301,7 @@ class _MembershipCardDialogState extends State<MembershipCardDialog> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -325,7 +321,7 @@ class _MembershipCardDialogState extends State<MembershipCardDialog> {
                     ),
                     boxShadow: [
                       if (selectedColor == color)
-                        BoxShadow(color: color.withOpacity(0.5), blurRadius: 10)
+                        BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 10)
                     ],
                   ),
                 ),

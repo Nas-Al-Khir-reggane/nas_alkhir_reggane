@@ -749,6 +749,33 @@ class AdminController extends GetxController {
     }
   }
 
+  Future<void> removeRequestAttachment(String requestId, String attachmentUrl) async {
+    if (!isSuperAdmin) {
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، هذه الصلاحية محصورة للمنسق العام فقط.',
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red);
+      return;
+    }
+
+    try {
+      isLoading.value = true;
+      await _firestore
+          .collection(AppConstants.serviceRequestsCollection)
+          .doc(requestId)
+          .update({
+            'attachments': FieldValue.arrayRemove([attachmentUrl]),
+          });
+      
+      Get.snackbar('✅ نجاح', 'تم حذف المرفق بنجاح.',
+        backgroundColor: AppTheme.successColor.withValues(alpha: 0.1),
+        colorText: AppTheme.successColor);
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'فشل حذف المرفق: ${_localizedErrorMessage(e)}');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   Future<void> registerAdminDonation({
     required String donorName,
     required double amount,

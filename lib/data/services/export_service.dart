@@ -36,9 +36,7 @@ class ExportService {
 
       // البيانات
       for (var user in users) {
-        String dateStr = user.createdAt != null 
-            ? DateFormat('yyyy/MM/dd HH:mm').format(user.createdAt!)
-            : 'غير متوفر';
+        String dateStr = DateFormat('yyyy/MM/dd HH:mm').format(user.createdAt);
             
         List<String> row = [
           user.memberId ?? 'بدون عضوية',

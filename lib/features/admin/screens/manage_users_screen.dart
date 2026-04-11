@@ -601,7 +601,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
-                var data = docs[index].data() as Map<String, dynamic>;
+                var data = docs[index].data();
                 UserModel user = UserModel.fromMap(data, docs[index].id);
                 UserRole selectedRole = user.role;
 
@@ -749,7 +749,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
-                UserModel user = UserModel.fromMap(docs[index].data() as Map<String, dynamic>, docs[index].id);
+                UserModel user = UserModel.fromMap(docs[index].data(), docs[index].id);
                 bool isSuperAdmin = _adminCtl.currentUser?.role == UserRole.superAdmin;
 
                 return FadeInUp(

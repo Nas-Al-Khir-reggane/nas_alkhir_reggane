@@ -325,7 +325,6 @@ class NotificationService extends GetxController {
     }
   }
 
-  static Future<void> _saveToken(String token) => saveCurrentDeviceToken();
 
   static Future<String?> _downloadAndSaveImage(String url, String fileName) async {
     if (url.isEmpty) return null;
@@ -379,7 +378,7 @@ class NotificationService extends GetxController {
     BigPictureStyleInformation? bigPictureStyle;
 
     if (imageUrl != null && imageUrl.isNotEmpty) {
-      largeIconPath = await _downloadAndSaveImage(imageUrl, 'fground_notif_${stableId}.jpg');
+      largeIconPath = await _downloadAndSaveImage(imageUrl, 'fground_notif_$stableId.jpg');
       if (largeIconPath != null) {
         bigPictureStyle = BigPictureStyleInformation(
           FilePathAndroidBitmap(largeIconPath),

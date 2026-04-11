@@ -153,78 +153,77 @@ class _DonorDashboardState extends State<DonorDashboard> {
       },
       child: Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          body: Column(
+          body: IndexedStack(
+            index: _currentIndex,
             children: [
-              Expanded(
-                child: IndexedStack(
-                  index: _currentIndex,
-                  children: [
-                    _buildHomeTab(),
-                    _buildProjectsTab(),
-                    const MySubscriptionsScreen(),
-                    const DonateScreen(),
-                    _buildContactTab(),
-                  ],
-                ),
-              ),
-              const UpdateBanner(),
+              _buildHomeTab(),
+              _buildProjectsTab(),
+              const MySubscriptionsScreen(),
+              const DonateScreen(),
+              _buildContactTab(),
             ],
           ),
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: [
-              BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 4))
-            ],
-          ),
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
-              setState(() => _currentIndex = index);
-              SoundManager.to.playNavigation();
-            },
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            selectedItemColor: Theme.of(context).colorScheme.primary,
-            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15),
-            type: BottomNavigationBarType.fixed,
-            items: [
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.dashboard_outlined),
-                activeIcon: Icon(Icons.dashboard),
-                label: 'لوحتي',
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 4))
+                ],
               ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.folder_outlined),
-                activeIcon: Icon(Icons.folder),
-                label: 'المشاريع',
+              child: BottomNavigationBar(
+                currentIndex: _currentIndex,
+                onTap: (index) {
+                  setState(() => _currentIndex = index);
+                  SoundManager.to.playNavigation();
+                },
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                selectedItemColor: Theme.of(context).colorScheme.primary,
+                unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.15),
+                type: BottomNavigationBarType.fixed,
+                items: [
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.dashboard_outlined),
+                    activeIcon: Icon(Icons.dashboard),
+                    label: 'لوحتي',
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.folder_outlined),
+                    activeIcon: Icon(Icons.folder),
+                    label: 'المشاريع',
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.child_care_outlined),
+                    activeIcon: Icon(Icons.child_care),
+                    label: 'كفالاتي',
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.volunteer_activism),
+                    label: 'تبرع الآن',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Obx(() {
+                      final chatController = Get.find<ChatController>();
+                      return Badge(
+                        label: Text(chatController.totalUnreadCount.value.toString()),
+                        isLabelVisible: chatController.totalUnreadCount.value > 0,
+                        backgroundColor: AppTheme.emergencyColor,
+                        textColor: Colors.white,
+                        child: const Icon(Icons.chat_bubble_outline),
+                      );
+                    }),
+                    activeIcon: const Icon(Icons.chat_bubble),
+                    label: 'تواصل معنا',
+                  ),
+                ],
               ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.child_care_outlined),
-                activeIcon: Icon(Icons.child_care),
-                label: 'كفالاتي',
-              ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.volunteer_activism),
-                label: 'تبرع الآن',
-              ),
-              BottomNavigationBarItem(
-                icon: Obx(() {
-                  final chatController = Get.find<ChatController>();
-                  return Badge(
-                    label: Text(chatController.totalUnreadCount.value.toString()),
-                    isLabelVisible: chatController.totalUnreadCount.value > 0,
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    textColor: Theme.of(context).colorScheme.onPrimary,
-                    child: const Icon(Icons.chat_bubble_outline),
-                  );
-                }),
-                activeIcon: const Icon(Icons.chat_bubble),
-                label: 'تواصل معنا',
-              ),
-            ],
-          ),
+            ),
+            const UpdateBanner(),
+          ],
         ),
       ),
     );

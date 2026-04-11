@@ -26,7 +26,53 @@ class RequestDetailScreen extends StatelessWidget {
     throw Exception('Invalid request data');
   }
 
-  Future<void> _openAttachment(String attachmentRef) async {
+  void _showImagePreview(BuildContext context, String url) {
+    Get.dialog(
+      Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Get.back(),
+              ),
+            ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: InteractiveViewer(
+                child: Image.network(
+                  url,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const Center(child: CircularProgressIndicator(color: Colors.white));
+                  },
+                  errorBuilder: (context, error, stackTrace) => const Center(
+                    child: Icon(Icons.broken_image, color: Colors.white, size: 50),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openAttachment(BuildContext context, String attachmentRef) async {
+    final bool isImage = attachmentRef.toLowerCase().contains('.jpg') || 
+                         attachmentRef.toLowerCase().contains('.jpeg') || 
+                         attachmentRef.toLowerCase().contains('.png') || 
+                         attachmentRef.contains('cloudinary.com'); // صور كلاوديناري غالباً صور
+
+    if (isImage) {
+      _showImagePreview(context, attachmentRef);
+      return;
+    }
+
     try {
       final uri = attachmentRef.startsWith('http')
           ? Uri.parse(attachmentRef)
@@ -383,24 +429,54 @@ class RequestDetailScreen extends StatelessWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: req.attachments.map((attachmentRef) => InkWell(
-                onTap: () => _openAttachment(attachmentRef),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8)
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.attachment, size: 16, color: AppTheme.primaryGreen),
-                      SizedBox(width: 4),
-                      Text('عرض المرفق', style: TextStyle(color: AppTheme.primaryGreen, fontSize: 12)),
-                    ],
-                  ),
-                ),
-              )).toList(),
+              children: req.attachments.map((attachmentRef) {
+                final bool isImage = attachmentRef.toLowerCase().contains('.jpg') || 
+                                     attachmentRef.toLowerCase().contains('.jpeg') || 
+                                     attachmentRef.toLowerCase().contains('.png') || 
+                                     attachmentRef.contains('cloudinary.com');
+
+                return Stack(
+                  children: [
+                    InkWell(
+                      onTap: () => _openAttachment(context, attachmentRef),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(isImage ? Icons.image_outlined : Icons.insert_drive_file_outlined, 
+                                 size: 16, color: AppTheme.primaryGreen),
+                            const SizedBox(width: 6),
+                            Text(isImage ? 'عرض الصورة' : 'عرض الملف', 
+                                 style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (adminController.isSuperAdmin)
+                      Positioned(
+                        right: -4,
+                        top: -4,
+                        child: GestureDetector(
+                          onTap: () => _confirmDeleteAttachment(req.id, attachmentRef),
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.close, size: 10, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              }).toList(),
             ),
           ],
         ],
@@ -613,6 +689,32 @@ class RequestDetailScreen extends StatelessWidget {
         Get.back(); // العودة للشاشة السابقة
       },
       onCancel: () => Get.back(),
+    );
+  }
+
+  void _confirmDeleteAttachment(String requestId, String attachmentUrl) {
+    Get.dialog(
+      StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            backgroundColor: AppTheme.surfaceColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('تأكيد حذف المرفق', style: TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold, fontSize: 16)),
+            content: const Text('هل أنت متأكد من رغبتك في حذف هذا المرفق نهائياً من الطلب؟', style: TextStyle(fontFamily: 'Tajawal', fontSize: 13)),
+            actions: [
+              TextButton(onPressed: () => Get.back(), child: const Text('تراجع')),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
+                onPressed: () async {
+                  Get.back(); // إغلاق الدايالوج
+                  await adminController.removeRequestAttachment(requestId, attachmentUrl);
+                },
+                child: const Text('حذف الآن', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 

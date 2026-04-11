@@ -122,18 +122,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
           isDark: Theme.of(context).brightness == Brightness.dark,
           child: Scaffold(
             backgroundColor: Colors.transparent, // Allow ambient to show
-            body: Column(
+            body: IndexedStack(
+              index: _currentIndex,
+              children: screens,
+            ),
+            bottomNavigationBar: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: IndexedStack(
-                    index: _currentIndex,
-                    children: screens,
-                  ),
-                ),
+                _buildBottomBar(),
                 const UpdateBanner(),
               ],
             ),
-            bottomNavigationBar: _buildBottomBar(),
             floatingActionButton: _shouldShowFAB() ? _buildFAB() : null,
           ),
         ),
@@ -202,8 +201,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 return Badge(
                   label: Text(chatController.totalUnreadCount.value.toString()),
                   isLabelVisible: chatController.totalUnreadCount.value > 0,
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  textColor: Theme.of(context).colorScheme.onPrimary,
+                  backgroundColor: AppTheme.emergencyColor,
+                  textColor: Colors.white,
                   child: const Icon(Icons.inbox_outlined),
                 );
               }),

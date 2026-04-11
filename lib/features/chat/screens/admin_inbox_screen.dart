@@ -10,6 +10,7 @@ import '../../auth/controllers/auth_controller.dart';
 import 'chat_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../data/models/user_model.dart';
+import '../../../core/theme/app_theme.dart';
 
 class AdminInboxScreen extends StatefulWidget {
   const AdminInboxScreen({super.key});
@@ -487,9 +488,9 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: hasUnread ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15) : Theme.of(context).cardColor,
+            color: hasUnread ? AppTheme.emergencyColor.withValues(alpha: 0.1) : Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: hasUnread ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15) : Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
+            border: Border.all(color: hasUnread ? AppTheme.emergencyColor.withValues(alpha: 0.15) : Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -533,11 +534,20 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(color: hasUnread ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12))),
                         if (hasUnread)
-                          Container(
-                            width: 10,
-                            height: 10,
-                            decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary, shape: BoxShape.circle),
-                          ),
+                           Container(
+                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                             decoration: BoxDecoration(
+                               color: AppTheme.emergencyColor,
+                               borderRadius: BorderRadius.circular(20),
+                             ),
+                             child: Text(
+                               unreadCount > 0 ? unreadCount.toString() : "!",
+                               style: const TextStyle(
+                                   color: Colors.white,
+                                   fontSize: 10,
+                                   fontWeight: FontWeight.bold),
+                             ),
+                           ),
                       ],
                     ),
                     if (tags.isNotEmpty)
@@ -629,12 +639,12 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: unread > 0
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+              ? AppTheme.emergencyColor.withValues(alpha: 0.1)
               : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
               color: unread > 0
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+                  ? AppTheme.emergencyColor.withValues(alpha: 0.15)
                   : Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
         ),
         child: Row(
@@ -716,12 +726,12 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
+                            color: AppTheme.emergencyColor,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(unread.toString(),
-                              style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onPrimary,
+                              style: const TextStyle(
+                                  color: Colors.white,
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold)),
                         ),

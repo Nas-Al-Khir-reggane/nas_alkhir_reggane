@@ -6,7 +6,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/battery_optimizer_service.dart';
-import '../../../data/services/app_update_service.dart';
 import '../../../data/services/review_prompt_service.dart';
 import '../../../data/services/notification_service.dart';
 import 'dart:async';
@@ -533,10 +532,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
         // 1. طلب تجاوز تحسين البطارية (مخصص للطوارئ)
         BatteryOptimizerService.requestOptimizations(context);
         
-        // 2. فحص التحديثات
-        AppUpdateService.checkForUpdate();
-        
-        // 3. تتبع فتح التطبيق لطلب التقييم
+        // 2. تتبع فتح التطبيق لطلب التقييم
         ReviewPromptService.trackLaunchAndPrompt();
       }
     });

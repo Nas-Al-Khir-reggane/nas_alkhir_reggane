@@ -50,7 +50,7 @@ class VersionService extends GetxService {
         updateUrl.value = data['updateUrl'] ?? "";
         releaseNotes.value = data['message'] ?? ""; // Using 'message' as release notes
         isRequired.value = data['forceUpdate'] ?? false;
-        int latestBuildNumber = data['buildNumber'] ?? 0;
+        int latestBuildNumber = int.tryParse(data['buildNumber']?.toString() ?? "0") ?? 0;
 
         debugPrint("🚀 Remote Version: ${latestVersion.value} (Build: $latestBuildNumber)");
 

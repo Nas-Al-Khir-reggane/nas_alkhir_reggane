@@ -49,16 +49,15 @@ class ChatController extends GetxController {
     final role = authController.currentUser.value?.role;
     final isAdmin = role == UserRole.admin || role == UserRole.superAdmin;
 
-    if (!isAdmin) {
-      totalUnreadCount.value = 0;
-      return;
-    }
-
     Query<Map<String, dynamic>> query = _firestore.collection('chats');
-    query = query.where(Filter.or(
-      Filter('participants', arrayContains: user.uid),
-      Filter('type', isEqualTo: 'guest'),
-    ));
+    if (isAdmin) {
+      query = query.where(Filter.or(
+        Filter('participants', arrayContains: user.uid),
+        Filter('type', isEqualTo: 'guest'),
+      ));
+    } else {
+      query = query.where('participants', arrayContains: user.uid);
+    }
 
     _chatSubscription = query.snapshots().listen((snapshot) {
       int count = 0;

@@ -116,73 +116,72 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
       },
       child: Scaffold(
           backgroundColor: Theme.of(context).colorScheme.surface,
-          body: Column(
+          body: IndexedStack(
+            index: _currentIndex,
             children: [
-              Expanded(
-                child: IndexedStack(
-                  index: _currentIndex,
-                  children: [
-                    _buildHomeTab(),
-                    const NewRequestScreen(),
-                    _buildActivitiesTab(),
-                    _buildContactTab(),
-                  ],
-                ),
-              ),
-              const UpdateBanner(),
+              _buildHomeTab(),
+              const NewRequestScreen(),
+              _buildActivitiesTab(),
+              _buildContactTab(),
             ],
           ),
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, -2))
-            ],
-          ),
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
-              setState(() => _currentIndex = index);
-              SoundManager.to.playNavigation();
-            },
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            selectedItemColor: Theme.of(context).colorScheme.primary,
-            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
-            type: BottomNavigationBarType.fixed,
-            items: [
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home),
-                label: 'الرئيسية',
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, -2))
+                ],
               ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.add_circle_outline),
-                activeIcon: Icon(Icons.add_circle),
-                label: 'طلب جديد',
+              child: BottomNavigationBar(
+                currentIndex: _currentIndex,
+                onTap: (index) {
+                  setState(() => _currentIndex = index);
+                  SoundManager.to.playNavigation();
+                },
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                selectedItemColor: Theme.of(context).colorScheme.primary,
+                unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                type: BottomNavigationBarType.fixed,
+                items: [
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.home_outlined),
+                    activeIcon: Icon(Icons.home),
+                    label: 'الرئيسية',
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.add_circle_outline),
+                    activeIcon: Icon(Icons.add_circle),
+                    label: 'طلب جديد',
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.newspaper_outlined),
+                    activeIcon: Icon(Icons.newspaper),
+                    label: 'الأنشطة',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Obx(() {
+                      final chatController = Get.find<ChatController>();
+                      return Badge(
+                        label: Text(chatController.totalUnreadCount.value.toString()),
+                        isLabelVisible: chatController.totalUnreadCount.value > 0,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        textColor: Theme.of(context).colorScheme.onPrimary,
+                        child: const Icon(Icons.chat_bubble_outline),
+                      );
+                    }),
+                    activeIcon: const Icon(Icons.chat_bubble),
+                    label: 'تواصل',
+                  ),
+                ],
               ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.newspaper_outlined),
-                activeIcon: Icon(Icons.newspaper),
-                label: 'الأنشطة',
-              ),
-              BottomNavigationBarItem(
-                icon: Obx(() {
-                  final chatController = Get.find<ChatController>();
-                  return Badge(
-                    label: Text(chatController.totalUnreadCount.value.toString()),
-                    isLabelVisible: chatController.totalUnreadCount.value > 0,
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    textColor: Theme.of(context).colorScheme.onPrimary,
-                    child: const Icon(Icons.chat_bubble_outline),
-                  );
-                }),
-                activeIcon: const Icon(Icons.chat_bubble),
-                label: 'تواصل',
-              ),
-            ],
-          ),
+            ),
+            const UpdateBanner(),
+          ],
         ),
       ),
     );
