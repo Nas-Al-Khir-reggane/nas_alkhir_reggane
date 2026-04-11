@@ -39,8 +39,7 @@ class AppUpdateService {
       if (latestTag == null) return;
 
       if (_isNewerVersion(currentVersion, latestTag)) {
-        // انتظر حتى تظهر الشاشة
-        await Future.delayed(const Duration(seconds: 2));
+        // ملاحظة: تم نقل التحكم في التأخير إلى AuthController لضمان استقرار الواجهة
         final context = Get.context;
         if (context != null && context.mounted) {
           _showUpdateDialog(

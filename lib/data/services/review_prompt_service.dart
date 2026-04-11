@@ -28,7 +28,7 @@ class ReviewPromptService {
 
     // عرض الحوار بعد الحد المطلوب
     if (count >= _launchThreshold && count % _launchThreshold == 0) {
-      await Future.delayed(const Duration(seconds: 5));
+      // ملاحظة: تم نقل التحكم في التوقيت إلى AuthController
       final context = Get.context;
       if (context != null && context.mounted) {
         _showReviewDialog(context, prefs, dismissed);

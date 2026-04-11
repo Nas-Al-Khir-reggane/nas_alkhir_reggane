@@ -5,6 +5,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/battery_optimizer_service.dart';
+import '../../../data/services/app_update_service.dart';
+import '../../../data/services/review_prompt_service.dart';
 import '../../../data/services/notification_service.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -457,10 +460,12 @@ class AuthController extends GetxController with WidgetsBindingObserver {
         }
       } else {
         Get.offAllNamed(AppRoutes.login);
+        _runLandingServices(); // تشغيل الخدمات حتى لغير المسجلين (لإشعارات الطوارئ العامة)
       }
     } catch (e) {
       debugPrint('❌ Auth checkAuthState Error: $e');
       Get.offAllNamed(AppRoutes.login);
+      _runLandingServices();
     }
   }
 
@@ -512,6 +517,27 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       // 🩸 فحص لاحق: تنبيه المستخدمين الجدد/العائدين بنداءات الاستغاثة المتوافقة
       if (user.isApproved && user.bloodType != null && user.bloodType!.isNotEmpty) {
         _checkActiveBloodEmergencies(user);
+      }
+
+      // 🚀 تشغيل خدمات الهبوط بشكل مستقر
+      _runLandingServices();
+    });
+  }
+
+  /// 🚀 تشغيل خدمات الهبوط (البطارية، التحديثات، التقييم) بشكل مستقر
+  void _runLandingServices() {
+    // ننتظر قليلاً حتى تكتمل عملية النقل واستقرار الواجهة
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      final context = Get.context;
+      if (context != null && context.mounted) {
+        // 1. طلب تجاوز تحسين البطارية (مخصص للطوارئ)
+        BatteryOptimizerService.requestOptimizations(context);
+        
+        // 2. فحص التحديثات
+        AppUpdateService.checkForUpdate();
+        
+        // 3. تتبع فتح التطبيق لطلب التقييم
+        ReviewPromptService.trackLaunchAndPrompt();
       }
     });
   }

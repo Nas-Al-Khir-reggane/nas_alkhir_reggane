@@ -35,8 +35,7 @@ class BatteryOptimizerService {
       return;
     }
 
-    // انتظر قليلاً حتى تظهر الشاشة الرئيسية
-    await Future.delayed(const Duration(seconds: 3));
+    // حذفنا التأخير الداخلي لكي يتحكم به الـ AuthController بشكل مستقر
 
     if (!context.mounted) return;
 

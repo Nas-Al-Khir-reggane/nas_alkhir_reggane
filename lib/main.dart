@@ -13,9 +13,7 @@ import 'firebase_options.dart';
 import 'core/constants/app_constants.dart';
 import 'data/services/notification_service.dart';
 import 'data/services/background_keepalive_service.dart';
-import 'data/services/battery_optimizer_service.dart';
-import 'data/services/app_update_service.dart';
-import 'data/services/review_prompt_service.dart';
+// Note: BatteryOptimizerService, AppUpdateService, and ReviewPromptService imports removed as they are now handled in AuthController
 import 'core/services/theme_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -60,7 +58,7 @@ void main() async {
 
     // الاشتراك في موضوع الطوارئ لاستقبال الإشعارات الجماعية
     await messaging.subscribeToTopic('emergencies');
-    print('✅ Subscribed to emergencies topic');
+    debugPrint('✅ Subscribed to emergencies topic');
 
     try {
       final String? fcmToken = await FirebaseMessaging.instance.getToken();
@@ -82,17 +80,8 @@ void main() async {
 
     runApp(const NasAlKheirApp());
 
-    // بعد رسم الشاشة الأولى
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final context = Get.context;
-      if (context != null) {
-        BatteryOptimizerService.requestOptimizations(context);
-      }
-      // فحص التحديثات تلقائياً
-      AppUpdateService.checkForUpdate();
-      // تشغيل خدمة تقييم التطبيق
-      ReviewPromptService.trackLaunchAndPrompt();
-    });
+    // تم نقل فحوصات التشغيل (البطارية، التحديثات، التقييم) إلى AuthController
+    // لضمان ظهور الحوارات بعد استقرار الواجهة وانتهاء شاشة البداية
   } catch (e, stack) {
     debugPrint('💥 Critical Startup Error: $e');
     debugPrint('💥 StackTrace: $stack');
