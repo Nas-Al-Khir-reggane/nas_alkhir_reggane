@@ -122,20 +122,24 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
       },
       child: Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: IndexedStack(
-          index: _currentIndex,
+        body: Column(
           children: [
-            _buildHomeTab(),
-            const UpdateTaskScreen(),
-            if (authController.currentUser.value?.canManageDarSabil ?? false)
-              const DarSabilManagementScreen(),
-            _buildSupportTab(),
+            Expanded(
+              child: IndexedStack(
+                index: _currentIndex,
+                children: [
+                  _buildHomeTab(),
+                  const UpdateTaskScreen(),
+                  if (authController.currentUser.value?.canManageDarSabil ?? false)
+                    const DarSabilManagementScreen(),
+                  _buildSupportTab(),
+                ],
+              ),
+            ),
+            const UpdateBanner(),
           ],
         ),
-        bottomNavigationBar: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
+        bottomNavigationBar: Container(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -177,8 +181,8 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                   return Badge(
                     label: Text(chatController.totalUnreadCount.value.toString()),
                     isLabelVisible: chatController.totalUnreadCount.value > 0,
-                    backgroundColor: AppTheme.emergencyColor,
-                    textColor: Colors.white,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    textColor: Theme.of(context).colorScheme.onPrimary,
                     child: const Icon(Icons.support_agent_outlined),
                   );
                 }),
@@ -188,12 +192,9 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
             ],
           ),
         ),
-            const UpdateBanner(),
-          ],
-        ),
       ),
     );
-  }
+    }
 
   Widget _buildHomeTab() {
     return SingleChildScrollView(

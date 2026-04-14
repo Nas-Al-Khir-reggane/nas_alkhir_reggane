@@ -452,6 +452,7 @@ class NotificationService extends GetxController {
   }
 
   static void _handleBackgroundMessage(RemoteMessage message) {
+    debugPrint('🔔 [NotificationService] Background message received: ${message.data}');
     final data = message.data;
     final isAdmin = _isAdminRole(_currentUserRole());
 
@@ -1050,5 +1051,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   } catch (_) {}
 
-  debugPrint('📩 [BackgroundHandler] FCM message received: type=${message.data['type']}');
+  final data = message.data;
+  final notification = message.notification;
+  
+  debugPrint('📩 [BackgroundHandler] FCM message received:');
+  debugPrint('   - Title: ${notification?.title}');
+  debugPrint('   - Body: ${notification?.body}');
+  debugPrint('   - Data Type: ${data['type']}');
+  debugPrint('   - Notification ID: ${data['notificationId']}');
 }

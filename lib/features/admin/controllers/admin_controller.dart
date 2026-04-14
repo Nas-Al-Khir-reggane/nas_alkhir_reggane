@@ -1187,9 +1187,27 @@ class AdminController extends GetxController {
         });
       });
 
-      Get.snackbar('✅ تم التوثيق', 'تم توثيق هوية المستخدم وتعيين كود العضوية ($currentMemberId) بنجاح.',
-          backgroundColor: AppTheme.successColor.withValues(alpha: 0.2),
-          colorText: AppTheme.successColor);
+      // إرسال إشعار للمستخدم
+      await NotificationService.sendNotification(
+        userId: userId,
+        type: 'status_change',
+        title: '✨ تهانينا! تم توثيق هويتك',
+        body: 'أهلاً بك كعضو موثق في الجمعية. رقم عضويتك الجديد هو: $currentMemberId',
+        data: {
+          'type': 'verification_success',
+          'memberId': currentMemberId,
+        },
+      );
+
+      Get.snackbar(
+        '✅ تم التوثيق', 
+        'تم توثيق هوية المستخدم وتعيين كود العضوية ($currentMemberId) بنجاح.',
+        backgroundColor: AppTheme.successColor,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(15),
+        duration: const Duration(seconds: 4),
+      );
     } catch (e) {
       Get.snackbar('خطأ', 'فشل عملية التوثيق: $e');
     } finally {

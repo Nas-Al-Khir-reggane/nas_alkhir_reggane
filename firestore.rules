@@ -400,6 +400,18 @@ service cloud.firestore {
         (isLoggedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount', 'viewedByUserIds']));
     }
 
+    // ─── تقييمات التطبيق (App Reviews) ─────────────────────
+    match /app_reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isLoggedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // ─── البيانات الوصفية (Counters and Metadata) ────────────
+    match /metadata/{docId} {
+      allow read, write: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

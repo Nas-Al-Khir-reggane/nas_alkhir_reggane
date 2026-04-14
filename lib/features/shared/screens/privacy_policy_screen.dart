@@ -102,6 +102,6 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
 لأي استفسار حول الخصوصية، تواصل معنا عبر:
 - **التطبيق:** رسالة مباشرة للإدارة
-- **الموقع:** nas-alkhir-reggane.vercel.app
+- **الموقع:** https://nasalkheir.org
 ''';
 }

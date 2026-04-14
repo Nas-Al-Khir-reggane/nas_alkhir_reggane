@@ -1092,3 +1092,104 @@ body {
     .cinema-card { padding: 16px 12px; }
 }
 
+
+/* =========================================
+   قسم المراجعات (Reviews Section)
+   ========================================= */
+.reviews-section {
+    padding: 80px 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.reviews-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+    margin-top: 40px;
+}
+
+.review-card {
+    padding: 32px;
+    position: relative;
+    transition: var(--transition);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.review-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--card-shadow-hover);
+    border-color: var(--emerald-primary);
+}
+
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-avatar {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, var(--gold-light), var(--emerald-light));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--emerald-primary);
+    font-weight: 900;
+    font-size: 1.1rem;
+    border: 1px solid rgba(155, 123, 44, 0.1);
+}
+
+.user-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.rating-stars {
+    display: flex;
+    gap: 2px;
+    color: #FBBF24; /* Gold Star Color */
+}
+
+.review-text {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.8;
+    font-style: italic;
+    margin-bottom: 20px;
+    flex-grow: 1;
+}
+
+.review-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.reviews-loading {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 0;
+    color: var(--text-secondary);
+}
+
+.reviews-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px;
+    background: rgba(0,0,0,0.02);
+    border-radius: 20px;
+    color: var(--text-muted);
+}

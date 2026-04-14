@@ -424,7 +424,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection(AppConstants.usersCollection)
-          .where('isApproved', isEqualTo: true)
           .where('isVerified', isEqualTo: false)
           .snapshots(),
       builder: (context, snapshot) {
@@ -536,12 +535,13 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                         Row(
                           children: [
                             Expanded(
-                              child: AppTheme.gradientButton(
+                              child: Obx(() => AppTheme.gradientButton(
                                 text: "توثيق وتوليد رقم العضوية",
                                 icon: Icons.verified_rounded,
+                                isLoading: _adminCtl.isLoading.value,
                                 onPressed: () =>
                                     _adminCtl.verifyUserIdentity(user.id),
-                              ),
+                              )),
                             ),
                             const SizedBox(width: 10),
                             IconButton(

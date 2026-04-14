@@ -103,6 +103,84 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         console.error("خطأ في جلب الإصدار:", error);
     }
+
+    // =========================================
+    //  إعداد Firebase وجلب المراجعات
+    // =========================================
+    const firebaseConfig = {
+        apiKey: 'AIzaSyBrn3Idi-qYbhKbwWdwWrIeqX7YYk8JPWU',
+        appId: '1:363230035601:web:33064d4e1790774fa34930',
+        messagingSenderId: '363230035601',
+        projectId: 'ness-alkheirapp',
+        authDomain: 'ness-alkheirapp.firebaseapp.com',
+        storageBucket: 'ness-alkheirapp.firebasestorage.app',
+    };
+
+    // تهيئة Firebase بوضع التوافق (Compat)
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    async function loadReviews() {
+        const container = document.getElementById('reviewsContainer');
+        if (!container) return;
+
+        try {
+            const snapshot = await db.collection('app_reviews')
+                .orderBy('createdAt', 'desc')
+                .limit(6)
+                .get();
+
+            if (snapshot.empty) {
+                container.innerHTML = `
+                    <div class="reviews-empty">
+                        <i class="fa-solid fa-comment-dots" style="font-size: 2rem; margin-bottom: 12px; display: block; color: var(--gold-primary);"></i>
+                        <p>كن أول من يشاركنا رأيه في التطبيق!</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const date = data.createdAt ? data.createdAt.toDate().toLocaleDateString('ar-EG') : 'حديثاً';
+                const rating = data.rating || 5;
+                const name = data.userName || 'مشارك في الخير';
+                const comment = data.comment || 'تطبيق رائع جداً، جزاكم الله خيراً على هذا المجهود.';
+
+                const card = document.createElement('div');
+                card.className = 'glass-card review-card fade-in';
+                
+                let starsHtml = '';
+                for(let i=0; i<5; i++) {
+                    starsHtml += `<i class="${i < rating ? 'fa-solid' : 'fa-regular'} fa-star"></i>`;
+                }
+
+                card.innerHTML = `
+                    <div class="review-header">
+                        <div class="user-info">
+                            <div class="user-avatar">${name.charAt(0)}</div>
+                            <span class="user-name">${name}</span>
+                        </div>
+                        <div class="rating-stars">
+                            ${starsHtml}
+                        </div>
+                    </div>
+                    <p class="review-text">"${comment}"</p>
+                    <div class="review-date">${date}</div>
+                `;
+                container.appendChild(card);
+                
+                // تفعيل حركة الظهور للكروت الجديدة
+                observer.observe(card);
+            });
+
+        } catch (error) {
+            console.error("خطأ في جلب المراجعات:", error);
+            container.innerHTML = '<p class="error-msg">نعتذر، حدثت مشكلة أثناء جلب المراجعات.</p>';
+        }
+    }
+
+    loadReviews();
 });
 
 // =========================================

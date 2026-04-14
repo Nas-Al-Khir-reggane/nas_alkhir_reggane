@@ -41,8 +41,8 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDZGcs0B5Od2jceKoB7IhJP4HW5geW0ric',
-    appId: '1:197382034070:web:7f45daf168efe78d5768b7',
+    apiKey: 'AIzaSyBrn3Idi-qYbhKbwWdwWrIeqX7YYk8JPWU',
+    appId: '1:363230035601:web:33064d4e1790774fa34930',
     messagingSenderId: '363230035601',
     projectId: 'ness-alkheirapp',
     authDomain: 'ness-alkheirapp.firebaseapp.com',
@@ -58,30 +58,34 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCTpilmU6N16VomvrccinUe6V-wFKTe84k',
-    appId: '1:197382034070:ios:0f53add86a41b0fa5768b7',
+    apiKey: 'AIzaSyAPrJV0WgtNXmAxAPLrrcbSPXOxeZntjYM',
+    appId: '1:363230035601:ios:73438a1129bfbcbfa34930',
     messagingSenderId: '363230035601',
     projectId: 'ness-alkheirapp',
     storageBucket: 'ness-alkheirapp.firebasestorage.app',
+    androidClientId: '363230035601-6nc6rer9b9ofhq94107ssiqhpkd917ce.apps.googleusercontent.com',
+    iosClientId: '363230035601-aa866ud4mldc3l3hj1msu8nmsbcd2mbi.apps.googleusercontent.com',
     iosBundleId: 'com.nasalkheir.nasAlKheir',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCTpilmU6N16VomvrccinUe6V-wFKTe84k',
-    appId: '1:197382034070:ios:0f53add86a41b0fa5768b7',
+    apiKey: 'AIzaSyAPrJV0WgtNXmAxAPLrrcbSPXOxeZntjYM',
+    appId: '1:363230035601:ios:73438a1129bfbcbfa34930',
     messagingSenderId: '363230035601',
     projectId: 'ness-alkheirapp',
     storageBucket: 'ness-alkheirapp.firebasestorage.app',
+    androidClientId: '363230035601-6nc6rer9b9ofhq94107ssiqhpkd917ce.apps.googleusercontent.com',
+    iosClientId: '363230035601-aa866ud4mldc3l3hj1msu8nmsbcd2mbi.apps.googleusercontent.com',
     iosBundleId: 'com.nasalkheir.nasAlKheir',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDZGcs0B5Od2jceKoB7IhJP4HW5geW0ric',
-    appId: '1:197382034070:web:50241b5a7a822ea65768b7',
-    messagingSenderId: '197382034070',
+    apiKey: 'AIzaSyBrn3Idi-qYbhKbwWdwWrIeqX7YYk8JPWU',
+    appId: '1:363230035601:web:1eb275be6c5f7102a34930',
+    messagingSenderId: '363230035601',
     projectId: 'ness-alkheirapp',
     authDomain: 'ness-alkheirapp.firebaseapp.com',
     storageBucket: 'ness-alkheirapp.firebasestorage.app',
   );
-}
 
+}

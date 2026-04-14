@@ -17,8 +17,6 @@ import 'data/services/background_keepalive_service.dart';
 import 'core/services/theme_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 /// مثيل Firebase Analytics عام
 final FirebaseAnalytics analytics = FirebaseAnalytics.instance;
@@ -88,36 +86,22 @@ void main() async {
   }
 }
 
-// دالة تجريبية لإرسال إشعار حالة طارئة
+// دالة تجريبية لإرسال إشعار حالة طارئة عبر الخدمة المدمجة
 Future<void> sendEmergencyNotification() async {
   try {
-    final String? deviceToken = await FirebaseMessaging.instance.getToken();
-    if (deviceToken == null) {
-      debugPrint('⚠️ تعذر الحصول على توكن الجهاز');
-      return;
-    }
-
-    final response = await http.post(
-      Uri.parse('https://nas-alkhir-reggane.vercel.app/send-emergency'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'token': deviceToken,
-        'title': '🚨 تنبيه حالة طارئة',
-        'body': 'هناك طلب استغاثة جديد في منطقتك. يرجى المساعدة إن استطعت.',
-      }),
+    await NotificationService.notifyAll(
+      type: 'blood_emergency',
+      title: '🚨 تنبيه حالة طارئة',
+      body: 'هناك طلب استغاثة جديد في منطقتك. يرجى المساعدة إن استطعت.',
     );
 
-    if (response.statusCode == 200) {
-      debugPrint('✅ تم إرسال الإشعار بنجاح');
-      Get.snackbar('نجاح', 'تم إرسال بلاغ الطوارئ بنجاح',
-        backgroundColor: Colors.green, colorText: Colors.white);
-    } else {
-      debugPrint('❌ فشل الإرسال: ${response.body}');
-      Get.snackbar('خطأ', 'فشل في إرسال البلاغ: ${response.body}',
-        backgroundColor: Colors.red, colorText: Colors.white);
-    }
+    debugPrint('✅ تم إرسال الإشعار بنجاح');
+    Get.snackbar('نجاح', 'تم إرسال بلاغ الطوارئ بنجاح',
+      backgroundColor: Colors.green, colorText: Colors.white);
   } catch (e) {
     debugPrint('💥 خطأ أثناء طلب الإرسال: $e');
+    Get.snackbar('خطأ', 'فشل في إرسال البلاغ: $e',
+      backgroundColor: Colors.red, colorText: Colors.white);
   }
 }
 

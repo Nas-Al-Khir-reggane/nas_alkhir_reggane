@@ -7,6 +7,18 @@
           "appId": "1:363230035601:android:ddc73f9642880a66a34930",
           "fileOutput": "android/app/google-services.json"
         }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "ness-alkheirapp",
+          "configurations": {
+            "android": "1:363230035601:android:ddc73f9642880a66a34930",
+            "ios": "1:363230035601:ios:73438a1129bfbcbfa34930",
+            "macos": "1:363230035601:ios:73438a1129bfbcbfa34930",
+            "web": "1:363230035601:web:33064d4e1790774fa34930",
+            "windows": "1:363230035601:web:1eb275be6c5f7102a34930"
+          }
+        }
       }
     }
   },
@@ -15,5 +27,19 @@
   },
   "storage": {
     "rules": "storage.rules"
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
 }

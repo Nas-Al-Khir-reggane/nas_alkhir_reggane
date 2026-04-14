@@ -1,8 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../features/shared/widgets/rating_dialog.dart';
 
 /// خدمة حوار التقييم — تعرض حوار لطيف بعد استخدام التطبيق لفترة
 class ReviewPromptService {
@@ -28,7 +30,6 @@ class ReviewPromptService {
 
     // عرض الحوار بعد الحد المطلوب
     if (count >= _launchThreshold && count % _launchThreshold == 0) {
-      // ملاحظة: تم نقل التحكم في التوقيت إلى AuthController
       final context = Get.context;
       if (context != null && context.mounted) {
         _showReviewDialog(context, prefs, dismissed);
@@ -38,78 +39,51 @@ class ReviewPromptService {
 
   static void _showReviewDialog(
       BuildContext context, SharedPreferences prefs, int dismissed) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Column(
-            children: [
-              const Text('⭐', style: TextStyle(fontSize: 40)),
-              const SizedBox(height: 8),
-              Text(
-                'هل أعجبك التطبيق؟',
-                style: GoogleFonts.tajawal(
-                    fontSize: 20, fontWeight: FontWeight.w900),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-          content: Text(
-            'رأيك يهمنا! ساعدنا بتقييم التطبيق لنستمر في تطويره وخدمة الجمعية بشكل أفضل.',
-            style: GoogleFonts.tajawal(
-              fontSize: 14,
-              height: 1.7,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          actionsAlignment: MainAxisAlignment.center,
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                prefs.setInt(_dismissedKey, dismissed + 1);
-              },
-              child: Text('ليس الآن',
-                  style: GoogleFonts.tajawal(color: Colors.grey)),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                prefs.setBool(_ratedKey, true);
-                // فتح صفحة التطبيق (يمكن تغييرها لرابط Google Play)
-                _openStore();
-              },
-              icon: const Icon(Icons.star_rounded, size: 20),
-              label: Text('قيّم التطبيق',
-                  style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD4AF37),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              ),
-            ),
-          ],
-        ),
+    Get.dialog(
+      RatingDialog(
+        onSubmit: (rating, comment) async {
+          Get.back(); // إغلاق الحوار
+          
+          try {
+            // حفظ التقييم في Firestore
+            final user = FirebaseAuth.instance.currentUser;
+            await FirebaseFirestore.instance.collection('app_reviews').add({
+              'userId': user?.uid,
+              'userName': user?.displayName ?? 'مستخدم مجهول',
+              'rating': rating,
+              'comment': comment,
+              'createdAt': FieldValue.serverTimestamp(),
+              'platform': GetPlatform.isAndroid ? 'android' : 'ios',
+            });
+
+            // تعليم التطبيق كمُقيم
+            await prefs.setBool(_ratedKey, true);
+
+            // توجيه لصفحة التحميل
+            await _openStore();
+          } catch (e) {
+            debugPrint('Error saving review: $e');
+            // حتى لو فشل الحفظ في Firestore، نحاول فتح صفحة التحميل لضمان تجربة المستخدم
+            await _openStore();
+          }
+        },
       ),
+      barrierDismissible: true,
     );
   }
 
   static Future<void> _openStore() async {
-    // رابط Google Play (غيّره عند النشر الفعلي)
-    const playStoreUrl =
-        'https://github.com/ahmed-majija/nas_alkhir_reggane/releases';
-    final uri = Uri.parse(playStoreUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    // صفحة التحميل الرسمية على GitHub Pages
+    const downloadPageUrl =
+        'https://ahmed-majija.github.io/nas_alkhir_reggane/';
+    final uri = Uri.parse(downloadPageUrl);
+    
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Could not launch $downloadPageUrl: $e');
     }
   }
 }

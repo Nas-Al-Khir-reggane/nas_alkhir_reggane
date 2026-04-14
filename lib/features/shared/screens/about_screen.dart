@@ -148,10 +148,10 @@ class AboutScreen extends StatelessWidget {
                           context,
                           icon: Icons.language_rounded,
                           title: 'الموقع الرسمي',
-                          subtitle: 'nas-alkhir-reggane.vercel.app',
+                          subtitle: 'https://nas-al-khir-reggane.github.io/nas_alkhir_reggane/',
                           color: Colors.blue,
                           onTap: () => _launchUrl(
-                              'https://nas-alkhir-reggane.vercel.app'),
+                              'https://nas-al-khir-reggane.github.io/nas_alkhir_reggane/'),
                         ),
                         _divider(context),
                         _buildLinkTile(
