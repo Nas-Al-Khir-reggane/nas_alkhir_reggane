@@ -19,6 +19,7 @@ import '../../../data/services/notification_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 enum MetricType { donations, requests, projects, team }
 
@@ -1477,7 +1478,46 @@ class AdminController extends GetxController {
     }
   }
 
-    Future<void> deleteRequest(String id, {bool? isGuest}) async {
+  // --- إدارة المرفقات (Attachment Management) ---
+
+  Future<void> removeRequestAttachment(String requestId, String attachmentUrl) async {
+    if (!_requireSuperAdmin('حذف المرفقات')) return;
+    
+    try {
+      isLoading.value = true;
+      
+      // 1. تحديث Firestore لإزالة الرابط من القائمة
+      await _firestore.collection(AppConstants.serviceRequestsCollection).doc(requestId).update({
+        'attachments': FieldValue.arrayRemove([attachmentUrl]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 2. محاولة حذف الملف من Firebase Storage إذا كان الرابط يشير إليه
+      if (attachmentUrl.contains('firebasestorage.googleapis.com')) {
+        try {
+          final storageRef = FirebaseStorage.instance.refFromURL(attachmentUrl);
+          await storageRef.delete();
+          debugPrint('✅ Attachment deleted from Storage: $attachmentUrl');
+        } catch (storageError) {
+          debugPrint('⚠️ Could not delete file from Storage (it might be already gone or not a Firebase link): $storageError');
+          // لا نعطل العملية إذا فشل حذف الملف الفعلي، المهم هو إزالته من الطلب في Firestore
+        }
+      }
+
+      Get.snackbar(
+        '✅ نجاح', 
+        'تم حذف المرفق بنجاح من الطلب.',
+        backgroundColor: AppTheme.successColor.withValues(alpha: 0.1),
+        colorText: AppTheme.successColor,
+      );
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'فشل حذف المرفق: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> deleteRequest(String id, {bool? isGuest}) async {
     if (!isSuperAdmin) {
       Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية حذف الطلبات محصورة للمنسق العام فقط.',
         backgroundColor: Colors.red.withValues(alpha: 0.1),
@@ -2774,6 +2814,74 @@ class AdminController extends GetxController {
       isLoading.value = false;
     }
   }
+
+  // --- منطق حزب المائة ألف (Hizb Al-Ma'at Alf Logic) ---
+
+  Future<void> triggerHizbAlert({
+    required String title,
+    required String body,
+    String? requestId,
+    String? projectId,
+  }) async {
+    if (!_requireSuperAdmin('إرسال نداء الحزب')) return;
+    
+    try {
+      isLoading.value = true;
+      
+      // 1. تسجيل النداء في Firestore
+      final alertRef = _firestore.collection('hizb_alerts').doc();
+      final alertData = {
+        'id': alertRef.id,
+        'title': title,
+        'body': body,
+        'requestId': requestId,
+        'projectId': projectId,
+        'sentAt': FieldValue.serverTimestamp(),
+        'sentBy': currentUser?.name ?? 'المنسق العام',
+      };
+      
+      await alertRef.set(alertData);
+
+      // 2. إحضار جميع أعضاء الحزب
+      final membersSnap = await _firestore.collection(AppConstants.usersCollection)
+          .where('isHizbMember', isEqualTo: true)
+          .get();
+
+      final List<String> memberIds = membersSnap.docs.map((d) => d.id).toList();
+
+      if (memberIds.isEmpty) {
+        Get.snackbar('ℹ️ تنبيه', 'لا يوجد أعضاء مشتركين في الحزب حالياً لإرسال النداء لهم.');
+        return;
+      }
+
+      // 3. إرسال إشعارات جماعية لأعضاء الحزب
+      await NotificationService.notifyMultiple(
+        userIds: memberIds,
+        type: 'hizb_alert',
+        title: '🛡️ نداء حزب المائة ألف: $title',
+        body: body,
+        data: {
+          'requestId': requestId ?? '',
+          'projectId': projectId ?? '',
+          'alertId': alertRef.id,
+        },
+      );
+
+      Get.snackbar(
+        '🚀 تم بنجاح', 
+        'انطلق النداء لـ (${memberIds.length}) عضو في الحزب.',
+        backgroundColor: AppTheme.successColor.withValues(alpha: 0.1),
+        colorText: AppTheme.successColor,
+        duration: const Duration(seconds: 5),
+      );
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'فشل إرسال نداء الحزب: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  void setState(VoidCallback fn) => fn(); // Helper for dialogs if needed
 
   Future<void> updateUserDonorSettings({bool? receiveAlerts}) async {
     try {
