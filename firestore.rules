@@ -65,6 +65,11 @@ service cloud.firestore {
         'notes',
         'activeBloodRequestId',
         'isHizbMember',
+        'avatarSeed',
+        'avatarType',
+        'lastDonatedAt',
+        'nationalIdUrl',
+        'updatedAt',
       ]);
     }
 
@@ -84,6 +89,7 @@ service cloud.firestore {
           'ratingComment',
           'ratedAt',
           'updatedAt',
+          'attachments',  // السماح للمستفيد بتحديث مرفقات طلبه
         ]);
     }
 

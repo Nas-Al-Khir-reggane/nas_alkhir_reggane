@@ -133,6 +133,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
                 ],
 
+                // ─── تذكير دوري برفع بطاقة الهوية ───────────────────
+                if (ownProfile && !user.isVerified && (user.nationalIdUrl == null || user.nationalIdUrl!.isEmpty)) ...[
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 60),
+                    child: _buildIdVerificationReminderBanner(),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+
+                // ─── تلميح للمتطوع بتغيير الصفة ──────────────────────
+                if (ownProfile && user.role == UserRole.worker) ...[
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 70),
+                    child: _buildWorkerRoleHintBanner(),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+
                 // تنبيه فترة الراحة
                 if (user.lastDonatedAt != null) ...[
                   FadeInUp(delay: const Duration(milliseconds: 80), child: _buildRestPeriodBanner(user)),
@@ -859,10 +877,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       const SizedBox(height: 24),
                       _buildEditLabel('الموقع'),
-                      _buildWilayaDropdown(selectedWilaya, (v) => setStateDialog(() { selectedWilaya = v; selectedCommune = null; })),
-                      const SizedBox(height: 12),
-                      if (selectedWilaya != null)
-                        _buildCommuneDropdown(selectedWilaya!, selectedCommune, (v) => setStateDialog(() => selectedCommune = v)),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _buildWilayaDropdown(
+                              selectedWilaya,
+                              (v) => setStateDialog(() { selectedWilaya = v; selectedCommune = null; }),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: selectedWilaya != null
+                              ? _buildCommuneDropdown(
+                                  selectedWilaya!,
+                                  selectedCommune,
+                                  (v) => setStateDialog(() => selectedCommune = v),
+                                )
+                              : _buildDisabledCommuneField(),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 12),
                       _buildEditField(addressCtrl, 'العنوان بالتفصيل', Icons.home_work_outlined, maxLines: 2),
 
@@ -1104,6 +1139,144 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ]),
+    );
+  }
+
+  // =====================================================================
+  // بانر تذكير رفع بطاقة الهوية الوطنية (دوري)
+  // =====================================================================
+  Widget _buildIdVerificationReminderBanner() {
+    return GestureDetector(
+      onTap: () async {
+        // التمرير إلى قسم التوثيق أو تشغيل رفع البطاقة مباشرة
+        _pickAndUploadNationalId();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFF6B35), Color(0xFFFF4444)],
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.red.withValues(alpha: 0.25),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.badge_rounded, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '⚠️ حسابك لم يُوثَّق بعد',
+                    style: GoogleFonts.tajawal(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'ارفع بطاقتك الوطنية للحصول على رقم العضوية والتوثيق الرسمي. اضغط هنا للرفع الآن.',
+                    style: GoogleFonts.tajawal(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.upload_rounded, color: Colors.white, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // =====================================================================
+  // تلميح المتطوع بإمكانية تغيير الصفة
+  // =====================================================================
+  Widget _buildWorkerRoleHintBanner() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryGreen.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.swap_horiz_rounded, color: AppTheme.primaryGreen, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'تغيير الصفة متاح',
+                  style: GoogleFonts.tajawal(
+                    color: AppTheme.primaryGreen,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'يمكنك التبديل بين صفة "متطوع" و"مستفيد" من شريط الأدوار أعلاه في أي وقت.',
+                  style: GoogleFonts.tajawal(
+                    color: AppTheme.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.info_outline_rounded, color: AppTheme.primaryGreen.withValues(alpha: 0.5), size: 18),
+        ],
+      ),
+    );
+  }
+
+  // =====================================================================
+  // حقل بلدية معطّل (قبل اختيار الولاية)
+  // =====================================================================
+  Widget _buildDisabledCommuneField() {
+    return InputDecorator(
+      decoration: AppTheme.inputDecoration('البلدية', Icons.location_city_rounded).copyWith(
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
+        enabled: false,
+      ),
+      child: Text(
+        'اختر الولاية أولاً',
+        style: GoogleFonts.tajawal(
+          fontSize: 13,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.35),
+        ),
+      ),
     );
   }
 
