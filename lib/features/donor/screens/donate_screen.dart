@@ -26,6 +26,35 @@ class _DonateScreenState extends State<DonateScreen> {
   bool isAnonymous = false;
   bool isRecurring = false;
   final TextEditingController notesController = TextEditingController();
+  
+  bool requestPrayerPost = false;
+  String selectedPrayerType = 'deceased';
+  final TextEditingController prayerTargetController = TextEditingController();
+  final TextEditingController prayerMessageController = TextEditingController();
+  String selectedPrayerColor = 'emerald';
+  
+  // ✨ متغيرات حزب المائة ألف
+  double minAmount = 0;
+  String? linkedRequestId;
+  String? linkedProjectId;
+
+  static const int maxPrayerMessageWords = 20;
+
+  static const List<Map<String, dynamic>> prayerTypes = [
+    {'id': 'deceased', 'name': 'صدقة جارية عن متوفى', 'icon': Icons.church},
+    {'id': 'healing', 'name': 'دعاء بالشفاء وعافية', 'icon': Icons.healing},
+    {'id': 'barakah', 'name': 'دعاء بالرزق والبركة', 'icon': Icons.account_balance_wallet},
+    {'id': 'parents', 'name': 'دعاء للوالدين والمودة', 'icon': Icons.family_restroom},
+    {'id': 'general', 'name': 'شكر ودعاء عام بالخير', 'icon': Icons.auto_awesome},
+  ];
+
+  static const List<Map<String, dynamic>> prayerColors = [
+    {'id': 'emerald', 'color': Color(0xFF00695C), 'name': 'أخضر'},
+    {'id': 'sapphire', 'color': Color(0xFF1565C0), 'name': 'أزرق'},
+    {'id': 'gold', 'color': Color(0xFFC5A059), 'name': 'ذهبي'},
+    {'id': 'rose', 'color': Color(0xFFAD1457), 'name': 'وردي'},
+    {'id': 'slate', 'color': Color(0xFF37474F), 'name': 'وقور'},
+  ];
 
   @override
   void initState() {
@@ -37,7 +66,29 @@ class _DonateScreenState extends State<DonateScreen> {
       selectedProjectId = preId;
       selectedProjectName = preName;
       // إعادة الضبط بعد تطبيقه
+      selectedProjectName = preName;
+      // إعادة الضبط بعد تطبيقه
       donorController.preSelectProject('general', 'تبرع عام للجمعية');
+    }
+
+    // ✨ التعامل مع معاملات نداء حزب المائة ألف
+    final args = Get.arguments as Map<String, dynamic>?;
+    if (args != null) {
+      if (args.containsKey('minAmount')) {
+        minAmount = double.tryParse(args['minAmount'].toString()) ?? 0;
+        selectedAmount = minAmount;
+        amountController.text = minAmount.toInt().toString();
+      }
+      if (args.containsKey('requestId') && args['requestId'].toString().isNotEmpty) {
+        linkedRequestId = args['requestId'].toString();
+      }
+      if (args.containsKey('projectId') && args['projectId'].toString().isNotEmpty) {
+        linkedProjectId = args['projectId'].toString();
+        selectedProjectId = linkedProjectId!;
+        // حاول العثور على اسم المشروع
+        final project = donorController.activeProjects.firstWhereOrNull((p) => p.id == linkedProjectId);
+        if (project != null) selectedProjectName = project.name;
+      }
     }
   }
 
@@ -45,7 +96,19 @@ class _DonateScreenState extends State<DonateScreen> {
   void dispose() {
     amountController.dispose();
     notesController.dispose();
+    prayerTargetController.dispose();
+    prayerMessageController.dispose();
     super.dispose();
+  }
+
+  int _wordCount(String text) {
+    return text.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+  }
+
+  String _trimToWordLimit(String text, int maxWords) {
+    final words = text.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (words.length <= maxWords) return text.trim();
+    return words.take(maxWords).join(' ');
   }
 
   void _onDonate() {
@@ -54,7 +117,18 @@ class _DonateScreenState extends State<DonateScreen> {
       Get.snackbar('تنبيه', 'يرجى إدخال مبلغ صحيح', backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15));
       return;
     }
+
+    if (amount < minAmount) {
+      Get.snackbar(
+        'تنبيه', 
+        'الحد الأدنى للمساهمة في هذا النداء هو ${minAmount.toInt()} دج',
+        backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15)
+      );
+      return;
+    }
     
+    final customPrayerMessage = _trimToWordLimit(prayerMessageController.text, maxPrayerMessageWords);
+
     donorController.makeDonation(
       projectId: selectedProjectId,
       projectName: selectedProjectName,
@@ -63,6 +137,12 @@ class _DonateScreenState extends State<DonateScreen> {
       isAnonymous: isAnonymous,
       isRecurring: isRecurring,
       notes: notesController.text,
+      requestPrayerPost: requestPrayerPost,
+      prayerType: selectedPrayerType,
+      prayerTarget: prayerTargetController.text,
+      prayerColor: selectedPrayerColor,
+      prayerCustomMessage: customPrayerMessage.isEmpty ? null : customPrayerMessage,
+      requestId: linkedRequestId, // تمرير معرف الطلب إن وجد
     );
   }
 
@@ -313,6 +393,145 @@ class _DonateScreenState extends State<DonateScreen> {
               maxLines: 2,
               decoration: AppTheme.inputDecoration('ملاحظة (اختياري)...', Icons.notes),
               style: TextStyle(color: AppTheme.textPrimary),
+            ),
+
+            const SizedBox(height: 24),
+            // ✨ قسم طلب منشور دعاء
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppTheme.goldAccent.withValues(alpha: 0.1), Colors.transparent],
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.2)),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.auto_awesome_rounded, color: AppTheme.goldAccent, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('طلب منشور دعاء احترافي 🌟',
+                                style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 15)),
+                            Text('سيقوم المنسق بمشاركة بطاقة دعاء على فيسبوك',
+                                style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: requestPrayerPost,
+                        onChanged: (v) => setState(() => requestPrayerPost = v),
+                        activeThumbColor: AppTheme.goldAccent,
+                      ),
+                    ],
+                  ),
+                  if (requestPrayerPost) ...[
+                    const Divider(height: 24, color: AppTheme.glassBorder),
+                    Text('اختر نوع الدعاء:', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: prayerTypes.map((type) {
+                        final isSelected = selectedPrayerType == type['id'];
+                        return GestureDetector(
+                          onTap: () => setState(() => selectedPrayerType = type['id'] as String),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected ? AppTheme.goldAccent.withValues(alpha: 0.15) : AppTheme.cardColor,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: isSelected ? AppTheme.goldAccent : AppTheme.glassBorder),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(type['icon'] as IconData, color: isSelected ? AppTheme.goldAccent : AppTheme.textHint, size: 16),
+                                const SizedBox(width: 6),
+                                Text(type['name'] as String, style: TextStyle(color: isSelected ? AppTheme.goldAccent : AppTheme.textSecondary, fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+                    Text('اسم الشخص المقصود بالدعاء (اختياري):', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: prayerTargetController,
+                      decoration: AppTheme.inputDecoration('مثلاً: الوالدين، المرحوم فلان، المريض فلان...', Icons.person_outline),
+                      style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                    ),
+                    const SizedBox(height: 14),
+                    Text('النص الذي سيظهر في البطاقة (حد $maxPrayerMessageWords كلمة):', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: prayerMessageController,
+                      maxLines: 3,
+                      onChanged: (value) {
+                        final trimmed = _trimToWordLimit(value, maxPrayerMessageWords);
+                        if (trimmed != value.trim()) {
+                          prayerMessageController.value = TextEditingValue(
+                            text: trimmed,
+                            selection: TextSelection.collapsed(offset: trimmed.length),
+                          );
+                        }
+                        setState(() {});
+                      },
+                      decoration: AppTheme.inputDecoration(
+                        'اكتب الدعاء أو الرسالة التي تريد ظهورها في البطاقة...',
+                        Icons.edit_note,
+                      ),
+                      style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                    ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${_wordCount(prayerMessageController.text)}/$maxPrayerMessageWords كلمة',
+                        style: TextStyle(
+                          color: _wordCount(prayerMessageController.text) >= maxPrayerMessageWords
+                              ? Colors.orange
+                              : AppTheme.textHint,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text('اختر ثيم البطاقة:', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: prayerColors.map((color) {
+                        final isSelected = selectedPrayerColor == color['id'];
+                        return GestureDetector(
+                          onTap: () => setState(() => selectedPrayerColor = color['id'] as String),
+                          child: Container(
+                            margin: const EdgeInsetsDirectional.only(end: 12),
+                            width: 40, height: 40,
+                            decoration: BoxDecoration(
+                              color: color['color'] as Color,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: isSelected ? Colors.white : Colors.transparent, width: 2.5),
+                              boxShadow: isSelected ? [BoxShadow(color: color['color'] as Color, blurRadius: 8)] : null,
+                            ),
+                            child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ],
+              ),
             ),
 
             const SizedBox(height: 24),

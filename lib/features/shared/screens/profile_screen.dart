@@ -33,14 +33,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   UserModel? get displayUser {
     if (Get.arguments is UserModel) return Get.arguments as UserModel;
+    if (Get.arguments is String) return null; // 🎉 Force FutureBuilder to fetch the user by ID
     return authController.currentUser.value;
   }
 
   bool get isOwnProfile {
-    final user = displayUser;
-    if (user == null && Get.arguments is String) return Get.arguments == authController.currentUser.value?.id;
-    if (user == null) return true;
-    return user.id == authController.currentUser.value?.id;
+    final args = Get.arguments;
+    if (args is String) return args == authController.currentUser.value?.id;
+    if (args is UserModel) return args.id == authController.currentUser.value?.id;
+    return true; // ✨ Default to own profile if no arguments
   }
 
   @override

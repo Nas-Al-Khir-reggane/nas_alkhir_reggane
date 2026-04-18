@@ -20,6 +20,7 @@ import '../../../core/animations/sound_manager.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../admin/screens/dar_al_sabil_management_screen.dart';
 import '../../../core/widgets/update_banner.dart';
+import '../../../core/animations/micro_interactions.dart';
 
 
 class BeneficiaryDashboard extends StatefulWidget {
@@ -166,13 +167,16 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                   BottomNavigationBarItem(
                     icon: Obx(() {
                       final chatController = Get.find<ChatController>();
-                      return Badge(
-                        label: Text(chatController.totalUnreadCount.value.toString()),
-                        isLabelVisible: chatController.totalUnreadCount.value > 0,
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        textColor: Theme.of(context).colorScheme.onPrimary,
+                      final count = chatController.totalUnreadCount.value;
+                      final badge = Badge(
+                        label: Text(count.toString()),
+                        isLabelVisible: count > 0,
+                        backgroundColor: AppTheme.emergencyColor,
+                        textColor: Colors.white,
                         child: const Icon(Icons.chat_bubble_outline),
                       );
+                      
+                      return count > 0 ? MicroInteractions.pulse(child: badge) : badge;
                     }),
                     activeIcon: const Icon(Icons.chat_bubble),
                     label: 'تواصل',
@@ -220,6 +224,38 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
+              Obx(() {
+                final chatController = Get.find<ChatController>();
+                final count = chatController.totalUnreadCount.value;
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.mail_outline_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
+                      onPressed: () => Get.toNamed('/inbox'), // Adjust route if needed
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    if (count > 0)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: MicroInteractions.pulse(
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(color: AppTheme.emergencyColor, shape: BoxShape.circle),
+                            constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                            child: Text(
+                              count.toString(),
+                              style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      )
+                  ],
+                );
+              }),
+              const SizedBox(width: 12),
               Obx(() => Stack(
                 children: [
                    IconButton(

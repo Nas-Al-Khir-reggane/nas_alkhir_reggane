@@ -25,6 +25,7 @@ import '../../../data/services/notification_service.dart';
 import '../../admin/controllers/admin_controller.dart';
 import '../../admin/screens/dar_al_sabil_management_screen.dart';
 import '../../shared/widgets/strategic_goal_card.dart';
+import '../../shared/widgets/hizb_info_dialog.dart';
 
 
 import '../../../core/widgets/empty_state.dart';
@@ -267,6 +268,8 @@ class _DonorDashboardState extends State<DonorDashboard> {
           ),
           const SizedBox(height: 24),
           _buildImpactSummaryCard(),
+          const SizedBox(height: 20),
+          _buildHizbSection(),
           const SizedBox(height: 20),
           Obx(() {
             final activeReqId = authController.currentUser.value?.activeBloodRequestId;
@@ -617,6 +620,142 @@ class _DonorDashboardState extends State<DonorDashboard> {
   }
 
 
+
+  Widget _buildHizbSection() {
+    return Obx(() {
+      final user = authController.currentUser.value;
+      if (user == null) return const SizedBox.shrink();
+      
+      final bool isMember = user.isHizbMember;
+      final int memberCount = donorController.hizbMembersCount.value;
+
+      return FadeInUp(
+        delay: const Duration(milliseconds: 200),
+        child: GestureDetector(
+          onTap: () => Get.dialog(const HizbInfoDialog()),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isMember 
+                  ? [const Color(0xFFB8860B), const Color(0xFFD4AF37)] 
+                  : [AppTheme.surfaceColor, AppTheme.surfaceColor],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: AppTheme.goldAccent.withValues(alpha: isMember ? 0.5 : 0.2),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.goldAccent.withValues(alpha: isMember ? 0.2 : 0.05),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                )
+              ],
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  left: -10,
+                  top: -10,
+                  child: Icon(
+                    Icons.stars_rounded, 
+                    size: 80, 
+                    color: Colors.white.withValues(alpha: isMember ? 0.1 : 0.03)
+                  ),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isMember ? Colors.white24 : AppTheme.goldAccent.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isMember ? Icons.verified_user_rounded : Icons.star_outline_rounded,
+                        color: isMember ? Colors.white : AppTheme.goldAccent,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'حزب المائة ألف',
+                                style: GoogleFonts.tajawal(
+                                  color: isMember ? Colors.white : Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                              if (isMember) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white24,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'عضو منضم',
+                                    style: GoogleFonts.tajawal(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            isMember 
+                              ? 'أنت أحد الأبطال المستعدين للنداء ⚡' 
+                              : 'انضم لفيالق الخير المستعدة للطوارئ 🛡️',
+                            style: GoogleFonts.tajawal(
+                              color: isMember ? Colors.white.withValues(alpha: 0.9) : AppTheme.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      children: [
+                        Text(
+                          memberCount.toString(),
+                          style: GoogleFonts.tajawal(
+                            color: isMember ? Colors.white : AppTheme.goldAccent,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            height: 1,
+                          ),
+                        ),
+                        Text(
+                          'عضو',
+                          style: GoogleFonts.tajawal(
+                            color: isMember ? Colors.white70 : AppTheme.textSecondary,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+  }
 
   Widget _buildSectionHeader(String title, String action, {VoidCallback? onTap}) {
     return Row(

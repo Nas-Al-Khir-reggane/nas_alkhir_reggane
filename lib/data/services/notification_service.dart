@@ -446,6 +446,8 @@ class NotificationService extends GetxController {
     } else if (type == 'new_donation') {
       final donationId = data['donationId'] ?? data['data']?['donationId'];
       return donationId != null ? 'new_donation:id=$donationId' : 'new_donation';
+    } else if (type == 'hizb_alert') {
+      return 'hizb_alert:reqId=${data['requestId'] ?? ""},projId=${data['projectId'] ?? ""},min=${data['minAmount'] ?? "1000"}';
     }
     
     return data['type']?.toString();
@@ -505,6 +507,20 @@ class NotificationService extends GetxController {
         Get.toNamed('/admin/requests');
       } else {
         Get.toNamed('/notifications');
+      }
+    } else if (data['type'] == 'hizb_alert') {
+      if (data['requestId'] != null && data['requestId'].toString().isNotEmpty) {
+        Get.toNamed('/blood-emergency', arguments: {
+          'requestId': data['requestId'],
+          'projectId': data['projectId'],
+          'minAmount': data['minAmount'] ?? '1000',
+        });
+      } else {
+        Get.toNamed('/donor/donate', arguments: {
+          'requestId': data['requestId'],
+          'projectId': data['projectId'],
+          'minAmount': data['minAmount'] ?? '1000',
+        });
       }
     } else {
       Get.toNamed('/notifications');
@@ -604,6 +620,32 @@ class NotificationService extends GetxController {
 
       if (payload.startsWith('blood_donation_completed:')) {
         Get.toNamed('/notifications');
+        return;
+      }
+
+      if (payload.startsWith('hizb_alert:')) {
+        final content = payload.split(':')[1];
+        final parts = content.split(',');
+        final map = <String, dynamic>{};
+        for (var p in parts) {
+          final kv = p.split('=');
+          if (kv.length == 2) {
+            if (kv[0] == 'reqId') map['requestId'] = kv[1];
+            if (kv[0] == 'projId') map['projectId'] = kv[1];
+            if (kv[0] == 'min') map['minAmount'] = kv[1];
+          }
+        }
+        
+        // إذا كان هناك طلب مرتبط (مثل حالة إنسانية أو دم)
+        if (map['requestId'] != null && map['requestId'].toString().isNotEmpty) {
+          Get.toNamed('/blood-emergency', arguments: map);
+        } else if (map['projectId'] != null && map['projectId'].toString().isNotEmpty) {
+          // إذا كان مشروعاً نأخذه لصفحة التبرع حيث يتم تحديد المشروع تلقائياً
+          Get.toNamed('/donor/donate', arguments: map);
+        } else {
+          // الحالة الافتراضية
+          Get.toNamed('/donor/donate', arguments: map);
+        }
         return;
       }
 
@@ -822,6 +864,44 @@ class NotificationService extends GetxController {
       'readBy': [],
       'createdAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  /// ✨ إرسال إشعار لمجموعة من المستخدمين (Batch)
+  static Future<void> notifyUsers({
+    required List<String> userIds,
+    required String type,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      final writeBatch = FirebaseFirestore.instance.batch();
+      final notifications = FirebaseFirestore.instance.collection('notifications');
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+
+      for (final uid in userIds) {
+        if (uid == currentUserId) continue;
+        
+        final docRef = notifications.doc();
+        writeBatch.set(docRef, {
+          'userId': uid,
+          'type': type,
+          'title': title,
+          'body': body,
+          'data': data ?? {},
+          'senderId': data?['senderId'] ?? currentUserId ?? 'system',
+          'isRead': false,
+          'readBy': [],
+          'createdAt': FieldValue.serverTimestamp(),
+          if (data?['requestId'] != null) 'requestId': data!['requestId'],
+          if (data?['projectId'] != null) 'projectId': data!['projectId'],
+        });
+      }
+
+      await writeBatch.commit();
+    } catch (e) {
+      debugPrint('❌ notifyUsers error: $e');
+    }
   }
 
   static Future<void> notifyRole({

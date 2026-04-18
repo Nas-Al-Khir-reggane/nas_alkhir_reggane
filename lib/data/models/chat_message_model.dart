@@ -10,6 +10,7 @@ class ChatMessageModel {
   final String? audioUrl;
   final int? audioDuration;
   final DateTime createdAt;
+  final List<String>? readBy;
   final bool isRead;
   final String chatId;
   final Map<String, dynamic>? replyTo;
@@ -28,6 +29,7 @@ class ChatMessageModel {
     this.audioUrl,
     this.audioDuration,
     required this.createdAt,
+    this.readBy,
     this.isRead = false,
     required this.chatId,
     this.replyTo,
@@ -48,6 +50,7 @@ class ChatMessageModel {
       'audioUrl': audioUrl,
       'audioDuration': audioDuration,
       'createdAt': FieldValue.serverTimestamp(),
+      'readBy': readBy ?? [],
       'isRead': isRead,
       'chatId': chatId,
       if (replyTo != null) 'reply_to': replyTo,
@@ -80,6 +83,7 @@ class ChatMessageModel {
       audioUrl: (map['audioUrl'] ?? map['audio_url'])?.toString(),
       audioDuration: map['audioDuration'] ?? map['audio_duration'],
       createdAt: parsedDate,
+      readBy: (map['readBy'] as List?)?.map((e) => e.toString()).toList(),
       isRead: map['isRead'] ?? map['is_read'] ?? false,
       chatId: (map['chatId'] ?? map['chat_id'])?.toString() ?? '',
       replyTo: map['reply_to'] != null ? Map<String, dynamic>.from(map['reply_to']) : null,

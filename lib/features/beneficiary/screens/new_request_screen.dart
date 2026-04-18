@@ -65,7 +65,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     _showDetailsBottomSheet();
   }
 
-  void _submitRequest() {
+  Future<void> _submitRequest() async {
     Map<String, dynamic> details = {};
     for (var entry in dynamicControllers.entries) {
       if (entry.value.text.isEmpty) {
@@ -127,21 +127,24 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       requestData['beneficiaryAddress'] = beneficiaryAddressController.text;
     }
 
-    controller.submitRequest(requestData, attachments: selectedFiles);
+    // الانتظار حتى اكتمال عملية الحفظ والرفع
+    await controller.submitRequest(requestData, attachments: selectedFiles);
 
-    // ✅ مسح النموذج بعد الإرسال
-    setState(() {
-      selectedService = null;
-      selectedFiles.clear();
-      dynamicControllers.forEach((_, ctrl) => ctrl.dispose());
-      dynamicControllers.clear();
-      selectedUrgency = 'normal';
-      selectedWilaya = null;
-    });
-    descriptionController.clear();
-    beneficiaryNameController.clear();
-    beneficiaryPhoneController.clear();
-    beneficiaryAddressController.clear();
+    // ✅ مسح النموذج بعد التأكد من نجاح الإرسال
+    if (mounted) {
+      setState(() {
+        selectedService = null;
+        selectedFiles.clear();
+        dynamicControllers.forEach((_, ctrl) => ctrl.dispose());
+        dynamicControllers.clear();
+        selectedUrgency = 'normal';
+        selectedWilaya = null;
+      });
+      descriptionController.clear();
+      beneficiaryNameController.clear();
+      beneficiaryPhoneController.clear();
+      beneficiaryAddressController.clear();
+    }
   }
 
   Future<void> _pickFiles(StateSetter setModalState) async {

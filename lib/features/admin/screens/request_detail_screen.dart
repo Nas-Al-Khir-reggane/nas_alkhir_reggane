@@ -328,6 +328,8 @@ class RequestDetailScreen extends StatelessWidget {
               String commune = req.commune;
               String addressDetail = req.address;
 
+              String? nationalIdUrl;
+
               // تحديث البيانات من ملف المستخدم إذا توفرت وكانت البيانات الأساسية ناقصة
               if (snapshot.hasData && snapshot.data!.exists) {
                 var userData = snapshot.data!.data() as Map<String, dynamic>;
@@ -336,6 +338,7 @@ class RequestDetailScreen extends StatelessWidget {
                 if (wilaya.isEmpty) wilaya = userData['wilaya'] ?? '';
                 if (commune.isEmpty) commune = userData['commune'] ?? '';
                 if (addressDetail.isEmpty) addressDetail = userData['address'] ?? '';
+                nationalIdUrl = userData['nationalIdUrl'];
               }
 
               // معالجة حالة "قيد التحميل" فقط إذا لم تكن البيانات متوفرة في الطلب أصلاً
@@ -385,9 +388,9 @@ class RequestDetailScreen extends StatelessWidget {
                     ) : null
                   ),
                   const Divider(color: AppTheme.glassBorder),
-                  _buildInfoRow(Icons.phone_outlined, 'رقم الهاتف', phone),
-                  const Divider(color: AppTheme.glassBorder),
                   _buildInfoRow(Icons.location_on_outlined, 'العنوان', fullAddress),
+                  const Divider(color: AppTheme.glassBorder),
+                  _buildAttachmentsGrid(context, req),
                 ],
               );
             },
@@ -421,68 +424,126 @@ class RequestDetailScreen extends StatelessWidget {
             )),
           ],
           
-          if (req.attachments.isNotEmpty) ...[
-            const Divider(color: Colors.white10),
-            const SizedBox(height: 8),
-            Text('المرفقات', style: TextStyle(color: AppTheme.primaryGreen.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: req.attachments.map((attachmentRef) {
-                final bool isImage = attachmentRef.toLowerCase().contains('.jpg') || 
-                                     attachmentRef.toLowerCase().contains('.jpeg') || 
-                                     attachmentRef.toLowerCase().contains('.png') || 
-                                     attachmentRef.contains('cloudinary.com');
+          // عرض بطاقة الهوية الدائمة من الملف الشخصي في الأسفل لفك الالتباس
+          StreamBuilder<DocumentSnapshot>(
+            stream: (req.requesterId.isNotEmpty)
+                ? FirebaseFirestore.instance.collection(AppConstants.usersCollection).doc(req.requesterId).snapshots()
+                : null,
+            builder: (context, snapshot) {
+              if (!snapshot.hasData || !snapshot.data!.exists) return const SizedBox.shrink();
+              final userData = snapshot.data!.data() as Map<String, dynamic>;
+              final String? nationalIdUrl = userData['nationalIdUrl'];
+              
+              if (nationalIdUrl == null || nationalIdUrl.isEmpty) return const SizedBox.shrink();
 
-                return Stack(
-                  children: [
-                    InkWell(
-                      onTap: () => _openAttachment(context, attachmentRef),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(isImage ? Icons.image_outlined : Icons.insert_drive_file_outlined, 
-                                 size: 16, color: AppTheme.primaryGreen),
-                            const SizedBox(width: 6),
-                            Text(isImage ? 'عرض الصورة' : 'عرض الملف', 
-                                 style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (adminController.isSuperAdmin)
-                      Positioned(
-                        right: -4,
-                        top: -4,
-                        child: GestureDetector(
-                          onTap: () => _confirmDeleteAttachment(req.id, attachmentRef),
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.close, size: 10, color: Colors.white),
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              }).toList(),
-            ),
-          ],
+              return Column(
+                children: [
+                  const Divider(color: Colors.white10),
+                  const SizedBox(height: 8),
+                  _buildInfoRow(
+                    Icons.badge_outlined, 
+                    'بطاقة هوية المستفيد (من الملف الشخصي)', 
+                    'هذه الوثيقة محفوظة في بيانات المستفيد الدائمة',
+                    onTap: () => _openAttachment(context, nationalIdUrl),
+                    trailing: const Icon(Icons.open_in_new_rounded, color: AppTheme.primaryGreen, size: 18),
+                  ),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
+  }
+
+  Widget _buildAttachmentsGrid(BuildContext context, ServiceRequestModel req) {
+    if (req.attachments.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: _buildInfoRow(Icons.attach_file_rounded, 'الوثائق الثبوتية', 'لا توجد مرفقات لهذا الطلب'),
+      );
     }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        Text('الوثائق الثبوتية المرفقة بهذا الطلب', 
+          style: TextStyle(color: AppTheme.primaryGreen.withValues(alpha: 0.9), fontSize: 13, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: req.attachments.map((attachmentRef) {
+            final bool isImage = attachmentRef.toLowerCase().contains('.jpg') || 
+                                 attachmentRef.toLowerCase().contains('.jpeg') || 
+                                 attachmentRef.toLowerCase().contains('.png') || 
+                                 attachmentRef.contains('cloudinary.com');
+
+            return Stack(
+              clipBehavior: Clip.none,
+              children: [
+                InkWell(
+                  onTap: () => _openAttachment(context, attachmentRef),
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryGreen.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.1)),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(11),
+                      child: isImage 
+                        ? Image.network(
+                            attachmentRef,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)));
+                            },
+                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported_outlined, color: Colors.white24),
+                          )
+                        : Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.insert_drive_file_outlined, color: AppTheme.primaryGreen, size: 30),
+                                const SizedBox(height: 4),
+                                Text(attachmentRef.split('.').last.toUpperCase(), 
+                                  style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 10, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                    ),
+                  ),
+                ),
+                if (adminController.isSuperAdmin)
+                  Positioned(
+                    right: -5,
+                    top: -5,
+                    child: GestureDetector(
+                      onTap: () => _confirmDeleteAttachment(req.id, attachmentRef),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: AppTheme.errorColor,
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                        ),
+                        child: const Icon(Icons.close, size: 10, color: Colors.white),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
 
   Widget _buildAssignedWorkerRow(ServiceRequestModel req) {
     return Padding(
@@ -645,7 +706,7 @@ class RequestDetailScreen extends StatelessWidget {
     );
   }
 
-  void _confirmUnassignDonor(String requestId, String donorName) {
+  void _confirmUnassignDonor(String requestId, String donorId, String donorName) {
     Get.dialog(
       AlertDialog(
         backgroundColor: AppTheme.surfaceColor,
@@ -657,7 +718,7 @@ class RequestDetailScreen extends StatelessWidget {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
             onPressed: () {
-              adminController.unassignConfirmedDonor(requestId: requestId);
+              adminController.unassignConfirmedDonor(requestId: requestId, donorId: donorId);
               Get.back();
             },
             child: const Text('تأكيد فك الإسناد', style: TextStyle(color: Colors.white)),
@@ -1010,6 +1071,7 @@ class RequestDetailScreen extends StatelessWidget {
                         tooltip: 'فك إسناد المتبرع',
                         onPressed: () => _confirmUnassignDonor(
                           req.id,
+                          assignedDonorId,
                           assignedDonorName.isNotEmpty ? assignedDonorName : 'المتبرع الحالي',
                         ),
                       ),

@@ -26,6 +26,8 @@ exports.sendNotification = onDocumentCreated("notifications/{notificationId}", a
     userId,      // If targeting a specific user
     type,
     requestId,
+    projectId,
+    minAmount,
     chatId,
     bloodType,
     hospital,
@@ -43,12 +45,21 @@ exports.sendNotification = onDocumentCreated("notifications/{notificationId}", a
 
   // Safely add optional string fields to data payload
   if (requestId != null) fcmData.requestId = String(requestId);
+  if (projectId != null) fcmData.projectId = String(projectId);
+  if (minAmount != null) fcmData.minAmount = String(minAmount);
   if (chatId != null) fcmData.chatId = String(chatId);
   if (bloodType != null) fcmData.bloodType = String(bloodType);
   if (hospital != null) fcmData.hospital = String(hospital);
   if (phone != null) fcmData.phone = String(phone);
   if (senderName != null) fcmData.senderName = String(senderName);
   if (imageUrl != null) fcmData.imageUrl = String(imageUrl);
+
+  // Extract from nested 'data' object if present
+  if (notificationData.data) {
+    if (notificationData.data.requestId != null) fcmData.requestId = String(notificationData.data.requestId);
+    if (notificationData.data.projectId != null) fcmData.projectId = String(notificationData.data.projectId);
+    if (notificationData.data.minAmount != null) fcmData.minAmount = String(notificationData.data.minAmount);
+  }
 
   try {
     const tokens = [];

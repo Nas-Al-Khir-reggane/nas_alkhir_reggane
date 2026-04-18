@@ -111,7 +111,7 @@ class WorkerController extends GetxController {
     Get.snackbar(
       newStatus ? '✅ أنت الآن متاح' : '⏸️ أنت الآن مشغول',
       newStatus ? 'ستصلك المهام الجديدة' : 'لن تُسند إليك مهام جديدة',
-      backgroundColor: (newStatus ? Get.theme.colorScheme.primary : Get.theme.colorScheme.error).withValues(alpha: 0.15),
+      backgroundColor: (newStatus ? Get.theme.colorScheme.primary : Get.theme.colorScheme.error).withOpacity(0.15),
       colorText: newStatus ? Get.theme.colorScheme.primary : Get.theme.colorScheme.error,
     );
   }
@@ -212,7 +212,7 @@ class WorkerController extends GetxController {
 
       Get.snackbar("على بركة الله", "تم بدء المهمة وتفعيل التتبع الحي للمركبة", 
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
+          backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
           colorText: AppTheme.primaryGreen);
     } catch (e) {
       Get.snackbar("خطأ", "فشل بدء المهمة: $e");
@@ -294,7 +294,7 @@ class WorkerController extends GetxController {
 
     } catch (e) {
       Get.snackbar('خطأ', 'فشل إنهاء المهمة: $e',
-          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.1), colorText: AppTheme.errorColor);
+          backgroundColor: AppTheme.errorColor.withOpacity(0.1), colorText: AppTheme.errorColor);
     } finally {
       isLoading.value = false;
     }

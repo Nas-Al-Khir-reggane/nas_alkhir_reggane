@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../controllers/admin_controller.dart';
 import '../../../core/animations/visual_effects.dart';
 import '../../../data/models/donation_model.dart';
+import '../widgets/prayer_post_generator.dart';
 
 class DonationsDetailsScreen extends StatelessWidget {
   const DonationsDetailsScreen({super.key});
@@ -300,6 +301,12 @@ class DonationsDetailsScreen extends StatelessWidget {
                               style: const TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
                             ),
                           ),
+                          if (data['requestPrayerPost'] == true)
+                            IconButton(
+                              icon: const Icon(Icons.auto_awesome, color: AppTheme.goldAccent, size: 22),
+                              onPressed: () => PrayerPostGenerator.sharePrayerPost(DonationModel.fromMap(data), context),
+                              tooltip: 'مشاركة بطاقة الدعاء',
+                            ),
                         ],
                       ),
                     ),

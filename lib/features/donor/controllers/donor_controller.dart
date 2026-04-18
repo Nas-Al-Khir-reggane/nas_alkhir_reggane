@@ -30,6 +30,7 @@ class DonorController extends GetxController {
   // إحصائيات
   RxDouble totalDonated = 0.0.obs;
   RxInt donationsCount = 0.obs;
+  RxInt hizbMembersCount = 0.obs; // ✨ عدد المشتركين في حزب المائة ألف
   RxList<Map<String, dynamic>> donationsByProject = <Map<String, dynamic>>[].obs;
 
   // إثبات التبرع
@@ -43,6 +44,7 @@ class DonorController extends GetxController {
 
   StreamSubscription? _donationsSub;
   StreamSubscription? _projectsSub;
+  StreamSubscription? _hizbSub;
 
   @override
   void onInit() {
@@ -50,6 +52,22 @@ class DonorController extends GetxController {
     currentDonor.value = Get.find<AuthController>().currentUser.value;
     loadMyDonations();
     loadActiveProjects();
+    
+    // شحن مستمع عدد أعضاء الحزب فقط للمسؤولين لتجنب أخطاء الصلاحيات للمتبرعين
+    final auth = Get.find<AuthController>();
+    if (auth.currentUser.value?.isAdmin == true) {
+      _listenToHizbCount();
+    }
+  }
+
+  void _listenToHizbCount() {
+    _hizbSub = FirebaseFirestore.instance
+        .collection('users')
+        .where('isHizbMember', isEqualTo: true)
+        .snapshots()
+        .listen((snap) {
+      hizbMembersCount.value = snap.docs.length;
+    });
   }
 
   // دالة لاختيار مشروع مسبقاً
@@ -86,7 +104,7 @@ class DonorController extends GetxController {
   void showCertificate() {
     if (totalDonated.value <= 0) {
       Get.snackbar('تنبيه', 'يجب أن تساهم في تبرع واحد على الأقل للحصول على شهادة.',
-          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15),
+          backgroundColor: AppTheme.warningColor.withOpacity(0.15),
           colorText: Colors.black);
       return;
     }
@@ -214,6 +232,12 @@ class DonorController extends GetxController {
     bool isAnonymous = false,
     bool isRecurring = false,
     String? notes,
+    bool requestPrayerPost = false,
+    String? prayerType,
+    String? prayerTarget,
+    String? prayerColor,
+    String? prayerCustomMessage,
+    String? requestId, // ✨ مرتب بطلب خدمة معين (خاص بحزب المائة ألف)
   }) async {
     // ✅ التحقق من صحة المبلغ
     if (amount <= 0) {
@@ -246,6 +270,12 @@ class DonorController extends GetxController {
         'isRecurring': isRecurring,
         'status': 'pending',
         'notes': notes,
+        'requestPrayerPost': requestPrayerPost,
+        'prayerType': prayerType,
+        'prayerTarget': prayerTarget,
+        'prayerColor': prayerColor,
+        'prayerCustomMessage': prayerCustomMessage,
+        'serviceRequestId': requestId, // ✨ حفظ معرف الطلب إن وجد
         'date': FieldValue.serverTimestamp(),
       };
 
@@ -330,6 +360,7 @@ class DonorController extends GetxController {
   void onClose() {
     _donationsSub?.cancel();
     _projectsSub?.cancel();
+    _hizbSub?.cancel();
     super.onClose();
   }
 }

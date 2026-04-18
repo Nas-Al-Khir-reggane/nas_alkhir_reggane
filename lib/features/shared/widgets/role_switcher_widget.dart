@@ -33,7 +33,7 @@ class RoleSwitcherWidget extends StatelessWidget {
         decoration: AppTheme.glassDecoration.copyWith(
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: AppTheme.primaryGreen.withValues(alpha: 0.25),
+            color: AppTheme.primaryGreen.withOpacity(0.25),
             width: 1.5,
           ),
         ),

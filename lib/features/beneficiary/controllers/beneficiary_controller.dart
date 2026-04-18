@@ -115,6 +115,9 @@ class BeneficiaryController extends GetxController {
   }
 
   Future<void> submitRequest(Map<String, dynamic> data, {List<File> attachments = const []}) async {
+    // نأخذ نسخة ثابتة من المرفقات لتجنب مسحها من الواجهة قبل اكتمال الرفع
+    final filesToUpload = List<File>.from(attachments);
+    
     final hasActive = myRequests.any(
       (r) => r.status == 'pending' || r.status == 'in_progress',
     );
@@ -217,11 +220,11 @@ class BeneficiaryController extends GetxController {
         final docRef = FirebaseFirestore.instance.collection('service_requests').doc();
         await docRef.set(requestData);
 
-        if (attachments.isNotEmpty) {
+        if (filesToUpload.isNotEmpty) {
           final attachmentPaths = await uploadAttachments(
             requestId: docRef.id,
             requesterId: user.id,
-            files: attachments,
+            files: filesToUpload,
           );
           await docRef.update({
             'attachments': attachmentPaths,

@@ -29,6 +29,8 @@ class ServiceRequestModel {
   final double? longitude;
   final List<Map<String, dynamic>> notifiedDonors; // [{id, name, phone, bloodType}]
   final String? roomNumber; // رقم الغرفة في دار السبيل ✨
+  final int requiredDonorsCount; // عدد المتبرعين المطلوبين
+  final List<Map<String, dynamic>> assignedDonors; // المتبرعون المعتمدون [{id, name, confirmedAt}]
 
   ServiceRequestModel({
     required this.id,
@@ -59,6 +61,8 @@ class ServiceRequestModel {
     this.latitude,
     this.longitude,
     this.roomNumber,
+    this.requiredDonorsCount = 1,
+    this.assignedDonors = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -91,6 +95,8 @@ class ServiceRequestModel {
       'latitude': latitude,
       'longitude': longitude,
       'roomNumber': roomNumber,
+      'requiredDonorsCount': requiredDonorsCount,
+      'assignedDonors': assignedDonors,
     };
   }
 
@@ -141,6 +147,10 @@ class ServiceRequestModel {
       latitude: (map['latitude'] as num?)?.toDouble(),
       longitude: (map['longitude'] as num?)?.toDouble(),
       roomNumber: map['roomNumber'] ?? map['room_number'],
+      requiredDonorsCount: (map['requiredDonorsCount'] ?? map['required_donors_count'] ?? 1) as int,
+      assignedDonors: (map['assignedDonors'] ?? map['assigned_donors']) != null
+          ? List<Map<String, dynamic>>.from(map['assignedDonors'] ?? map['assigned_donors'])
+          : const [],
     );
   }
 
@@ -171,6 +181,8 @@ class ServiceRequestModel {
     List<Map<String, dynamic>>? donorResponses,
     List<Map<String, dynamic>>? notifiedDonors,
     String? roomNumber,
+    int? requiredDonorsCount,
+    List<Map<String, dynamic>>? assignedDonors,
   }) {
     return ServiceRequestModel(
       id: id ?? this.id,
@@ -199,6 +211,8 @@ class ServiceRequestModel {
       donorResponses: donorResponses ?? this.donorResponses,
       notifiedDonors: notifiedDonors ?? this.notifiedDonors,
       roomNumber: roomNumber ?? this.roomNumber,
+      requiredDonorsCount: requiredDonorsCount ?? this.requiredDonorsCount,
+      assignedDonors: assignedDonors ?? this.assignedDonors,
     );
   }
 

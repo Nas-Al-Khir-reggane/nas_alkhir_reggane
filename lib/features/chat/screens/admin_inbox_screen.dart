@@ -529,10 +529,50 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                     Row(
                       children: [
                         Expanded(
-                            child: Text(lastMessage,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(color: hasUnread ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12))),
+                          child: Builder(
+                            builder: (context) {
+                              final typing = data['typing'] as Map<String, dynamic>? ?? {};
+                              // The guest ID is the one not matching currentUserId
+                              final participants = List.from(data['participants'] ?? []);
+                              final guestId = participants.firstWhere((p) => p != currentUserId, orElse: () => '');
+                              final isOtherTyping = typing[guestId] == true;
+                              
+                              if (isOtherTyping) {
+                                return Text(
+                                  'يكتب حالياً...',
+                                  style: GoogleFonts.tajawal(
+                                      color: Theme.of(context).colorScheme.primary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold, fontStyle: FontStyle.italic),
+                                );
+                              }
+                              
+                              final bool isMe = data['lastMessageSenderId'] == currentUserId;
+                              final displayMessage = isMe ? 'أنت: $lastMessage' : lastMessage;
+                              
+                              return Row(
+                                children: [
+                                  if (isMe) ...[
+                                    Icon(
+                                      (unreadMap[guestId] ?? 0) == 0 ? Icons.done_all : Icons.done,
+                                      size: 14,
+                                      color: (unreadMap[guestId] ?? 0) == 0 ? Colors.blue : Colors.grey,
+                                    ),
+                                    const SizedBox(width: 4),
+                                  ],
+                                  Expanded(
+                                    child: Text(displayMessage,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                            color: hasUnread ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant, 
+                                            fontSize: 12)),
+                                  ),
+                                ],
+                              );
+                            }
+                          ),
+                        ),
                         if (hasUnread)
                            Container(
                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -709,17 +749,52 @@ class _AdminInboxScreenState extends State<AdminInboxScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(lastMessage,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.tajawal(
-                                color: unread > 0
-                                    ? Theme.of(context).colorScheme.onSurface
-                                    : Theme.of(context).colorScheme.onSurfaceVariant,
-                                fontSize: 12,
-                                fontWeight: unread > 0
-                                    ? FontWeight.w600
-                                    : FontWeight.normal)),
+                        child: Builder(
+                          builder: (context) {
+                            final typing = data['typing'] as Map<String, dynamic>? ?? {};
+                            final isOtherTyping = typing[otherUserId] == true;
+                            
+                            if (isOtherTyping) {
+                              return Text(
+                                'يكتب حالياً...',
+                                style: GoogleFonts.tajawal(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    fontStyle: FontStyle.italic),
+                              );
+                            }
+                            
+                            final bool isMe = data['lastMessageSenderId'] == currentUserId;
+                            final displayMessage = isMe ? 'أنت: $lastMessage' : lastMessage;
+                            
+                            return Row(
+                              children: [
+                                if (isMe) ...[
+                                  Icon(
+                                    (unreadMap[otherUserId] ?? 0) == 0 ? Icons.done_all : Icons.done,
+                                    size: 14,
+                                    color: (unreadMap[otherUserId] ?? 0) == 0 ? Colors.blue : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
+                                Expanded(
+                                  child: Text(displayMessage,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.tajawal(
+                                          color: unread > 0
+                                              ? Theme.of(context).colorScheme.onSurface
+                                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                                          fontSize: 12,
+                                          fontWeight: unread > 0
+                                              ? FontWeight.w600
+                                              : FontWeight.normal)),
+                                ),
+                              ],
+                            );
+                          }
+                        ),
                       ),
                       if (unread > 0)
                         Container(

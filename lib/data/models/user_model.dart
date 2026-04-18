@@ -64,6 +64,11 @@ class UserModel {
   // الأدوار الإضافية التي يمنحها المدير: 'canDonate', 'canRequestService'
   final List<String> additionalRoles;
   final bool canManageDarSabil; // ✨ صلاحية إدارة دار السبيل المستقلة
+  final bool isHizbMember; // ✨ عضو في حزب المائة ألف (تبرعات الطوارئ)
+
+  // Getters for role checking
+  bool get isAdmin => role == UserRole.admin || role == UserRole.superAdmin;
+  bool get isSuperAdmin => role == UserRole.superAdmin;
 
   UserModel({
     required this.id,
@@ -104,6 +109,7 @@ class UserModel {
     this.avatarType = 'avataaars',
     this.additionalRoles = const [],
     this.canManageDarSabil = false,
+    this.isHizbMember = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -148,6 +154,7 @@ class UserModel {
       'avatarType': avatarType,
       'additionalRoles': additionalRoles,
       'canManageDarSabil': canManageDarSabil,
+      'isHizbMember': isHizbMember,
     };
   }
 
@@ -203,6 +210,7 @@ class UserModel {
       avatarType: map['avatarType'] ?? 'avataaars',
       additionalRoles: List<String>.from(map['additionalRoles'] ?? []),
       canManageDarSabil: map['canManageDarSabil'] ?? false,
+      isHizbMember: map['isHizbMember'] ?? false,
     );
   }
 
@@ -246,6 +254,7 @@ class UserModel {
     String? avatarType,
     List<String>? additionalRoles,
     bool? canManageDarSabil,
+    bool? isHizbMember,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -286,6 +295,7 @@ class UserModel {
       avatarType: avatarType ?? this.avatarType,
       additionalRoles: additionalRoles ?? this.additionalRoles,
       canManageDarSabil: canManageDarSabil ?? this.canManageDarSabil,
+      isHizbMember: isHizbMember ?? this.isHizbMember,
     );
   }
 

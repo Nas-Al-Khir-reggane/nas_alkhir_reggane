@@ -1740,7 +1740,15 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               if (showTicks) ...[
                 const SizedBox(width: 4),
-                Icon(isRead ? Icons.done_all : Icons.done, color: isRead ? Colors.blue : Colors.black26, size: 15),
+                if (widget.isGroupChat) ...[
+                  Icon(Icons.done_all, color: (message.readBy?.length ?? 0) > 1 ? Colors.blue : Colors.black26, size: 15),
+                  if ((message.readBy?.length ?? 0) > 1)
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 2),
+                      child: Text((message.readBy!.length - 1).toString(), style: const TextStyle(fontSize: 9, color: Colors.blue, fontWeight: FontWeight.bold)),
+                    ),
+                ] else
+                  Icon(isRead ? Icons.done_all : Icons.done, color: isRead ? Colors.blue : Colors.black26, size: 15),
               ],
             ],
           ),
@@ -2404,6 +2412,7 @@ class _ChatScreenState extends State<ChatScreen> {
         await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
           'lastMessage': imageUrl != null ? '📷 صورة' : (audioUrl != null ? '🎙️ رسالة صوتية' : text),
           'lastMessageAt': FieldValue.serverTimestamp(),
+          'lastMessageSenderId': _effectiveUserId,
           'type': widget.isGroupChat ? 'group' : (chatId.startsWith('guest_') ? 'guest' : 'private'),
           'participants': FieldValue.arrayUnion([_effectiveUserId, if (widget.targetUserId != null) widget.targetUserId!]),
           'participantNames.$_effectiveUserId': sendingName,

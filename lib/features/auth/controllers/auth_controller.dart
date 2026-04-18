@@ -171,7 +171,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       debugPrint("AuthController: Login Error: $e");
       final message = _authErrorMessage(e, fallback: 'تعذر تسجيل الدخول حالياً. يرجى المحاولة مرة أخرى.');
       Get.snackbar('تعذر تسجيل الدخول', message,
-        backgroundColor: Colors.red.withValues(alpha: 0.15),
+        backgroundColor: Colors.red.withOpacity(0.15),
         duration: const Duration(seconds: 5));
     } finally {
       isLoading.value = false;
@@ -256,7 +256,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
         errorMessage = 'هذا البريد مسجل مسبقاً. إذا كان ملفك الشخصي غير مكتمل، سجّل الدخول أولاً لإكمال بياناتك.';
       }
       Get.snackbar("تنبيه", errorMessage, 
-        backgroundColor: Colors.orange.withValues(alpha: 0.15),
+        backgroundColor: Colors.orange.withOpacity(0.15),
         duration: const Duration(seconds: 5)
       );
     } finally {
@@ -394,7 +394,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
         '🔄 تم تبديل الوضع',
         'أنت الآن في وضع ${targetRole.displayName}',
         snackPosition: SnackPosition.TOP,
-        backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
+        backgroundColor: AppTheme.primaryGreen.withOpacity(0.15),
         colorText: AppTheme.primaryGreen,
         duration: const Duration(seconds: 2),
       );
@@ -402,7 +402,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       Get.snackbar(
         '⚠️ عذراً',
         'لا تملك صلاحية الوصول لوضع ${targetRole.displayName}',
-        backgroundColor: Colors.orange.withValues(alpha: 0.15),
+        backgroundColor: Colors.orange.withOpacity(0.15),
       );
     }
   }
@@ -589,7 +589,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
   /// قائمة الفصائل المتوافقة للتبرع
   List<String> _getCompatibleBloodTypes(String donorType) {
     const Map<String, List<String>> compatibility = {
-      'O-':  ['O-', 'O+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'],
+      'O-':  ['O-', 'O+', 'A-', 'A+', 'B-', 'B+'],
       'O+':  ['O+', 'A+', 'B+', 'AB+'],
       'A-':  ['A-', 'A+', 'AB-', 'AB+'],
       'A+':  ['A+', 'AB+'],
@@ -607,5 +607,50 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       final user = await _authService.getCurrentUserData();
       if (user != null) currentUser.value = user;
     } catch (_) {}
+  }
+
+  /// 🌟 ميزة حزب المائة ألف: الاشتراك أو الانسحاب
+  Future<bool> toggleHizbMembership(bool join) async {
+    final uid = currentUser.value?.id;
+    if (uid == null) {
+      debugPrint('⚠️ AuthController: uid is null in toggleHizbMembership');
+      return false;
+    }
+    
+    try {
+      isLoading.value = true;
+      debugPrint('🛡️ AuthController: Attempting to ${join ? 'join' : 'leave'} Hizb for user: $uid');
+
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'isHizbMember': join,
+      }).timeout(const Duration(seconds: 15));
+
+      // تحديث الحالة محلياً لضمان تجاوب الواجهة فوراً
+      if (currentUser.value != null) {
+        currentUser.value = currentUser.value!.copyWith(isHizbMember: join);
+        currentUser.refresh();
+      }
+      
+      Get.snackbar(
+        join ? '✅ تم الانضمام بنجاح' : '🔔 تم إلغاء الاشتراك',
+        join ? 'أنت الآن جزء من حزب المائة ألف، جزاك الله خيراً' : 'نتمنى عودتك إلينا قريباً، شكراً لمساهماتك السابقة',
+        backgroundColor: join ? AppTheme.primaryGreen.withOpacity(0.2) : Colors.orange.withOpacity(0.1),
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 4),
+      );
+      
+      return true;
+    } catch (e) {
+      debugPrint('❌ AuthController Error: Failed to toggle Hizb membership: $e');
+      Get.snackbar(
+        '❌ خطأ',
+        'تعذر تحديث حالة الاشتراك: ${_authErrorMessage(e)}',
+        backgroundColor: Colors.red.withOpacity(0.1),
+        colorText: Colors.red,
+      );
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
   }
 }

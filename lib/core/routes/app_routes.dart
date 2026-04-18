@@ -24,6 +24,7 @@ import '../../features/admin/screens/admin_committed_donors.dart';
 import '../../features/admin/screens/donations_details_screen.dart';
 import '../../features/admin/screens/manage_strategic_goals_screen.dart';
 import '../../features/admin/screens/broadcast_monitor_screen.dart';
+import '../../features/admin/screens/hizb_management_screen.dart'; // ✨ NEW
 import '../../features/worker/screens/worker_dashboard.dart';
 import '../../features/worker/screens/update_task_screen.dart';
 import '../../features/worker/screens/task_detail_screen.dart';
@@ -72,6 +73,7 @@ class AppRoutes {
   static const String adminReports = '/admin/reports';
   static const String adminDonations = '/admin/donations'; // ✨ NEW
   static const String adminBroadcastMonitor = '/admin/broadcast-monitor'; // ✨ NEW
+  static const String adminHizbManagement = '/admin/hizb-management'; // ✨ NEW
   
   static const String workerDashboard = '/worker/dashboard';
   static const String workerUpdateTask = '/worker/update-task';
@@ -149,6 +151,11 @@ class AppRoutes {
     GetPage(
       name: adminStrategicGoals,
       page: () => const ManageStrategicGoalsScreen(),
+      middlewares: [AuthMiddleware(), RoleMiddleware(allowedRoles: const [UserRole.superAdmin])],
+    ),
+    GetPage(
+      name: adminHizbManagement,
+      page: () => const HizbManagementScreen(),
       middlewares: [AuthMiddleware(), RoleMiddleware(allowedRoles: const [UserRole.superAdmin])],
     ),
     GetPage(name: adminRequests, page: () => const ServiceRequestsScreen(), middlewares: [AuthMiddleware()]),

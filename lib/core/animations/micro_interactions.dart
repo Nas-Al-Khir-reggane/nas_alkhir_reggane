@@ -54,7 +54,16 @@ class MicroInteractions {
     );
   }
 
-  // 4. Hover Scale Effect
+  // 4. Pulse Effect for Notifications
+  static Widget pulse({
+    required Widget child,
+    bool enabled = true,
+  }) {
+    if (!enabled) return child;
+    return _PulseAnimation(child: child);
+  }
+
+  // 5. Hover Scale Effect
   static Widget hoverScale({
     required Widget child,
     double scale = 1.05,
@@ -223,6 +232,50 @@ class _HoverScaleState extends State<_HoverScale> {
         curve: Curves.easeInOut,
         child: widget.child,
       ),
+    );
+  }
+}
+
+class _PulseAnimation extends StatefulWidget {
+  final Widget child;
+  const _PulseAnimation({required this.child});
+
+  @override
+  State<_PulseAnimation> createState() => _PulseAnimationState();
+}
+
+class _PulseAnimationState extends State<_PulseAnimation> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _animation.value,
+          child: widget.child,
+        );
+      },
     );
   }
 }

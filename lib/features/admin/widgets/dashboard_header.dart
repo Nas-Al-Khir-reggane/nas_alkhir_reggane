@@ -11,6 +11,9 @@ import '../../../data/models/user_model.dart';
 import '../../../data/services/notification_service.dart';
 import '../controllers/admin_controller.dart';
 import '../../shared/widgets/user_avatar.dart';
+import '../../../core/animations/micro_interactions.dart';
+import '../../chat/controllers/chat_controller.dart';
+import '../../chat/screens/admin_inbox_screen.dart';
 
 class DashboardHeader extends StatelessWidget {
   const DashboardHeader({super.key});
@@ -138,6 +141,36 @@ class DashboardHeader extends StatelessWidget {
                       ),
                   ],
                 )),
+              ),
+              const SizedBox(width: 8),
+              _buildHeaderButton(
+                context,
+                onTap: () => Get.to(() => AdminInboxScreen()), 
+                child: Obx(() {
+                  final chatController = Get.find<ChatController>();
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(Icons.mail_outline_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
+                      if (chatController.totalUnreadCount.value > 0)
+                        Positioned(
+                          right: -2, top: -2,
+                          child: MicroInteractions.pulse(
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(color: AppTheme.emergencyColor, shape: BoxShape.circle),
+                              constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
+                              child: Text(
+                                chatController.totalUnreadCount.value.toString(),
+                                style: const TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                }),
               ),
             ],
           ),

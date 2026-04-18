@@ -11,10 +11,17 @@ class DonationModel {
   final String status; // pending, confirmed
   final DateTime date;
   final String? notes;
-  final bool isRecurring; // تبرع شهري
-  final bool isAnonymous; // تبرع مجهول
+  final bool isRecurring;
+  final bool isAnonymous;
+  final bool requestPrayerPost;
+  final String? prayerType; // deceased, healing, barakah, parents, general
+  final String? prayerTarget; // name of the person
+  final String? prayerColor; // emerald, sapphire, gold, rose, slate
+  final String? prayerAction; // dua, request
+  final String? prayerCustomMessage; // donor-defined text shown on card
   final String? proofImageUrl;
   final String? proofImageId;
+  final String? serviceRequestId; // ✨ مرتب بطلب خدمة معين (خاص بحزب المائة ألف)
 
   DonationModel({
     required this.id,
@@ -29,8 +36,15 @@ class DonationModel {
     this.notes,
     this.isRecurring = false,
     this.isAnonymous = false,
+    this.requestPrayerPost = false,
+    this.prayerType,
+    this.prayerTarget,
+    this.prayerColor,
+    this.prayerAction,
+    this.prayerCustomMessage,
     this.proofImageUrl,
     this.proofImageId,
+    this.serviceRequestId,
   });
 
   static String normalizeMethod(String? rawMethod) {
@@ -89,8 +103,15 @@ class DonationModel {
       'notes': notes,
       'isRecurring': isRecurring,
       'isAnonymous': isAnonymous,
+      'requestPrayerPost': requestPrayerPost,
+      'prayerType': prayerType,
+      'prayerTarget': prayerTarget,
+      'prayerColor': prayerColor,
+      'prayerAction': prayerAction,
+      'prayerCustomMessage': prayerCustomMessage,
       'proofImageUrl': proofImageUrl,
       'proofImageId': proofImageId,
+      'serviceRequestId': serviceRequestId,
     };
   }
 
@@ -110,8 +131,15 @@ class DonationModel {
       notes: map['notes'],
       isRecurring: map['isRecurring'] ?? false,
       isAnonymous: map['isAnonymous'] ?? false,
+      requestPrayerPost: map['requestPrayerPost'] ?? false,
+      prayerType: map['prayerType'],
+      prayerTarget: map['prayerTarget'],
+      prayerColor: map['prayerColor'],
+      prayerAction: map['prayerAction'],
+      prayerCustomMessage: map['prayerCustomMessage'] ?? map['prayerMessage'],
       proofImageUrl: map['proofImageUrl'],
       proofImageId: map['proofImageId'],
+      serviceRequestId: map['serviceRequestId'],
     );
   }
 
@@ -128,8 +156,12 @@ class DonationModel {
     String? notes,
     bool? isRecurring,
     bool? isAnonymous,
+    String? prayerColor,
+    String? prayerAction,
+    String? prayerCustomMessage,
     String? proofImageUrl,
     String? proofImageId,
+    String? serviceRequestId,
   }) {
     return DonationModel(
       id: id ?? this.id,
@@ -144,8 +176,12 @@ class DonationModel {
       notes: notes ?? this.notes,
       isRecurring: isRecurring ?? this.isRecurring,
       isAnonymous: isAnonymous ?? this.isAnonymous,
+      prayerColor: prayerColor ?? this.prayerColor,
+      prayerAction: prayerAction ?? this.prayerAction,
+      prayerCustomMessage: prayerCustomMessage ?? this.prayerCustomMessage,
       proofImageUrl: proofImageUrl ?? this.proofImageUrl,
       proofImageId: proofImageId ?? this.proofImageId,
+      serviceRequestId: serviceRequestId ?? this.serviceRequestId,
     );
   }
 }

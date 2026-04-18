@@ -9,6 +9,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../data/services/notification_service.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../admin/controllers/admin_controller.dart';
+import '../../chat/screens/chat_screen.dart';
 import '../../../data/models/user_model.dart';
 
 class BloodEmergencyDetailScreen extends StatefulWidget {
@@ -60,10 +61,12 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
           final data = snapshot.data!.data() as Map<String, dynamic>;
           final String? assignedTo = data['assignedTo'];
           final List<dynamic> responses = data['donorResponses'] ?? [];
+          final int requiredCount = data['requiredDonorsCount'] ?? 1;
+          final List<dynamic> assignedDonors = data['assignedDonors'] ?? [];
           
           responderCount = responses.length;
-          isEmergencyCovered = assignedTo != null && assignedTo.isNotEmpty;
-          isAssignedToMe = assignedTo == currentUser?.id;
+          isEmergencyCovered = assignedDonors.length >= requiredCount;
+          isAssignedToMe = assignedDonors.any((d) => d['id'] == currentUser?.id);
           isCompleted = data['status'] == 'completed';
           
           // ✨ نتحقق من Firestore أيضاً لدعم حالة إعادة فتح الشاشة
@@ -161,7 +164,18 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
                             ),
                             const SizedBox(height: 16),
                             
-                            _buildStatusBanner(isEmergencyCovered, isAssignedToMe, isAlreadyRespondedByMe, responderCount, isCompleted),
+                            _buildStatusBanner(
+                              isEmergencyCovered, 
+                              isAssignedToMe, 
+                              isAlreadyRespondedByMe, 
+                              responderCount, 
+                              isCompleted, 
+                              (snapshot.data!.data() as Map<String, dynamic>)['assignedDonors']?.length ?? 0, 
+                              (snapshot.data!.data() as Map<String, dynamic>)['requiredDonorsCount'] ?? 1
+                            ),
+                            
+                            if (snapshot.hasData && snapshot.data!.exists)
+                              _buildConfirmedDonorsList(snapshot.data!.data() as Map<String, dynamic>, currentUser),
                             
                             if ((currentUser?.role == UserRole.superAdmin || currentUser?.role == UserRole.admin) && !isCompleted) ...[
                               const SizedBox(height: 16),
@@ -249,7 +263,7 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
     );
   }
 
-  Widget _buildStatusBanner(bool isCovered, bool isMe, bool isResponded, int count, bool isCompleted) {
+  Widget _buildStatusBanner(bool isCovered, bool isMe, bool isResponded, int count, bool isCompleted, int currentAssigned, int requiredCount) {
     if (isCompleted) {
       return Container(
         width: double.infinity,
@@ -264,6 +278,43 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
         ),
       );
     }
+
+    if (requiredCount > 1 || Get.find<AuthController>().currentUser.value?.role == UserRole.superAdmin) {
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isCovered ? AppTheme.successColor.withValues(alpha: 0.15) : AppTheme.goldAccent.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isCovered ? AppTheme.successColor : AppTheme.goldAccent),
+        ),
+        child: Row(
+          children: [
+            Icon(isCovered ? Icons.verified : Icons.info, color: isCovered ? AppTheme.successColor : AppTheme.goldAccent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                isCovered 
+                  ? 'تم تأمين كافة المتبرعين المطلوبين ($requiredCount).' 
+                  : 'تم تأمين $currentAssigned من أصل $requiredCount متبرعين مطلوبين.',
+                style: GoogleFonts.tajawal(
+                  color: isCovered ? AppTheme.successColor : AppTheme.goldAccent, 
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 13,
+                )
+              )
+            ),
+            if (Get.find<AuthController>().currentUser.value?.role == UserRole.superAdmin || Get.find<AuthController>().currentUser.value?.role == UserRole.admin)
+              IconButton(
+                icon: const Icon(Icons.edit, size: 18, color: AppTheme.goldAccent),
+                onPressed: () => _showEditRequiredDonorsDialog(requiredCount),
+              ),
+          ],
+        ),
+      );
+    }
+
     if (isMe) {
       return Container(
         width: double.infinity,
@@ -611,6 +662,97 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
               ),
             ],
           ),
+          
+          // ✨ خيار تفعيل حزب المائة ألف للمسؤولين فقط
+          if (Get.find<AuthController>().currentUser.value?.role == UserRole.admin || 
+              Get.find<AuthController>().currentUser.value?.role == UserRole.superAdmin) ...[
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.goldAccent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                children: [
+                   Row(
+                    children: [
+                      const Icon(Icons.stars_rounded, color: AppTheme.goldAccent),
+                      const SizedBox(width: 8),
+                      Text('إجراءات طوارئ متقدمة', style: GoogleFonts.tajawal(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.goldAccent)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showEmergencyHizbDialog(requestId, bloodType, hospital),
+                      icon: const Icon(Icons.campaign_rounded, color: Colors.black),
+                      label: const Text('نداء حزب المائة ألف لهذه الحالة', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.goldAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showEmergencyHizbDialog(String requestId, String bloodType, String hospital) {
+    final titleCtrl = TextEditingController(text: '🚨 حالة مستعجلة: مطلوب متبرعين');
+    final bodyCtrl = TextEditingController(text: 'يوجد مريض في $hospital يحتاج بشكل عاجل لمتبرعين (زمرة $bloodType). نداء لكل أعضاء حزب المائة ألف للمساهمة والتبرع.');
+
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: Theme.of(Get.context!).colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.stars_rounded, color: AppTheme.goldAccent),
+            const SizedBox(width: 8),
+            Text('تفعيل نداء الحزب', style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: Map<String, dynamic>.from({}).isEmpty ? MainAxisSize.min : MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleCtrl,
+              decoration: AppTheme.inputDecoration('عنوان النداء', Icons.title),
+              style: TextStyle(color: Theme.of(Get.context!).colorScheme.onSurface),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: bodyCtrl,
+              maxLines: 4,
+              decoration: AppTheme.inputDecoration('نص الرسالة', Icons.message),
+              style: TextStyle(color: Theme.of(Get.context!).colorScheme.onSurface),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
+          AppTheme.gradientButton(
+            text: 'إرسال النداء للمشتركين',
+            onPressed: () async {
+              Get.back(); // إغلاق النافذة أولاً لكي لا تحجب الـ Snackbar
+              await Get.find<AdminController>().triggerHizbAlert(
+                title: titleCtrl.text,
+                body: bodyCtrl.text,
+                requestId: requestId,
+              );
+            },
+          ),
         ],
       ),
     );
@@ -827,7 +969,13 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
                                 children: [
                                   IconButton(
                                     icon: Icon(Icons.chat_bubble, color: Theme.of(context).colorScheme.primary),
-                                    onPressed: () => Get.toNamed('/chat/private', arguments: {'userId': donor.id, 'userName': donor.name}),
+                                    onPressed: () {
+                                      Get.back();
+                                      Get.to(() => ChatScreen(
+                                        targetUserId: donor.id,
+                                        targetUserName: donor.name,
+                                      ));
+                                    },
                                   ),
                                   IconButton(
                                       icon: const Icon(Icons.call, color: AppTheme.primaryGreen),
@@ -864,6 +1012,112 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
         },
       ),
       isScrollControlled: true,
+    );
+  }
+
+  void _showEditRequiredDonorsDialog(int currentCount) {
+    final controller = TextEditingController(text: currentCount.toString());
+    final args = Get.arguments as Map<String, dynamic>? ?? {};
+    final String requestId = args['requestId'] ?? '';
+
+    Get.dialog(
+      AlertDialog(
+        title: Text('تعديل عدد المتبرعين', style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'العدد المطلوب'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () async {
+              final newCount = int.tryParse(controller.text);
+              if (newCount != null && newCount > 0) {
+                await FirebaseFirestore.instance
+                  .collection(AppConstants.serviceRequestsCollection)
+                  .doc(requestId)
+                  .update({'requiredDonorsCount': newCount});
+                Get.back();
+                Get.snackbar('تم التحديث', 'تم تغيير عدد المتبرعين المطلوب إلى $newCount');
+              }
+            },
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConfirmedDonorsList(Map<String, dynamic> data, UserModel? currentUser) {
+    final List<dynamic> assignedDonors = data['assignedDonors'] ?? [];
+    if (assignedDonors.isEmpty) return const SizedBox.shrink();
+
+    final isAdmin = currentUser?.role == UserRole.superAdmin || currentUser?.role == UserRole.admin;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Text('المتبرعون المعتمدون', style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: AppTheme.glassDecoration,
+          child: Column(
+            children: assignedDonors.map((donorMap) {
+              final String name = donorMap['name'] ?? 'متبرع';
+              final String id = donorMap['id'] ?? '';
+              final bool hasDonated = donorMap['status'] == 'donated';
+              
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: hasDonated ? AppTheme.successColor : AppTheme.goldAccent.withValues(alpha: 0.15),
+                  child: Icon(
+                    hasDonated ? Icons.check_circle : Icons.verified, 
+                    color: hasDonated ? Colors.white : AppTheme.goldAccent, 
+                    size: 16
+                  ),
+                ),
+                title: Text(name, style: GoogleFonts.tajawal(fontSize: 14)),
+                subtitle: hasDonated 
+                  ? Text('تم التبرع بنجاح ✅', style: GoogleFonts.tajawal(fontSize: 11, color: AppTheme.successColor))
+                  : null,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chat_bubble_outline, size: 20, color: AppTheme.primaryGreen),
+                      onPressed: () => Get.to(() => ChatScreen(targetUserId: id, targetUserName: name)),
+                    ),
+                    if (isAdmin && !hasDonated) ...[
+                      IconButton(
+                        icon: const Icon(Icons.done_all_rounded, size: 20, color: AppTheme.successColor),
+                        tooltip: 'تأكيد إتمام التبرع لهذا الشخص',
+                        onPressed: () => Get.find<AdminController>().markBloodDonationCompleted(
+                          requestId: data['id'],
+                          donorId: id,
+                          donorName: name,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.cancel_outlined, size: 20, color: AppTheme.errorColor),
+                        tooltip: 'إلغاء الاعتماد',
+                        onPressed: () => Get.find<AdminController>().unassignConfirmedDonor(
+                          requestId: data['id'],
+                          donorId: id,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
     );
   }
 }

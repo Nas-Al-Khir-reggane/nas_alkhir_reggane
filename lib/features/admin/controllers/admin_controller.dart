@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -41,6 +42,11 @@ class AdminController extends GetxController {
   RxBool shouldShowSwipeHint = false.obs;
   RxList<BroadcastModel> activeBroadcasts = <BroadcastModel>[].obs;
   bool _hasShownPopupThisSession = false; // لمنع تكرار المنبثق في نفس الجلسة
+  
+  // --- Hizb Al-Ma'at Alf Management ---
+  RxList<UserModel> hizbMembers = <UserModel>[].obs;
+  RxList<Map<String, dynamic>> hizbAlertsHistory = <Map<String, dynamic>>[].obs;
+  StreamSubscription? _hizbMembersSub;
 
   // --- التحكم في الرسوم البيانية ---
   RxString selectedPeriod = 'weekly'.obs; // weekly, monthly, yearly
@@ -178,16 +184,18 @@ class AdminController extends GetxController {
     super.onInit();
     
     // مراقبة تغير حالة المستخدم لإعادة تشغيل المستمعات فور اكتمال التحميل
-    ever(_authController.currentUser, (_) {
-      _startLiveStatsListeners();
+    ever(_authController.currentUser, (user) {
       if (isAnyAdmin) {
+        _startLiveStatsListeners();
         listenToUrgentRequests();
+      } else {
+        _cancelAdminSubscriptions();
       }
     });
 
-    _startLiveStatsListeners();
-    loadDashboardData();
     if (isAnyAdmin) {
+      _startLiveStatsListeners();
+      loadDashboardData();
       listenToUrgentRequests();
     }
     _startBroadcastListener();
@@ -222,14 +230,21 @@ class AdminController extends GetxController {
     super.onClose();
   }
 
-  void _startLiveStatsListeners() {
+  void _cancelAdminSubscriptions() {
     for (final sub in _statsSubs) {
       sub.cancel();
     }
     _statsSubs.clear();
+    _urgentRequestsSub?.cancel();
+    _urgentRequestsSub = null;
+  }
+
+  void _startLiveStatsListeners() {
+    if (!isAnyAdmin) return;
+    
+    _cancelAdminSubscriptions();
 
     debugPrint('🛡️ AdminController: Starting Live Listeners. isSuperAdmin: $isSuperAdmin, isAnyAdmin: $isAnyAdmin');
-    if (!isAnyAdmin) return;
 
     // --- 1. إحصائيات مالية (للمدير العام فقط من وثيقة الإحصائيات المركزية) ---
     _listenToDarSabilData();
@@ -782,6 +797,12 @@ class AdminController extends GetxController {
     required String method,
     required String projectId,
     required String projectName,
+    bool requestPrayerPost = false,
+    String? prayerType,
+    String? prayerTarget,
+    String? prayerColor,
+    String? prayerAction,
+    String? prayerCustomMessage,
   }) async {
     final normalizedMethod = DonationModel.normalizeMethod(method);
     final donationRef = _firestore.collection(AppConstants.donationsCollection).doc();
@@ -798,6 +819,12 @@ class AdminController extends GetxController {
       'isAnonymous': false,
       'status': 'confirmed',
       'registeredByAdmin': true,
+      'requestPrayerPost': requestPrayerPost,
+      'prayerType': prayerType,
+      'prayerTarget': prayerTarget,
+      'prayerColor': prayerColor,
+      'prayerAction': prayerAction,
+      'prayerCustomMessage': prayerCustomMessage,
       'date': FieldValue.serverTimestamp(),
     };
 
@@ -1615,17 +1642,8 @@ class AdminController extends GetxController {
     }
 
   List<String> getCompatibleDonors(String patientType) {
-    switch (patientType) {
-      case 'A+': return ['A+', 'A-', 'O+', 'O-'];
-      case 'A-': return ['A-', 'O-'];
-      case 'B+': return ['B+', 'B-', 'O+', 'O-'];
-      case 'B-': return ['B-', 'O-'];
-      case 'AB+': return ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-      case 'AB-': return ['AB-', 'A-', 'B-', 'O-'];
-      case 'O+': return ['O+', 'O-'];
-      case 'O-': return ['O-'];
-      default: return [patientType];
-    }
+    // 🩸 تم التحديث ليكون دقيقاً جداً بناءً على طلب الإدارة: فقط نفس الزمرة
+    return [patientType];
   }
 
   Future<void> sendTargetedBloodAlert({
@@ -1705,6 +1723,243 @@ class AdminController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  /// ✨ تفعيل نداء حزب المائة ألف (تبرعات الطوارئ)
+  Future<void> triggerHizbAlert({
+    required String title,
+    required String body,
+    String? requestId,
+    String? projectId,
+  }) async {
+    try {
+      isLoading.value = true;
+      
+      // 1. جلب جميع المشتركين في الحزب
+      final hizbMembers = await _firestore
+          .collection('users')
+          .where('isHizbMember', isEqualTo: true)
+          .get();
+
+      if (hizbMembers.docs.isEmpty) {
+        Get.snackbar('تنبيه', 'لا يوجد أي مشتركين في حزب المائة ألف حالياً.');
+        return;
+      }
+
+      // 2. إرسال الإشعارات
+      await NotificationService.notifyUsers(
+        userIds: hizbMembers.docs.map((doc) => doc.id).toList(),
+        type: 'hizb_alert',
+        title: title,
+        body: body,
+        data: {
+          'requestId': requestId ?? '',
+          'projectId': projectId ?? '',
+          'minAmount': '1000',
+          'suggestedAmount': '1000',
+        },
+      );
+
+      // 3. تسجيل الإجراء في السجلات
+      await _firestore.collection('hizb_alerts').add({
+        'title': title,
+        'body': body,
+        'requestId': requestId,
+        'projectId': projectId,
+        'triggeredBy': FirebaseAuth.instance.currentUser?.uid,
+        'timestamp': FieldValue.serverTimestamp(),
+        'recipientsCount': hizbMembers.docs.length,
+      });
+
+      Get.snackbar('✅ تم الإرسال', 'تم إرسال النداء إلى ${hizbMembers.docs.length} مشترك بنجاح.');
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل إرسال نداء الحزب: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// 📊 جلب بيانات ومتابعة حزب المائة ألف
+  void listenToHizbMembers() {
+    _hizbMembersSub?.cancel();
+    _hizbMembersSub = _firestore
+        .collection('users')
+        .where('isHizbMember', isEqualTo: true)
+        .snapshots()
+        .listen((snapshot) {
+      hizbMembers.value = snapshot.docs
+          .map((doc) => UserModel.fromMap(doc.data(), doc.id))
+          .toList();
+    });
+  }
+
+  Future<void> fetchHizbAlertsHistory() async {
+    try {
+      final snapshot = await _firestore
+          .collection('hizb_alerts')
+          .orderBy('timestamp', descending: true)
+          .limit(50)
+          .get();
+      
+      hizbAlertsHistory.value = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    } catch (e) {
+      debugPrint('Error fetching Hizb alerts history: $e');
+    }
+  }
+
+  Future<void> deleteHizbAlert(String id) async {
+    try {
+      await _firestore.collection('hizb_alerts').doc(id).delete();
+      hizbAlertsHistory.removeWhere((alert) => alert['id'] == id);
+      Get.snackbar('نجاح', 'تم حذف نداء الحزب من السجل بنجاح.');
+    } catch (e) {
+      debugPrint('Error deleting Hizb alert: $e');
+      Get.snackbar('خطأ', 'حدث خطأ أثناء محاولة مسح هذا النداء.');
+    }
+  }
+
+  /// 📢 إظهار نافذة إرسال نداء حزب المائة ألف
+  void showHizbAlertDialog(BuildContext context, {String? requestId, String? projectId}) {
+    final titleCtrl = TextEditingController(text: 'حالة طوارئ إنسانية');
+    final bodyCtrl = TextEditingController(text: 'نحتاج لمساهمتكم العاجلة في حزب المائة ألف لتغطية حالة حرجة. جزاكم الله خيراً.');
+
+    String? currentRequestId = requestId;
+    String? currentProjectId = projectId;
+    bool isProjectSelected = projectId != null || requestId == null; 
+
+    Get.dialog(
+      StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.stars_rounded, color: AppTheme.goldAccent),
+                const SizedBox(width: 8),
+                Text('تفعيل نداء الحزب', style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleCtrl,
+                    decoration: AppTheme.inputDecoration('عنوان النداء', Icons.title),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: bodyCtrl,
+                    maxLines: 3,
+                    decoration: AppTheme.inputDecoration('نص الرسالة', Icons.message),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // إظهار اختيار المشروع أو الطلب فقط إذا لم يكونا محددين مسبقاً
+                  if (requestId == null && projectId == null) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: RadioListTile<bool>(
+                            title: const Text('مشروع', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                            value: true,
+                            groupValue: isProjectSelected,
+                            contentPadding: EdgeInsets.zero,
+                            activeColor: AppTheme.goldAccent,
+                            onChanged: (val) {
+                              setState(() {
+                                isProjectSelected = val!;
+                                currentRequestId = null;
+                              });
+                            },
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<bool>(
+                            title: const Text('طلب حالة', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                            value: false,
+                            groupValue: isProjectSelected,
+                            contentPadding: EdgeInsets.zero,
+                            activeColor: AppTheme.goldAccent,
+                            onChanged: (val) {
+                              setState(() {
+                                isProjectSelected = val!;
+                                currentProjectId = null;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (isProjectSelected)
+                      DropdownButtonFormField<String>(
+                        initialValue: currentProjectId,
+                        decoration: AppTheme.inputDecoration('اختر المشروع', Icons.folder),
+                        dropdownColor: Theme.of(context).colorScheme.surface,
+                        items: activeProjectsList.map((p) => DropdownMenuItem(
+                          value: p.id,
+                          child: Text(p.name, overflow: TextOverflow.ellipsis, maxLines: 1),
+                        )).toList(),
+                        onChanged: (val) => setState(() => currentProjectId = val),
+                      )
+                    else
+                      DropdownButtonFormField<String>(
+                        initialValue: currentRequestId,
+                        decoration: AppTheme.inputDecoration('اختر الطلب', Icons.assignment),
+                        dropdownColor: Theme.of(context).colorScheme.surface,
+                        items: recentRequests.map((r) => DropdownMenuItem(
+                          value: r.id,
+                          child: Text(r.typeName, overflow: TextOverflow.ellipsis, maxLines: 1),
+                        )).toList(),
+                        onChanged: (val) => setState(() => currentRequestId = val),
+                      ),
+                  ],
+                  const SizedBox(height: 16),
+                  Text(
+                    'سيتم إرسال هذا النداء لجميع المشتركين في حزب المائة ألف للمساهمة بـ 1000 دج.',
+                    style: GoogleFonts.tajawal(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
+              AppTheme.gradientButton(
+                text: 'إرسال النداء الآن',
+                onPressed: () async {
+                  if (titleCtrl.text.isEmpty || bodyCtrl.text.isEmpty) {
+                    Get.snackbar('خطأ', 'يرجى إكمال البيانات');
+                    return;
+                  }
+                  if (requestId == null && projectId == null && currentRequestId == null && currentProjectId == null) {
+                    Get.snackbar('خطأ', 'يرجى تحديد المشروع أو الطلب أولاً', 
+                      backgroundColor: Colors.redAccent, colorText: Colors.white);
+                    return;
+                  }
+                  
+                  Get.back(); // إغلاق النافذة أولاً لتجنب التداخل مع ظهور الـ Snackbar
+                  await triggerHizbAlert(
+                    title: titleCtrl.text,
+                    body: bodyCtrl.text,
+                    requestId: currentRequestId,
+                    projectId: currentProjectId,
+                  );
+                },
+              ),
+            ],
+          );
+        }
+      ),
+    );
   }
 
   void _showNotifiedDonorsList(List<QueryDocumentSnapshot> donors) {
@@ -2007,7 +2262,6 @@ class AdminController extends GetxController {
       final requestRef = _firestore.collection(AppConstants.serviceRequestsCollection).doc(requestId);
       Map<String, dynamic> reqData = <String, dynamic>{};
       String resolvedDonorName = donorName.trim();
-      List<String> otherResponderIds = <String>[];
 
       await _firestore.runTransaction((tx) async {
         // 1. القراءات (Reads)
@@ -2022,9 +2276,12 @@ class AdminController extends GetxController {
           throw Exception('request-closed');
         }
 
-        // 🛡️ منع إسناد متبرع جديد إذا كان الطلب مغطى بالفعل بمتبرع آخر
-        final existingAssignedId = (reqData['assignedTo'] ?? '').toString();
-        if (existingAssignedId.isNotEmpty && existingAssignedId != donorId) {
+        final List<Map<String, dynamic>> assignedDonors = List<Map<String, dynamic>>.from(
+          reqData['assignedDonors'] ?? reqData['assigned_donors'] ?? []
+        );
+
+        // 🛡️ منع تكرار نفس المتبرع
+        if (assignedDonors.any((d) => d['id'] == donorId)) {
           throw Exception('already-assigned');
         }
 
@@ -2055,29 +2312,21 @@ class AdminController extends GetxController {
           }
         }
 
-        otherResponderIds = responses
-            .map((res) => (res['userId'] ?? '').toString())
-            .where((id) => id.isNotEmpty && id != donorId)
-            .toSet()
-            .toList();
-
-        // القراءة تمت بالأعلى
-
-        // جلب وثائق بقية المستجيبين
-        final List<DocumentSnapshot> otherRespondersSnaps = [];
-        for (final responderId in otherResponderIds) {
-          final responderRef = _firestore.collection(AppConstants.usersCollection).doc(responderId);
-          final snap = await tx.get(responderRef);
-          if (snap.exists) {
-            otherRespondersSnaps.add(snap);
-          }
-        }
-
         // 2. الكتابات (Writes)
+        assignedDonors.add({
+          'id': donorId,
+          'name': resolvedDonorName,
+          'confirmedAt': Timestamp.now(),
+        });
+
+        final requiredCount = (reqData['requiredDonorsCount'] ?? 1) as int;
+        final bool isFullyCovered = assignedDonors.length >= requiredCount;
+
         tx.update(requestRef, {
-          'assignedTo': donorId,
+          'assignedDonors': assignedDonors,
+          'assignedTo': donorId, // للحفاظ على التوافق مع الأنظمة الأخرى، نضع آخر معتمد
           'assignedToName': resolvedDonorName,
-          'status': 'in_progress',
+          'status': isFullyCovered ? 'in_progress' : 'pending',
           'updatedAt': FieldValue.serverTimestamp(),
         });
 
@@ -2087,18 +2336,14 @@ class AdminController extends GetxController {
             'lastActivity': FieldValue.serverTimestamp(),
           });
         }
-
-        for (final snap in otherRespondersSnaps) {
-          tx.update(snap.reference, {
-            'activeBloodRequestId': FieldValue.delete(),
-            'lastActivity': FieldValue.serverTimestamp(),
-          });
-        }
       });
 
       final bloodType = (reqData['bloodType'] ?? reqData['details']?['الفصيلة'] ?? reqData['details']?['bloodType'] ?? '').toString();
       final hospital = (reqData['hospital'] ?? reqData['details']?['المستشفى'] ?? reqData['details']?['hospital'] ?? '').toString();
       final phone = (reqData['phone'] ?? reqData['details']?['رقم الهاتف'] ?? reqData['details']?['phone'] ?? '').toString();
+
+      // 3. الإشعارات
+      final bool isFullyCovered = (reqData['assignedDonors'] ?? []).length >= (reqData['requiredDonorsCount'] ?? 1);
 
       await NotificationService.sendNotification(
         userId: donorId,
@@ -2118,25 +2363,15 @@ class AdminController extends GetxController {
         await NotificationService.sendNotification(
           userId: requesterId,
           type: 'request_update',
-          title: '🫀 تم اعتماد ($resolvedDonorName) للحالة',
-          body: 'تم اعتماد المحسن ($resolvedDonorName) لهذه الحالة الطارئة، ونوافيكم بالتحديثات لاحقاً.',
+          title: '🫀 تم اعتماد متبرع جديد للحالة',
+          body: isFullyCovered 
+            ? 'الحمد لله، تم تأمين العدد المطلوب من المتبرعين لهذه الحالة.'
+            : 'تم اعتماد ($resolvedDonorName) وجاري البحث عن بقية المتبرعين.',
           data: {
             'requestId': requestId,
             'bloodType': bloodType,
             'hospital': hospital,
             'donorName': resolvedDonorName,
-          },
-        );
-      }
-
-      for (final responderId in otherResponderIds) {
-        await NotificationService.sendNotification(
-          userId: responderId,
-          type: 'request_update',
-          title: 'متابعة طلب التبرع بالدم',
-          body: 'نشكر مبادرتك الكريمة. تم اعتماد متبرع آخر لهذه الحالة حالياً.',
-          data: {
-            'requestId': requestId,
           },
         );
       }
@@ -2149,7 +2384,7 @@ class AdminController extends GetxController {
     }
   }
 
-    Future<void> unassignConfirmedDonor({required String requestId}) async {
+    Future<void> unassignConfirmedDonor({required String requestId, required String donorId}) async {
     if (!isSuperAdmin) {
       Get.snackbar('❌ وصول مرفوض', 'عذراً، فك الإسناد محصور للمنسق العام فقط.',
         backgroundColor: Colors.red.withValues(alpha: 0.1),
@@ -2161,7 +2396,6 @@ class AdminController extends GetxController {
       isLoading.value = true;
 
       final requestRef = _firestore.collection(AppConstants.serviceRequestsCollection).doc(requestId);
-      String previousDonorId = '';
       String previousDonorName = 'المتبرع';
       String requesterId = '';
 
@@ -2178,24 +2412,44 @@ class AdminController extends GetxController {
           throw Exception('request-closed');
         }
 
-        previousDonorId = (requestData['assignedTo'] ?? '').toString();
-        previousDonorName = (requestData['assignedToName'] ?? 'المتبرع').toString();
-        requesterId = (requestData['requesterId'] ?? '').toString();
+        final List<Map<String, dynamic>> assignedDonors = List<Map<String, dynamic>>.from(
+          requestData['assignedDonors'] ?? requestData['assigned_donors'] ?? []
+        );
 
-        if (previousDonorId.isEmpty) {
-          throw Exception('no-assigned-donor');
+        final donorIndex = assignedDonors.indexWhere((d) => d['id'] == donorId);
+        if (donorIndex == -1) {
+          throw Exception('donor-not-assigned');
         }
 
-        final donorRef = _firestore.collection(AppConstants.usersCollection).doc(previousDonorId);
+        previousDonorName = assignedDonors[donorIndex]['name'] ?? 'المتبرع';
+        assignedDonors.removeAt(donorIndex);
+        
+        requesterId = (requestData['requesterId'] ?? '').toString();
+
+        final donorRef = _firestore.collection(AppConstants.usersCollection).doc(donorId);
         final donorSnap = await tx.get(donorRef);
 
         // 2. الكتابات (Writes)
         tx.update(requestRef, {
-          'assignedTo': FieldValue.delete(),
-          'assignedToName': FieldValue.delete(),
-          'status': 'pending',
+          'assignedDonors': assignedDonors,
+          'status': 'pending', // دائماً نعيده إلى قيد الانتظار إذا انسحب أحد المتبرعين المعتمدين
           'updatedAt': FieldValue.serverTimestamp(),
         });
+
+        // إذا كان المتبرع المحذوف هو نفسه assignedTo، نقوم بتحديث المسند إليه لأقرب واحد في القائمة أو حذفه
+        if ((requestData['assignedTo'] ?? '').toString() == donorId) {
+          if (assignedDonors.isNotEmpty) {
+            tx.update(requestRef, {
+              'assignedTo': assignedDonors.last['id'],
+              'assignedToName': assignedDonors.last['name'],
+            });
+          } else {
+            tx.update(requestRef, {
+              'assignedTo': FieldValue.delete(),
+              'assignedToName': FieldValue.delete(),
+            });
+          }
+        }
 
         if (donorSnap.exists) {
           tx.update(donorSnap.reference, {
@@ -2205,9 +2459,9 @@ class AdminController extends GetxController {
         }
       });
 
-      if (previousDonorId.isNotEmpty) {
+      if (donorId.isNotEmpty) {
         await NotificationService.sendNotification(
-          userId: previousDonorId,
+          userId: donorId,
           type: 'request_update',
           title: 'تم تعليق التكليف مؤقتاً',
           body: 'تم تعليق اعتمادك لهذه الحالة حالياً، وقد يتم التواصل معك مجدداً عند الحاجة.',
@@ -2222,14 +2476,14 @@ class AdminController extends GetxController {
           userId: requesterId,
           type: 'request_update',
           title: 'تحديث حالة طلب التبرع',
-          body: 'تمت إعادة الطلب إلى قائمة الانتظار لإعادة اعتماد متبرع مناسب بأسرع وقت.',
+          body: 'تم إلغاء اعتماد أحد المتبرعين وتحديث قائمة الانتظار لضمان تأمين الحالة.',
           data: {
             'requestId': requestId,
           },
         );
       }
 
-      Get.snackbar('✅ تم', 'تم فك إسناد ($previousDonorName) وإعادة الطلب إلى حالة الانتظار.');
+      Get.snackbar('✅ تم', 'تم فك إسناد ($previousDonorName) وتحديث الطلب.');
     } catch (e) {
       Get.snackbar('تعذر تحديث الإسناد', _localizedErrorMessage(e, fallback: 'فشل فك إسناد المتبرع. يرجى المحاولة مرة أخرى.'));
     } finally {
@@ -2253,9 +2507,24 @@ class AdminController extends GetxController {
 
       final requesterId = (reqData['requesterId'] ?? '').toString();
 
+      final List<Map<String, dynamic>> assignedDonors = List<Map<String, dynamic>>.from(
+        reqData['assignedDonors'] ?? reqData['assigned_donors'] ?? []
+      );
+
+      final donorIndex = assignedDonors.indexWhere((d) => d['id'] == donorId);
+      if (donorIndex != -1) {
+        assignedDonors[donorIndex]['status'] = 'donated';
+        assignedDonors[donorIndex]['donatedAt'] = DateTime.now().toIso8601String();
+      }
+
+      final int requiredCount = reqData['requiredDonorsCount'] ?? 1;
+      final int donatedCount = assignedDonors.where((d) => d['status'] == 'donated').length;
+      final bool isAllFinished = donatedCount >= requiredCount;
+
       await _firestore.collection(AppConstants.serviceRequestsCollection).doc(requestId).update({
-        'status': 'completed',
-        'completedAt': FieldValue.serverTimestamp(),
+        'assignedDonors': assignedDonors,
+        'status': isAllFinished ? 'completed' : currentStatus,
+        'completedAt': isAllFinished ? FieldValue.serverTimestamp() : (reqData['completedAt']),
         'updatedAt': FieldValue.serverTimestamp(),
       });
       final String bloodType = (reqData['bloodType'] ?? reqData['details']?['الفصيلة'] ?? '').toString();
