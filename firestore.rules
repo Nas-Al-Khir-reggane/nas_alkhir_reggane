@@ -8,16 +8,17 @@ service cloud.firestore {
     }
 
     function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let doc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return doc != null ? doc.data : {};
     }
 
     function getRole() {
-      return getUserData().role;
+      return getUserData().get('role', 'user');
     }
 
     function hasAdditionalRole(roleName) {
-      let data = getUserData();
-      return 'additionalRoles' in data && data.additionalRoles is list && roleName in data.additionalRoles;
+      let roles = getUserData().get('additionalRoles', []);
+      return roles is list && roleName in roles;
     }
 
     function isDonor() {
@@ -98,7 +99,8 @@ service cloud.firestore {
     }
 
     function getUserRoleById(uid) {
-      return get(/databases/$(database)/documents/users/$(uid)).data.role;
+      let doc = get(/databases/$(database)/documents/users/$(uid));
+      return doc != null ? doc.data.get('role', 'user') : 'user';
     }
 
     function isAdminRoleName(roleName) {
@@ -110,29 +112,29 @@ service cloud.firestore {
     }
 
     function hasTwoParticipants(data) {
-      return data.participants is list &&
-        data.participants.size() == 2 &&
-        data.participants[0] != data.participants[1];
+      let parts = data.get('participants', []);
+      return parts is list && parts.size() == 2 && parts[0] != parts[1];
     }
 
     function isValidPrivateChatId(chatId, data) {
+      let parts = data.get('participants', []);
       return hasTwoParticipants(data) && (
-        chatId == data.participants[0] + '_' + data.participants[1] ||
-        chatId == data.participants[1] + '_' + data.participants[0]
+        chatId == parts[0] + '_' + parts[1] ||
+        chatId == parts[1] + '_' + parts[0]
       );
     }
 
     function privateCounterpartyIsAdmin(data) {
+      let parts = data.get('participants', []);
       return hasTwoParticipants(data) && (
-        (data.participants[0] == request.auth.uid && isAdminUser(data.participants[1])) ||
-        (data.participants[1] == request.auth.uid && isAdminUser(data.participants[0]))
+        (parts[0] == request.auth.uid && isAdminUser(parts[1])) ||
+        (parts[1] == request.auth.uid && isAdminUser(parts[0]))
       );
     }
 
     function canAccessGroupChatData(chatId, data) {
-      return data.type == 'group' &&
-        data.participants is list &&
-        request.auth.uid in data.participants &&
+      return data.get('type', '') == 'group' &&
+        request.auth.uid in data.get('participants', []) &&
         (
           (chatId == 'group_team' && (isWorker() || getRole() == 'chatModerator' || isAdmin())) ||
           (chatId == 'group_management' && isAdmin())
@@ -140,9 +142,9 @@ service cloud.firestore {
     }
 
     function canAccessPrivateChatData(data) {
-      return data.type == 'private' &&
+      return data.get('type', '') == 'private' &&
         hasTwoParticipants(data) &&
-        request.auth.uid in data.participants &&
+        request.auth.uid in data.get('participants', []) &&
         (
           isAdmin() ||
           (
@@ -161,9 +163,9 @@ service cloud.firestore {
     }
 
     function canCreatePrivateChat(chatId, data) {
-      return data.type == 'private' &&
+      return data.get('type', '') == 'private' &&
         hasTwoParticipants(data) &&
-        request.auth.uid in data.participants &&
+        request.auth.uid in data.get('participants', []) &&
         isValidPrivateChatId(chatId, data) &&
         (
           getRole() in ['worker', 'chatModerator', 'donor', 'beneficiary'] &&
@@ -172,9 +174,8 @@ service cloud.firestore {
     }
 
     function canCreateGroupChat(chatId, data) {
-      return data.type == 'group' &&
-        data.participants is list &&
-        request.auth.uid in data.participants &&
+      return data.get('type', '') == 'group' &&
+        request.auth.uid in data.get('participants', []) &&
         chatId == 'group_team' &&
         getRole() in ['worker', 'chatModerator'];
     }
@@ -186,7 +187,7 @@ service cloud.firestore {
     function canReadChatData(data) {
       return isLoggedIn() && (
         isAdmin() ||
-        (data.participants is list && request.auth.uid in data.participants)
+        request.auth.uid in data.get('participants', [])
       );
     }
 
@@ -195,20 +196,23 @@ service cloud.firestore {
     }
 
     function canReadChatById(chatId) {
-      return canReadChatData(get(/databases/$(database)/documents/chats/$(chatId)).data);
+      let doc = get(/databases/$(database)/documents/chats/$(chatId));
+      return doc != null ? canReadChatData(doc.data) : false;
     }
 
     function canAccessChatById(chatId) {
-      return canAccessChatData(chatId, get(/databases/$(database)/documents/chats/$(chatId)).data);
+      let doc = get(/databases/$(database)/documents/chats/$(chatId));
+      return doc != null ? canAccessChatData(chatId, doc.data) : false;
     }
 
     function nonAdminChatUpdateSafe(chatId) {
+      let reqParts = request.resource.data.get('participants', []);
+      let resParts = resource.data.get('participants', []);
       return canAccessChatData(chatId, request.resource.data) &&
-        request.resource.data.type == resource.data.type &&
-        request.resource.data.participants is list &&
-        resource.data.participants is list &&
-        request.resource.data.participants.size() == resource.data.participants.size() &&
-        request.resource.data.participants.hasAll(resource.data.participants);
+        request.resource.data.get('type', '') == resource.data.get('type', '') &&
+        reqParts is list && resParts is list &&
+        reqParts.size() == resParts.size() &&
+        reqParts.hasAll(resParts);
     }
 
     // ─── المستخدمون ───────────────────────────────────────────
