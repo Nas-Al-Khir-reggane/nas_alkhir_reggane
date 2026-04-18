@@ -74,61 +74,69 @@ class RoleSwitcherWidget extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             
-            // قائمة الأدوار المتاحة
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: availableRoles.map((role) {
-                final isSelected = currentRole == role;
-                
-                return GestureDetector(
-                  onTap: () => authController.switchActiveRole(role),
-                  child: AnimatedContainer(
-                    duration: 300.ms,
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: isSelected 
-                          ? AppTheme.primaryGreen 
-                          : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: isSelected ? [
-                        BoxShadow(
-                          color: AppTheme.primaryGreen.withValues(alpha: 0.3),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        )
-                      ] : [],
-                      border: Border.all(
-                        color: isSelected 
-                            ? AppTheme.primaryGreen 
-                            : Colors.transparent,
-                        width: 2,
+            // قائمة الأدوار المتاحة بتصميم مدمج واحترافي
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                ),
+              ),
+              child: Row(
+                children: availableRoles.map((role) {
+                  final isSelected = currentRole == role;
+                  
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => authController.switchActiveRole(role),
+                      child: AnimatedContainer(
+                        duration: 300.ms,
+                        curve: Curves.easeInOut,
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: isSelected 
+                              ? AppTheme.primaryGreen 
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: isSelected ? [
+                            BoxShadow(
+                              color: AppTheme.primaryGreen.withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                              spreadRadius: 1,
+                            )
+                          ] : [],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _getRoleIcon(role),
+                              color: isSelected ? Colors.black : (isDark ? Colors.white70 : AppTheme.textSecondaryLight),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                role.displayName,
+                                style: TextStyle(
+                                  color: isSelected ? Colors.black : (isDark ? Colors.white70 : AppTheme.textSecondaryLight),
+                                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                                  fontSize: 12,
+                                  fontFamily: 'Tajawal',
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _getRoleIcon(role),
-                          color: isSelected ? Colors.black : (isDark ? Colors.white70 : AppTheme.textPrimaryLight),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          role.displayName,
-                          style: TextStyle(
-                            color: isSelected ? Colors.black : (isDark ? Colors.white : AppTheme.textPrimaryLight),
-                            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-                            fontSize: 13,
-                            fontFamily: 'Tajawal',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ).animate(target: isSelected ? 1 : 0)
-                 .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05));
-              }).toList(),
+                  );
+                }).toList(),
+              ),
             ),
           ],
         ),
