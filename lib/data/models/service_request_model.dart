@@ -135,9 +135,13 @@ class ServiceRequestModel {
           : (map['updated_at'] is Timestamp) 
               ? (map['updated_at'] as Timestamp).toDate() 
               : DateTime.now(),
-      attachments: (map['attachments'] != null && map['attachments'] is List) 
+      attachments: (map['attachments'] is List) 
           ? List<String>.from(map['attachments']) 
-          : const [],
+          : (map['attachmentUrls'] is List)
+              ? List<String>.from(map['attachmentUrls'])
+              : (map['attachments'] is String && map['attachments'].toString().isNotEmpty)
+                  ? [map['attachments'].toString()]
+                  : const [],
       donorResponses: (map['donorResponses'] ?? map['donor_responses']) != null 
           ? List<Map<String, dynamic>>.from(map['donorResponses'] ?? map['donor_responses']) 
           : const [],

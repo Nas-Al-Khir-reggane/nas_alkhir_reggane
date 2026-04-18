@@ -387,14 +387,13 @@ class RequestDetailScreen extends StatelessWidget {
                       onPressed: () => launchUrl(Uri.parse('tel:$phone')),
                     ) : null
                   ),
-                  const Divider(color: AppTheme.glassBorder),
                   _buildInfoRow(Icons.location_on_outlined, 'العنوان', fullAddress),
-                  const Divider(color: AppTheme.glassBorder),
-                  _buildAttachmentsGrid(context, req),
                 ],
               );
             },
           ),
+          const Divider(color: AppTheme.glassBorder),
+          _buildAttachmentsGrid(context, req),
           
           const Divider(color: Colors.white10),
           _buildInfoRow(Icons.description_outlined, 'الوصف', 
