@@ -765,32 +765,6 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> removeRequestAttachment(String requestId, String attachmentUrl) async {
-    if (!isSuperAdmin) {
-      Get.snackbar('❌ وصول مرفوض', 'عذراً، هذه الصلاحية محصورة للمنسق العام فقط.',
-        backgroundColor: Colors.red.withValues(alpha: 0.1),
-        colorText: Colors.red);
-      return;
-    }
-
-    try {
-      isLoading.value = true;
-      await _firestore
-          .collection(AppConstants.serviceRequestsCollection)
-          .doc(requestId)
-          .update({
-            'attachments': FieldValue.arrayRemove([attachmentUrl]),
-          });
-      
-      Get.snackbar('✅ نجاح', 'تم حذف المرفق بنجاح.',
-        backgroundColor: AppTheme.successColor.withValues(alpha: 0.1),
-        colorText: AppTheme.successColor);
-    } catch (e) {
-      Get.snackbar('❌ خطأ', 'فشل حذف المرفق: ${_localizedErrorMessage(e)}');
-    } finally {
-      isLoading.value = false;
-    }
-  }
 
   Future<void> registerAdminDonation({
     required String donorName,
@@ -1765,59 +1739,6 @@ class AdminController extends GetxController {
     }
   }
 
-  /// ✨ تفعيل نداء حزب المائة ألف (تبرعات الطوارئ)
-  Future<void> triggerHizbAlert({
-    required String title,
-    required String body,
-    String? requestId,
-    String? projectId,
-  }) async {
-    try {
-      isLoading.value = true;
-      
-      // 1. جلب جميع المشتركين في الحزب
-      final hizbMembers = await _firestore
-          .collection('users')
-          .where('isHizbMember', isEqualTo: true)
-          .get();
-
-      if (hizbMembers.docs.isEmpty) {
-        Get.snackbar('تنبيه', 'لا يوجد أي مشتركين في حزب المائة ألف حالياً.');
-        return;
-      }
-
-      // 2. إرسال الإشعارات
-      await NotificationService.notifyUsers(
-        userIds: hizbMembers.docs.map((doc) => doc.id).toList(),
-        type: 'hizb_alert',
-        title: title,
-        body: body,
-        data: {
-          'requestId': requestId ?? '',
-          'projectId': projectId ?? '',
-          'minAmount': '1000',
-          'suggestedAmount': '1000',
-        },
-      );
-
-      // 3. تسجيل الإجراء في السجلات
-      await _firestore.collection('hizb_alerts').add({
-        'title': title,
-        'body': body,
-        'requestId': requestId,
-        'projectId': projectId,
-        'triggeredBy': FirebaseAuth.instance.currentUser?.uid,
-        'timestamp': FieldValue.serverTimestamp(),
-        'recipientsCount': hizbMembers.docs.length,
-      });
-
-      Get.snackbar('✅ تم الإرسال', 'تم إرسال النداء إلى ${hizbMembers.docs.length} مشترك بنجاح.');
-    } catch (e) {
-      Get.snackbar('خطأ', 'فشل إرسال نداء الحزب: $e');
-    } finally {
-      isLoading.value = false;
-    }
-  }
 
   /// 📊 جلب بيانات ومتابعة حزب المائة ألف
   void listenToHizbMembers() {
@@ -2855,7 +2776,7 @@ class AdminController extends GetxController {
       }
 
       // 3. إرسال إشعارات جماعية لأعضاء الحزب
-      await NotificationService.notifyMultiple(
+      await NotificationService.notifyUsers(
         userIds: memberIds,
         type: 'hizb_alert',
         title: '🛡️ نداء حزب المائة ألف: $title',
