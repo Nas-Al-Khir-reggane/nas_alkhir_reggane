@@ -1,4 +1,4 @@
-package com.nasalkheir.nas_alkheir_app
+package com.nasalkheir.dz.app
 
 import io.flutter.embedding.android.FlutterActivity
 

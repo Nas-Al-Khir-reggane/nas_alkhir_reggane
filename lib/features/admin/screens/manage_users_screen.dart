@@ -424,7 +424,8 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection(AppConstants.usersCollection)
-          .where('isVerified', isEqualTo: false)
+          .where('isApproved', isEqualTo: true)
+          .orderBy('createdAt', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -448,7 +449,8 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
 
         var docs = snapshot.data?.docs.where((doc) {
           var data = doc.data();
-          return data['nationalIdUrl'] != null &&
+          bool isVerified = data['isVerified'] ?? false;
+          return !isVerified && data['nationalIdUrl'] != null &&
               data['nationalIdUrl'].toString().isNotEmpty;
         }).toList() ?? [];
 

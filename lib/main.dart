@@ -12,7 +12,6 @@ import 'core/bindings/initial_binding.dart';
 import 'firebase_options.dart';
 import 'core/constants/app_constants.dart';
 import 'data/services/notification_service.dart';
-import 'data/services/background_keepalive_service.dart';
 // Note: BatteryOptimizerService, AppUpdateService, and ReviewPromptService imports removed as they are now handled in AuthController
 import 'core/services/theme_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -70,11 +69,7 @@ void main() async {
       debugPrint('⚠️ Notification Init Failed: $e');
     });
 
-    // تهيئة خدمة الخلفية الدائمة (Foreground Service)
-    await BackgroundKeepAliveService.initialize();
-    
-    // تفعيل WakeLock لمنع نوم المعالج
-    BackgroundKeepAliveService.enableWakeLock();
+    // تم نقل فحوصات التشغيل (البطارية، التحديثات، التقييم) إلى AuthController
 
     runApp(const NasAlKheirApp());
 

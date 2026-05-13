@@ -19,7 +19,6 @@ const double _kPad       = 52.0;     // outer padding
 const double _kRadius    = 32.0;
 const Color  _kBg        = Color(0xFF07120E);
 const Color  _kGold      = Color(0xFFFFD25E);
-const Color  _kGoldLight = Color(0xFFFFE896);
 
 // ─── Word limit for custom donor message ───────────────────────────────────
 const int _kMaxWords = 20;
@@ -240,9 +239,9 @@ class _PrayerCard extends StatelessWidget {
           decoration: BoxDecoration(
             shape:  BoxShape.circle,
             color:  Colors.white,
-            border: Border.all(color: accentColor.withOpacity(0.6), width: 2.5),
+            border: Border.all(color: accentColor.withValues(alpha: 0.6), width: 2.5),
             boxShadow: [
-              BoxShadow(color: accentColor.withOpacity(0.25), blurRadius: 16, spreadRadius: 2),
+              BoxShadow(color: accentColor.withValues(alpha: 0.25), blurRadius: 16, spreadRadius: 2),
             ],
           ),
           child: ClipOval(
@@ -275,7 +274,7 @@ class _PrayerCard extends StatelessWidget {
                 'بطاقة دعاء • Carte de prière',
                 style: GoogleFonts.cairo(
                   fontSize: 16,
-                  color: accentColor.withOpacity(0.85),
+                  color: accentColor.withValues(alpha: 0.85),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -292,8 +291,8 @@ class _PrayerCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: _kGold.withOpacity(0.5), width: 1.5),
-        color: _kGold.withOpacity(0.08),
+        border: Border.all(color: _kGold.withValues(alpha: 0.5), width: 1.5),
+        color: _kGold.withValues(alpha: 0.08),
       ),
       child: Text(
         prayer.label,
@@ -313,10 +312,10 @@ class _PrayerCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Colors.white.withOpacity(0.04),
+        color: Colors.white.withValues(alpha: 0.04),
         border: Border(
-          right: BorderSide(color: _kGold.withOpacity(0.7), width: 4),
-          left:  BorderSide(color: _kGold.withOpacity(0.7), width: 4),
+          right: BorderSide(color: _kGold.withValues(alpha: 0.7), width: 4),
+          left:  BorderSide(color: _kGold.withValues(alpha: 0.7), width: 4),
         ),
       ),
       child: Text(
@@ -341,8 +340,8 @@ class _PrayerCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(_kRadius),
-        color: Colors.black.withOpacity(0.28),
-        border: Border.all(color: accentColor.withOpacity(0.18), width: 1.2),
+        color: Colors.black.withValues(alpha: 0.28),
+        border: Border.all(color: accentColor.withValues(alpha: 0.18), width: 1.2),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -362,7 +361,7 @@ class _PrayerCard extends StatelessWidget {
                 style: GoogleFonts.cairo(
                   fontSize:   30,
                   fontWeight: FontWeight.w600,
-                  color:      Colors.white.withOpacity(0.93),
+                  color:      Colors.white.withValues(alpha: 0.93),
                   height:     1.65,
                 ),
               ),
@@ -376,8 +375,8 @@ class _PrayerCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(50),
-              color: accentColor.withOpacity(0.12),
-              border: Border.all(color: accentColor.withOpacity(0.3)),
+              color: accentColor.withValues(alpha: 0.12),
+              border: Border.all(color: accentColor.withValues(alpha: 0.3)),
             ),
             child: Text(
               'آمِيـن',
@@ -399,8 +398,8 @@ class _PrayerCard extends StatelessWidget {
       height: 130,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        color: Colors.white.withOpacity(0.05),
-        border: Border.all(color: Colors.white.withOpacity(0.1), width: 0.8),
+        color: Colors.white.withValues(alpha: 0.05),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 0.8),
       ),
       child: Row(
         children: [
@@ -414,7 +413,7 @@ class _PrayerCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: accentColor.withOpacity(0.15),
+                      color: accentColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(Icons.volunteer_activism_rounded, color: accentColor, size: 28),
@@ -440,7 +439,7 @@ class _PrayerCard extends StatelessWidget {
 
           // QR code section
           Container(
-            width: 1, height: 80, color: Colors.white.withOpacity(0.12),
+            width: 1, height: 80, color: Colors.white.withValues(alpha: 0.12),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -470,7 +469,7 @@ class _PrayerCard extends StatelessWidget {
             ),
           ),
           Container(
-            width: 1, height: 80, color: Colors.white.withOpacity(0.12),
+            width: 1, height: 80, color: Colors.white.withValues(alpha: 0.12),
           ),
 
           // Privacy badge
@@ -498,7 +497,7 @@ class _PrayerCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: _kGold.withOpacity(0.12),
+                      color: _kGold.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Icon(Icons.shield_rounded, color: _kGold, size: 28),
@@ -604,10 +603,10 @@ class _MessageEditorSheetState extends State<_MessageEditorSheet> {
             // Text field
             Container(
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: atLimit ? Colors.redAccent.withOpacity(0.6) : Colors.white24,
+                  color: atLimit ? Colors.redAccent.withValues(alpha: 0.6) : Colors.white24,
                 ),
               ),
               child: TextField(
@@ -723,13 +722,13 @@ class _BgPainter extends CustomPainter {
           center:  Alignment.center,
           radius:  0.9,
           stops:   const [0.0, 1.0],
-          colors:  [accent.withOpacity(0.14), _kBg],
+          colors:  [accent.withValues(alpha: 0.14), _kBg],
         ).createShader(rect),
     );
 
     // Subtle dot grid
     final dotPaint = Paint()
-      ..color = accent.withOpacity(0.06)
+      ..color = accent.withValues(alpha: 0.06)
       ..style = PaintingStyle.fill;
     const step = 48.0;
     for (double x = 0; x < size.width; x += step) {
@@ -740,7 +739,7 @@ class _BgPainter extends CustomPainter {
 
     // Star-pattern overlay (sparse, only every 3rd cell)
     final starPaint = Paint()
-      ..color = accent.withOpacity(0.05)
+      ..color = accent.withValues(alpha: 0.05)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
     for (double x = step * 1.5; x < size.width; x += step * 3) {
@@ -785,7 +784,7 @@ class _GoldDivider extends StatelessWidget {
           height: isCenter ? 12 : 5,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isCenter ? _kGold : color.withOpacity(0.4),
+            color: isCenter ? _kGold : color.withValues(alpha: 0.4),
           ),
         );
       }),

@@ -72,7 +72,7 @@ class _HizbManagementScreenState extends State<HizbManagementScreen> with Single
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: ListTile(
               leading: CircleAvatar(
-                backgroundColor: AppTheme.goldAccent.withOpacity(0.1),
+                backgroundColor: AppTheme.goldAccent.withValues(alpha: 0.1),
                 child: const Icon(Icons.person, color: AppTheme.goldAccent),
               ),
               title: Text(user.name, style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
@@ -80,7 +80,7 @@ class _HizbManagementScreenState extends State<HizbManagementScreen> with Single
               trailing: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryGreen.withOpacity(0.1),
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(

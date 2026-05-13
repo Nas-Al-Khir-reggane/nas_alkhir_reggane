@@ -1,5 +1,8 @@
 @file:Suppress("DEPRECATION")
 
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -12,7 +15,7 @@ plugins {
 }
 
 android {
-    namespace = "com.nasalkheir.nas_alkheir_app"
+    namespace = "com.nasalkheir.dz.app"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -27,8 +30,9 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.nasalkheir.nas_alkheir_app"
+        applicationId = "com.nasalkheir.dz.app"
         minSdk = flutter.minSdkVersion
+        //noinspection OldTargetApi
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -40,8 +44,25 @@ android {
         abortOnError = false
     }
 
+    signingConfigs {
+        create("release") {
+            val keystorePropertiesFile = rootProject.file("key.properties")
+            if (keystorePropertiesFile.exists()) {
+                val keystoreProperties = Properties()
+                keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // 0. استخدام مفتاح التوقيع للإصدار
+            signingConfig = signingConfigs.getByName("release")
+
             // 1. تفعيل تقليص الكود وتشفيره
             isMinifyEnabled = true
             
@@ -53,8 +74,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-
-            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

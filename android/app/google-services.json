@@ -7,6 +7,42 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:363230035601:android:5f68d6d281bbe49ba34930",
+        "android_client_info": {
+          "package_name": "com.nasalkheir.dz.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "363230035601-osij1th7ij07dmbvr7a0e21drlvt4i2c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAewraw4FIKKGNWMloB8_Nhhay0stlejV0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "363230035601-osij1th7ij07dmbvr7a0e21drlvt4i2c.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "363230035601-aa866ud4mldc3l3hj1msu8nmsbcd2mbi.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.nasalkheir.nasAlKheir"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:363230035601:android:ddc73f9642880a66a34930",
         "android_client_info": {
           "package_name": "com.nasalkheir.nas_alkheir_app"
@@ -37,6 +73,13 @@
             {
               "client_id": "363230035601-osij1th7ij07dmbvr7a0e21drlvt4i2c.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "363230035601-aa866ud4mldc3l3hj1msu8nmsbcd2mbi.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.nasalkheir.nasAlKheir"
+              }
             }
           ]
         }

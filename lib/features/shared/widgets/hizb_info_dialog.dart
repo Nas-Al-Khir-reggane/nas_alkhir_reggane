@@ -18,10 +18,10 @@ class HizbInfoDialog extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppTheme.surfaceColor,
           borderRadius: BorderRadius.circular(32),
-          border: Border.all(color: AppTheme.goldAccent.withOpacity(0.3)),
+          border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.3)),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.goldAccent.withOpacity(0.1),
+              color: AppTheme.goldAccent.withValues(alpha: 0.1),
               blurRadius: 20,
               spreadRadius: 5,
             )
@@ -108,7 +108,7 @@ class HizbInfoDialog extends StatelessWidget {
                             width: double.infinity,
                             child: ElevatedButton(
                               onPressed: loading ? null : () async {
-                                final success = await authController.toggleHizbMembership(!isMember);
+                                await authController.toggleHizbMembership(!isMember);
                                 // تمت إزالة Get.back() لأنها كانت تغلق الـ Snackbar بدلاً من النافذة
                                 // الآن سيتم تحديث الزر تلقائياً ليعكس حالة الانضمام الجديدة
                               },
@@ -151,7 +151,7 @@ class HizbInfoDialog extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppTheme.goldAccent.withOpacity(0.1),
+            color: AppTheme.goldAccent.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: AppTheme.goldAccent, size: 24),

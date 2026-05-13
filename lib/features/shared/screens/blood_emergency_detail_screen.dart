@@ -11,6 +11,7 @@ import '../../auth/controllers/auth_controller.dart';
 import '../../admin/controllers/admin_controller.dart';
 import '../../chat/screens/chat_screen.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/services/abuse_report_service.dart';
 
 class BloodEmergencyDetailScreen extends StatefulWidget {
   const BloodEmergencyDetailScreen({super.key});
@@ -59,7 +60,6 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
 
         if (snapshot.hasData && snapshot.data!.exists) {
           final data = snapshot.data!.data() as Map<String, dynamic>;
-          final String? assignedTo = data['assignedTo'];
           final List<dynamic> responses = data['donorResponses'] ?? [];
           final int requiredCount = data['requiredDonorsCount'] ?? 1;
           final List<dynamic> assignedDonors = data['assignedDonors'] ?? [];
@@ -105,7 +105,7 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
               SafeArea(
                 child: Column(
                   children: [
-                    _buildAppBar(),
+                    _buildAppBar(requestId),
                     Expanded(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.all(24),
@@ -414,7 +414,7 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(String requestId) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -426,7 +426,63 @@ class _BloodEmergencyDetailScreenState extends State<BloodEmergencyDetailScreen>
           const Spacer(),
           Text('تفاصيل الطوارئ', style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
           const Spacer(),
-          const SizedBox(width: 48),
+          IconButton(
+            icon: const Icon(Icons.report_problem_outlined, color: Colors.orange),
+            onPressed: () => _showReportContentDialog(requestId),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReportContentDialog(String requestId) {
+    final reasonCtrl = TextEditingController();
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('الإبلاغ عن محتوى غير لائق', style: GoogleFonts.tajawal(fontWeight: FontWeight.w900, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('يرجى توضيح سبب الإبلاغ عن هذا النداء:', style: GoogleFonts.tajawal(fontSize: 12)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 3,
+              decoration: AppTheme.inputDecoration('سبب الإبلاغ', Icons.description_outlined),
+            ),
+          ],
+        ),
+        actions: [
+          Row(children: [
+            Expanded(child: TextButton(onPressed: () => Get.back(), child: Text('إلغاء', style: GoogleFonts.tajawal(color: Colors.grey)))),
+            const SizedBox(width: 10),
+            Expanded(child: ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              onPressed: () async {
+                if (reasonCtrl.text.trim().isEmpty) {
+                  Get.snackbar('تنبيه', 'الرجاء كتابة سبب الإبلاغ');
+                  return;
+                }
+                Get.back();
+                Get.dialog(const Center(child: CircularProgressIndicator()), barrierDismissible: false);
+                try {
+                  await AbuseReportService.submitReport(
+                    reportedType: 'content',
+                    reportedId: requestId,
+                    reason: reasonCtrl.text.trim(),
+                  );
+                  Get.back();
+                  Get.snackbar('تم الإرسال', 'تم إرسال بلاغك وسنقوم بمراجعته قريباً.', backgroundColor: Colors.green.withValues(alpha: 0.15));
+                } catch (e) {
+                  Get.back();
+                  Get.snackbar('خطأ', 'فشل إرسال البلاغ. الرجاء المحاولة لاحقاً.');
+                }
+              },
+              child: Text('إرسال البلاغ', style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.bold)),
+            )),
+          ]),
         ],
       ),
     );

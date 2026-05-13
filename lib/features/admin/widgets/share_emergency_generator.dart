@@ -21,7 +21,10 @@ class ShareEmergencyGenerator {
       String bloodType = request.bloodType.isNotEmpty ? request.bloodType : (reqMap['bloodType'] ?? 'غير محدد').toString();
       String hospital = request.hospital.isNotEmpty ? request.hospital : (reqMap['hospital'] ?? 'مستشفى غير محدد').toString();
       String phone = request.phone.isNotEmpty ? request.phone : (reqMap['phone'] ?? 'غير متوفر').toString();
+      // موقع المستشفى أو مكان التبرع (ولاية + بلدية الطلب)
       final String location = [request.wilaya, request.commune].where((s) => s.isNotEmpty).join(' - ');
+      // عنوان الطالب التفصيلي (العنوان الدقيق داخل الولاية)
+      final String detailedAddress = request.address.trim();
       final String createdAtText = intl.DateFormat('yyyy/MM/dd HH:mm').format(request.createdAt);
       
       // بناء الودجت مع SingleChildScrollView لمنع الـ Overflow نهائياً في الصورة
@@ -102,7 +105,7 @@ class ShareEmergencyGenerator {
                         
                         const SizedBox(height: 20),
                         
-                        // معلومات الحالة (بدون اسم الحالة للخصوصية)
+                        // معلومات الحالة - مفصولة بوضوح بين الموقع والمستشفى
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
@@ -113,9 +116,17 @@ class ShareEmergencyGenerator {
                           ),
                           child: Column(
                             children: [
-                              _buildDataRow('الموقع:', location.isEmpty ? 'غير محدد' : location),
+                              // 🏥 موقع المستشفى (الولاية والبلدية)
+                              _buildDataRow('🏥 المستشفى:', hospital.isNotEmpty ? hospital : 'غير محدد', icon: Icons.local_hospital_rounded, iconColor: const Color(0xFFD32F2F)),
                               const Divider(height: 16),
-                              _buildDataRow('وقت النداء:', createdAtText),
+                              // 📍 موقع الطلب (الولاية والبلدية التي يقطن فيها الطالب)
+                              _buildDataRow('📍 ولاية الطالب:', location.isEmpty ? 'غير محدد' : location, icon: Icons.location_on_rounded, iconColor: const Color(0xFF1976D2)),
+                              if (detailedAddress.isNotEmpty) ...[
+                                const Divider(height: 12),
+                                _buildDataRow('🏠 عنوان الطالب:', detailedAddress, icon: Icons.home_rounded, iconColor: const Color(0xFF388E3C)),
+                              ],
+                              const Divider(height: 16),
+                              _buildDataRow('🕐 وقت النداء:', createdAtText),
                             ],
                           ),
                         ),
@@ -210,7 +221,12 @@ class ShareEmergencyGenerator {
 
       await Share.shareXFiles(
         [XFile(imagePath.path)],
-        text: '🚨 نداء استغاثة عاجل لتبرع بالدم 🩸\nالفصيلة: $bloodType\nالمستشفى: $hospital\nالموقع: $location\nلمزيد من التفاصيل: $deepLink\n\nلتحميل التطبيق: https://nas-al-khir-reggane.github.io/nas_alkhir_reggane/',
+        text: '🚨 نداء استغاثة عاجل لتبرع بالدم 🩸\n'
+            'الفصيلة المطلوبة: $bloodType\n'
+            '🏥 المستشفى: ${hospital.isNotEmpty ? hospital : "غير محدد"}\n'
+            '📍 ولاية الطالب: ${location.isNotEmpty ? location : "غير محدد"}\n'
+            'لمزيد من التفاصيل: $deepLink\n\n'
+            'لتحميل التطبيق: https://nas-al-khir-reggane.github.io/nas_alkhir_reggane/',
       );
 
     } catch (e) {
@@ -243,9 +259,13 @@ class ShareEmergencyGenerator {
     );
   }
 
-  static Widget _buildDataRow(String label, String value, {bool isBold = false}) {
+  static Widget _buildDataRow(String label, String value, {bool isBold = false, IconData? icon, Color? iconColor}) {
     return Row(
       children: [
+        if (icon != null) ...[
+          Icon(icon, size: 14, color: iconColor ?? Colors.grey[600]),
+          const SizedBox(width: 4),
+        ],
         Text(label, style: GoogleFonts.tajawal(fontSize: 13, color: Colors.grey[600])),
         const SizedBox(width: 8),
         Expanded(
@@ -256,7 +276,7 @@ class ShareEmergencyGenerator {
               fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
               color: Colors.black87,
             ),
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
         ),

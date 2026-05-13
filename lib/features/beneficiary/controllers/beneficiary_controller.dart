@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../data/services/cloudinary_service.dart';
+import '../../../data/services/image_compression_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -102,7 +103,9 @@ class BeneficiaryController extends GetxController {
       }
 
       try {
-        final result = await CloudinaryService.uploadMedia(file);
+        // ضغط المرفق قبل الرفع
+        final compressedFile = await ImageCompressionService.compressImage(file);
+        final result = await CloudinaryService.uploadMedia(compressedFile ?? file);
         if (result != null) {
           urls.add(result);
         }

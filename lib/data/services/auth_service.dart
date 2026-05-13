@@ -194,5 +194,27 @@ class AuthService {
       'isApproved': true,
     });
   }
+
+  // حذف حساب المستخدم
+  Future<void> deleteAccount() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        // حذف بيانات المستخدم من Firestore
+        await _firestore.collection(AppConstants.usersCollection).doc(user.uid).delete();
+        
+        // حذف الحساب من Firebase Auth
+        await user.delete();
+
+        // مسح الكاش المحلي
+        await _secureStorage.delete(key: 'cached_user_secure');
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('cached_user');
+      }
+    } catch (e) {
+      debugPrint("AuthService: Error deleting account: $e");
+      rethrow;
+    }
+  }
 }
 

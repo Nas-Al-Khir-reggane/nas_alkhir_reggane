@@ -328,8 +328,6 @@ class RequestDetailScreen extends StatelessWidget {
               String commune = req.commune;
               String addressDetail = req.address;
 
-              String? nationalIdUrl;
-
               // تحديث البيانات من ملف المستخدم إذا توفرت وكانت البيانات الأساسية ناقصة
               if (snapshot.hasData && snapshot.data!.exists) {
                 var userData = snapshot.data!.data() as Map<String, dynamic>;
@@ -338,7 +336,6 @@ class RequestDetailScreen extends StatelessWidget {
                 if (wilaya.isEmpty) wilaya = userData['wilaya'] ?? '';
                 if (commune.isEmpty) commune = userData['commune'] ?? '';
                 if (addressDetail.isEmpty) addressDetail = userData['address'] ?? '';
-                nationalIdUrl = userData['nationalIdUrl'];
               }
 
               // معالجة حالة "قيد التحميل" فقط إذا لم تكن البيانات متوفرة في الطلب أصلاً

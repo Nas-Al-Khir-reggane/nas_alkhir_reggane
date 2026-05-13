@@ -11,6 +11,7 @@ import '../../../core/services/theme_service.dart';
 import '../../../core/routes/app_routes.dart';
 import '../widgets/user_avatar.dart';
 import '../../../data/services/cloudinary_service.dart';
+import '../../../data/services/image_compression_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../widgets/role_switcher_widget.dart';
@@ -20,6 +21,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../../core/utils/share_helper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../data/services/abuse_report_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -240,6 +242,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     delay: const Duration(milliseconds: 280),
                     child: _buildLogoutButton(),
                   ),
+                  const SizedBox(height: 14),
+
+                  // زر حذف الحساب
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 300),
+                    child: _buildDeleteAccountButton(),
+                  ),
+                ],
+
+                // ─── الإبلاغ عن مستخدم ─────────────────────────────────
+                if (!ownProfile) ...[
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 320),
+                    child: _buildReportUserButton(user),
+                  ),
+                  const SizedBox(height: 14),
                 ],
 
                 const SizedBox(height: 40),
@@ -877,27 +895,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       const SizedBox(height: 24),
                       _buildEditLabel('الموقع'),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _buildWilayaDropdown(
-                              selectedWilaya,
-                              (v) => setStateDialog(() { selectedWilaya = v; selectedCommune = null; }),
+                      LayoutBuilder(builder: (context, constraints) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 5,
+                              child: _buildWilayaDropdown(
+                                selectedWilaya,
+                                (v) => setStateDialog(() { selectedWilaya = v; selectedCommune = null; }),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: selectedWilaya != null
-                              ? _buildCommuneDropdown(
-                                  selectedWilaya!,
-                                  selectedCommune,
-                                  (v) => setStateDialog(() => selectedCommune = v),
-                                )
-                              : _buildDisabledCommuneField(),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 6,
+                              child: selectedWilaya != null
+                                ? _buildCommuneDropdown(
+                                    selectedWilaya!,
+                                    selectedCommune,
+                                    (v) => setStateDialog(() => selectedCommune = v),
+                                  )
+                                : _buildDisabledCommuneField(),
+                            ),
+                          ],
+                        );
+                      }),
                       const SizedBox(height: 12),
                       _buildEditField(addressCtrl, 'العنوان بالتفصيل', Icons.home_work_outlined, maxLines: 2),
 
@@ -968,10 +990,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildWilayaDropdown(String? val, Function(String?) onChanged) {
     return DropdownButtonFormField<String>(
+      isExpanded: true,
       initialValue: val,
-      decoration: AppTheme.inputDecoration('الولاية', Icons.map_outlined),
+      decoration: AppTheme.inputDecoration('الولاية', Icons.map_outlined).copyWith(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
       dropdownColor: Theme.of(context).cardColor,
-      items: AppConstants.algeriaWilayas.map((w) => DropdownMenuItem(value: w, child: Text(w, style: const TextStyle(fontSize: 14)))).toList(),
+      items: AppConstants.algeriaWilayas.map((w) => DropdownMenuItem(
+        value: w, 
+        child: Text(w, style: GoogleFonts.tajawal(fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)
+      )).toList(),
       onChanged: onChanged,
     );
   }
@@ -979,10 +1007,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildCommuneDropdown(String wilaya, String? val, Function(String?) onChanged) {
     final communes = AppConstants.getCommunesForWilaya(wilaya);
     return DropdownButtonFormField<String>(
+      isExpanded: true,
       initialValue: communes.contains(val) ? val : null,
-      decoration: AppTheme.inputDecoration('البلدية', Icons.location_city_rounded),
+      decoration: AppTheme.inputDecoration('البلدية', Icons.location_city_rounded).copyWith(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
       dropdownColor: Theme.of(context).cardColor,
-      items: communes.map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 14)))).toList(),
+      items: communes.map((c) => DropdownMenuItem(
+        value: c, 
+        child: Text(c, style: GoogleFonts.tajawal(fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)
+      )).toList(),
       onChanged: onChanged,
     );
   }
@@ -1286,12 +1320,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _pickAndUploadNationalId() async {
     try {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
       if (image == null) return;
 
       Get.dialog(const Center(child: CircularProgressIndicator()), barrierDismissible: false);
 
-      final url = await CloudinaryService.uploadMedia(File(image.path));
+      // 1. ضغط الصورة قبل الرفع
+      final File? compressedFile = await ImageCompressionService.compressImage(File(image.path));
+      if (compressedFile == null) {
+        if (Get.isDialogOpen ?? false) Get.back();
+        Get.snackbar('خطأ', 'فشل ضغط الصورة');
+        return;
+      }
+
+      // 2. رفع الملف المضغوط
+      final url = await CloudinaryService.uploadMedia(compressedFile);
       if (url != null) {
         await FirebaseFirestore.instance.collection('users').doc(authController.currentUser.value?.id).update({
           'nationalIdUrl': url,
@@ -1328,6 +1371,124 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               onPressed: () { Get.back(); authController.logout(); },
               child: Text('خروج', style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.bold)),
+            )),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  // =====================================================================
+  // الإبلاغ وحذف الحساب (Google Play Requirements)
+  // =====================================================================
+  
+  Widget _buildDeleteAccountButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: TextButton.icon(
+        onPressed: _showDeleteAccountConfirmation,
+        icon: const Icon(Icons.delete_forever_rounded, color: Colors.red, size: 20),
+        label: Text('حذف الحساب نهائياً', style: GoogleFonts.tajawal(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13)),
+      ),
+    );
+  }
+
+  void _showDeleteAccountConfirmation() {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_rounded, color: Colors.red),
+            const SizedBox(width: 8),
+            Text('حذف الحساب', style: GoogleFonts.tajawal(fontWeight: FontWeight.w900, color: Colors.red)),
+          ],
+        ),
+        content: Text(
+          'هل أنت متأكد من رغبتك في حذف حسابك نهائياً؟ هذا الإجراء سيقوم بمسح كافة بياناتك ولا يمكن التراجع عنه.',
+          style: GoogleFonts.tajawal(fontSize: 13),
+        ),
+        actions: [
+          Row(children: [
+            Expanded(child: TextButton(onPressed: () => Get.back(), child: Text('إلغاء', style: GoogleFonts.tajawal(color: Colors.grey)))),
+            const SizedBox(width: 10),
+            Expanded(child: ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              onPressed: () {
+                Get.back();
+                authController.deleteAccount();
+              },
+              child: Text('حذف نهائي', style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.bold)),
+            )),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReportUserButton(UserModel targetUser) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => _showReportUserDialog(targetUser),
+        icon: const Icon(Icons.report_problem_outlined, color: Colors.orange, size: 20),
+        label: Text('الإبلاغ عن المستخدم', style: GoogleFonts.tajawal(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13)),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          side: const BorderSide(color: Colors.orange, width: 0.8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      ),
+    );
+  }
+
+  void _showReportUserDialog(UserModel targetUser) {
+    final reasonCtrl = TextEditingController();
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('الإبلاغ عن ${targetUser.name}', style: GoogleFonts.tajawal(fontWeight: FontWeight.w900, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('يرجى توضيح سبب الإبلاغ عن هذا المستخدم:', style: GoogleFonts.tajawal(fontSize: 12)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 3,
+              decoration: AppTheme.inputDecoration('سبب الإبلاغ', Icons.description_outlined),
+            ),
+          ],
+        ),
+        actions: [
+          Row(children: [
+            Expanded(child: TextButton(onPressed: () => Get.back(), child: Text('إلغاء', style: GoogleFonts.tajawal(color: Colors.grey)))),
+            const SizedBox(width: 10),
+            Expanded(child: ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              onPressed: () async {
+                if (reasonCtrl.text.trim().isEmpty) {
+                  Get.snackbar('تنبيه', 'الرجاء كتابة سبب الإبلاغ');
+                  return;
+                }
+                Get.back();
+                Get.dialog(const Center(child: CircularProgressIndicator()), barrierDismissible: false);
+                try {
+                  await AbuseReportService.submitReport(
+                    reportedType: 'user',
+                    reportedId: targetUser.id,
+                    reason: reasonCtrl.text.trim(),
+                  );
+                  Get.back();
+                  Get.snackbar('تم الإرسال', 'تم إرسال بلاغك وسنقوم بمراجعته قريباً.', backgroundColor: Colors.green.withValues(alpha: 0.15));
+                } catch (e) {
+                  Get.back();
+                  Get.snackbar('خطأ', 'فشل إرسال البلاغ. الرجاء المحاولة لاحقاً.');
+                }
+              },
+              child: Text('إرسال البلاغ', style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.bold)),
             )),
           ]),
         ],

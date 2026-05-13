@@ -87,7 +87,7 @@ class _FullScreenMapScreenState extends State<FullScreenMapScreen> {
                       : 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
                     subdomains: const ['a', 'b', 'c'],
                     tileDisplay: const TileDisplay.fadeIn(),
-                    userAgentPackageName: 'com.nasalkheir.nas_alkheir_app',
+                    userAgentPackageName: 'com.nasalkheir.dz.app',
                   ),
                   MarkerLayer(markers: markers),
                 ],

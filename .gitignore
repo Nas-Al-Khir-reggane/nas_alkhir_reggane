@@ -54,3 +54,7 @@ build_final_attempt_revised.txt
 build_retry.txt
 main_analyze.txt
 worker_analyze.txt
+
+# Android signing keys
+/android/key.properties
+/android/app/*.jks

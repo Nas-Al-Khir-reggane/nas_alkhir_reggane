@@ -24,6 +24,7 @@ import 'package:path/path.dart' as p;
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/services/notification_service.dart';
 import '../../../data/services/cloudinary_service.dart';
+import '../../../data/services/image_compression_service.dart';
 import '../../../data/models/chat_message_model.dart';
 import '../../../data/models/user_model.dart';
 import 'package:intl/intl.dart' as intl;
@@ -2393,7 +2394,9 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() => _isUploading = true);
         try {
           if (_selectedImage != null) {
-            imageUrl = await CloudinaryService.uploadMedia(_selectedImage!);
+            // ضغط الصورة قبل الرفع
+            final compressedFile = await ImageCompressionService.compressImage(_selectedImage!);
+            imageUrl = await CloudinaryService.uploadMedia(compressedFile ?? _selectedImage!);
           } else if (audioPath != null) {
             audioUrl = await CloudinaryService.uploadMedia(File(audioPath));
           }

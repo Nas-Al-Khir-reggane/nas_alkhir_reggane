@@ -10,6 +10,7 @@ import '../../auth/controllers/auth_controller.dart';
 import '../../../data/services/notification_service.dart';
 import '../../../data/services/os_tracking_service.dart';
 import '../../../data/services/cloudinary_service.dart';
+import '../../../data/services/image_compression_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -111,7 +112,7 @@ class WorkerController extends GetxController {
     Get.snackbar(
       newStatus ? '✅ أنت الآن متاح' : '⏸️ أنت الآن مشغول',
       newStatus ? 'ستصلك المهام الجديدة' : 'لن تُسند إليك مهام جديدة',
-      backgroundColor: (newStatus ? Get.theme.colorScheme.primary : Get.theme.colorScheme.error).withOpacity(0.15),
+      backgroundColor: (newStatus ? Get.theme.colorScheme.primary : Get.theme.colorScheme.error).withValues(alpha: 0.15),
       colorText: newStatus ? Get.theme.colorScheme.primary : Get.theme.colorScheme.error,
     );
   }
@@ -128,7 +129,9 @@ class WorkerController extends GetxController {
     try {
       String? mediaUrl;
       if (imageFile != null) {
-        mediaUrl = await CloudinaryService.uploadMedia(imageFile);
+        // ضغط الصورة قبل الرفع
+        final compressedFile = await ImageCompressionService.compressImage(imageFile);
+        mediaUrl = await CloudinaryService.uploadMedia(compressedFile ?? imageFile);
       }
 
       final updateData = {
@@ -212,7 +215,7 @@ class WorkerController extends GetxController {
 
       Get.snackbar("على بركة الله", "تم بدء المهمة وتفعيل التتبع الحي للمركبة", 
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
+          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
           colorText: AppTheme.primaryGreen);
     } catch (e) {
       Get.snackbar("خطأ", "فشل بدء المهمة: $e");
@@ -294,7 +297,7 @@ class WorkerController extends GetxController {
 
     } catch (e) {
       Get.snackbar('خطأ', 'فشل إنهاء المهمة: $e',
-          backgroundColor: AppTheme.errorColor.withOpacity(0.1), colorText: AppTheme.errorColor);
+          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.1), colorText: AppTheme.errorColor);
     } finally {
       isLoading.value = false;
     }

@@ -84,7 +84,7 @@ class AppTheme {
   // ظلال ناعمة جداً تمنح شعوراً بالعمق دون حدة
   static List<BoxShadow> get cardShadow => [
         BoxShadow(
-          color: Colors.black.withOpacity(Get.isDarkMode ? 0.35 : 0.08),
+          color: Colors.black.withValues(alpha: Get.isDarkMode ? 0.35 : 0.08),
           blurRadius: 20,
           offset: const Offset(0, 8),
         )
@@ -92,7 +92,7 @@ class AppTheme {
 
   static List<BoxShadow> get greenGlow => [
         BoxShadow(
-          color: primaryGreen.withOpacity(0.15),
+          color: primaryGreen.withValues(alpha: 0.15),
           blurRadius: 20,
           offset: const Offset(0, 6),
         )
@@ -100,16 +100,16 @@ class AppTheme {
 
   static List<BoxShadow> get redGlow => [
         BoxShadow(
-          color: emergencyColor.withOpacity(0.25),
+          color: emergencyColor.withValues(alpha: 0.25),
           blurRadius: 20,
           offset: const Offset(0, 6),
         )
       ];
 
   static BoxDecoration get glassDecoration => BoxDecoration(
-    color: Get.isDarkMode ? primaryGreen.withOpacity(0.08) : Colors.white.withOpacity(0.9),
+    color: Get.isDarkMode ? primaryGreen.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.9),
     borderRadius: BorderRadius.circular(20),
-    border: Border.all(color: Get.isDarkMode ? glassBorder : primaryGreen.withOpacity(0.1), width: 1),
+    border: Border.all(color: Get.isDarkMode ? glassBorder : primaryGreen.withValues(alpha: 0.1), width: 1),
     boxShadow: Get.isDarkMode ? null : cardShadow,
   );
 
@@ -173,7 +173,7 @@ class AppTheme {
     scaffoldBackgroundColor: lightBg,
     cardColor: lightCard,
     canvasColor: lightSurface,
-    dividerColor: Colors.black.withOpacity(0.1),
+    dividerColor: Colors.black.withValues(alpha: 0.1),
     textTheme: _baseTextTheme.apply(
       bodyColor: textPrimaryLight,
       displayColor: textPrimaryLight,
@@ -219,7 +219,7 @@ class AppTheme {
         gradient: primaryGradient,
         borderRadius: BorderRadius.circular(radiusMedium),
         boxShadow: [
-        BoxShadow(color: primaryGreen.withOpacity(0.25), blurRadius: 16, offset: const Offset(0, 6)),
+        BoxShadow(color: primaryGreen.withValues(alpha: 0.25), blurRadius: 16, offset: const Offset(0, 6)),
         ],
       ),
       child: ElevatedButton(
@@ -289,7 +289,7 @@ class AppTheme {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(color: primaryGreen.withOpacity(0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: primaryGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
               child: Icon(icon, color: primaryGreen, size: 64),
             ),
             const SizedBox(height: 24),
@@ -314,7 +314,7 @@ class AppTheme {
       hintText: hint,
       prefixIcon: Icon(prefixIcon, color: primaryGreen),
       filled: true,
-      fillColor: Get.isDarkMode ? darkCard.withOpacity(0.15) : Colors.black.withOpacity(0.03),
+      fillColor: Get.isDarkMode ? darkCard.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.03),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(radiusMedium), borderSide: BorderSide.none),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(radiusMedium), borderSide: BorderSide.none),
@@ -339,9 +339,9 @@ class AppTheme {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w900, fontFamily: 'Tajawal', letterSpacing: 0.5)),
     );
@@ -381,7 +381,7 @@ class AppTheme {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: (iconColor ?? primaryGreen).withOpacity(0.15),
+              color: (iconColor ?? primaryGreen).withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: iconColor ?? primaryGreen, size: 20),
@@ -395,7 +395,7 @@ class AppTheme {
             ]
           ])),
           trailing ?? const SizedBox.shrink(),
-          if (onTap != null && trailing == null) Icon(Icons.arrow_forward_ios, color: textPrimary.withOpacity(0.4), size: 16),
+          if (onTap != null && trailing == null) Icon(Icons.arrow_forward_ios, color: textPrimary.withValues(alpha: 0.4), size: 16),
         ]),
       ),
     );

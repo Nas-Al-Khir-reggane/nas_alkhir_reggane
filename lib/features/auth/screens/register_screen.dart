@@ -28,7 +28,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String? _selectedWilaya;
   String? _selectedCommune;
-  UserRole _selectedRole = UserRole.beneficiary;
+  UserRole _selectedRole = UserRole.worker;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   String? _selectedAvatar;
@@ -59,8 +59,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    // إزالة التعيين التلقائي للأفتار والجنس للسماح بالتحقق
-
     if (Get.arguments != null && Get.arguments is Map) {
       final args = Get.arguments as Map;
       if (args['isCompletingProfile'] == true) {
@@ -91,226 +89,323 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          // خلفية زخرفية موحدة (Unified Background)
+          // خلفية زخرفية
           Positioned(top: -80, right: -60, child: _buildBgCircle(320, 0.04)),
           Positioned(bottom: -120, left: -60, child: _buildBgCircle(220, 0.03)),
 
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Form(
                 key: _formKey,
                 child: Column(
                   children: [
                     const SizedBox(height: 20),
                     FadeInDown(child: const AppLogo(size: 60)),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     FadeInDown(
-                      delay: const Duration(milliseconds: 200),
+                      delay: const Duration(milliseconds: 100),
                       child: Text(
-                        'انضم لعائلة ناس الخير',
+                        _isCompletingProfile ? 'استكمال بياناتك' : 'انضم لعائلة ناس الخير',
                         style: TextStyle(
-                          fontSize: 22, 
+                          fontSize: 24, 
                           fontWeight: FontWeight.w900, 
                           color: Theme.of(context).colorScheme.onSurface,
                           fontFamily: 'Tajawal',
                         ),
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 32),
                     
-                    _buildSectionHeader('نوع الحساب', Icons.supervised_user_circle_outlined),
-                    const SizedBox(height: 12),
-                    _buildRoleSelection(),
-                    
-                    if (_selectedRole == UserRole.worker) ...[
-                      const SizedBox(height: 20),
-                      _buildSectionHeader('تخصص التطوع', Icons.handyman_rounded),
-                      const SizedBox(height: 12),
-                      _buildWorkerRoleSelection(),
-                    ],
-
-                    const SizedBox(height: 24),
-                    _buildSectionHeader('المعلومات الشخصية', Icons.person_outline_rounded),
-                    const SizedBox(height: 12),
-                    _buildGenderSelection(),
-                    const SizedBox(height: 12),
-                    _buildTextField(
-                      controller: _nameController,
-                      label: 'الاسم الكامل',
-                      hint: 'أدخل اسمك الكامل...',
-                      icon: Icons.person_pin_rounded,
-                      validator: (v) => v!.isEmpty ? 'يرجى إدخال اسمك' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildTextField(
-                      controller: _phoneController,
-                      label: 'رقم الهاتف',
-                      hint: '0XXXXXXXXX',
-                      icon: Icons.phone_android_rounded,
-                      keyboardType: TextInputType.phone,
-                      maxLength: 10,
-                      validator: (v) => v!.length < 10 ? 'رقم هاتف غير صحيح' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildBloodTypeDropdown(),
-                    const SizedBox(height: 12),
-                    _buildLastDonationDatePicker(),
-
-                    const SizedBox(height: 12),
-                    _buildTextField(
-                      controller: _emailController,
-                      label: 'البريد الإلكتروني',
-                      hint: 'example@mail.com',
-                      icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                      readOnly: _isCompletingProfile,
-                      validator: (v) => v!.isEmpty || !v.contains('@') ? 'بريد إلكتروني غير صالح' : null,
-                    ),
-
-                    const SizedBox(height: 24),
-                    _buildSectionHeader('الموقع والسكن', Icons.location_on_outlined),
-                    const SizedBox(height: 12),
-                    _buildLocationDropdowns(),
-                    const SizedBox(height: 12),
-                    _buildTextField(
-                      controller: _addressController,
-                      label: 'العنوان التفصيلي',
-                      hint: 'الحي، الشارع، رقم المنزل...',
-                      icon: Icons.home_work_outlined,
-                      maxLines: 2,
-                      validator: (v) => v!.isEmpty ? 'يرجى تحديد العنوان' : null,
-                    ),
-
-                    if (!_isCompletingProfile) ...[
-                      const SizedBox(height: 24),
-                      _buildSectionHeader('الأمان', Icons.lock_person_outlined),
-                      const SizedBox(height: 12),
-                      _buildTextField(
-                        controller: _passwordController,
-                        label: 'كلمة المرور',
-                        hint: 'أدخل كلمة مرور قوية...',
-                        icon: Icons.lock_outline_rounded,
-                        obscureText: _obscurePassword,
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 20),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                        ),
-                        validator: (v) => v!.length < 6 ? '6 رموز على الأقل' : null,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildTextField(
-                        controller: _confirmPasswordController,
-                        label: 'تأكيد كلمة المرور',
-                        hint: 'أعد كتابة كلمة المرور...',
-                        icon: Icons.check_circle_outline_rounded,
-                        obscureText: _obscureConfirmPassword,
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 20),
-                          onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-                        ),
-                        validator: (v) => v != _passwordController.text ? 'غير متطابقة' : null,
-                      ),
-                    ],
-
-                    const SizedBox(height: 24),
-                    _buildSectionHeader('الصورة الشخصية', Icons.face_retouching_natural_rounded),
-                    const SizedBox(height: 12),
-                    _buildAvatarSelector(),
-
-                    const SizedBox(height: 40),
-                    Obx(() => authController.isLoading.value
-                        ? const CircularProgressIndicator()
-                        : SizedBox(
-                            width: double.infinity,
-                            child: AppTheme.gradientButton(
-                              text: _isCompletingProfile ? 'حفظ وإكمال الملف' : 'إنشاء حساب جديد',
-                              icon: _isCompletingProfile ? Icons.save_rounded : Icons.person_add_alt_1_rounded,
-                              onPressed: () {
-                                if (_formKey.currentState!.validate()) {
-                                  if (_selectedGender == null) {
-                                    Get.snackbar('تنبيه', 'يرجى اختيار الجنس (إجباري)',
-                                      backgroundColor: Colors.orange.withValues(alpha: 0.15));
-                                    return;
-                                  }
-
-                                  if (_selectedBloodType == null) {
-                                    Get.snackbar('تنبيه', 'يرجى اختيار فصيلة الدم (إجبارية)', 
-                                      backgroundColor: Colors.orange.withValues(alpha: 0.15));
-                                    return;
-                                  }
-
-                                  if (!_hasNeverDonated && _lastDonationDate == null) {
-                                    Get.snackbar('تنبيه', 'يرجى تحديد تاريخ آخر تبرع أو اختيار "لم يسبق لي التبرع"', 
-                                      backgroundColor: Colors.orange.withValues(alpha: 0.15));
-                                    return;
-                                  }
-
-                                    if (_isCompletingProfile) {
-                                      authController.completeProfile(
-                                        uid: _existingUid!,
-                                        name: _nameController.text.trim(),
-                                        phone: _phoneController.text.trim(),
-                                        wilaya: _selectedWilaya!,
-                                        commune: _selectedCommune!,
-                                        address: _addressController.text.trim(),
-                                        email: _emailController.text.trim(),
-                                        gender: _selectedGender!,
-                                        role: _selectedRole,
-                                        profileImage: _selectedAvatar,
-                                        bloodType: _selectedBloodType!,
-                                        workerRole: _selectedWorkerRole,
-                                        volunteerServices: _selectedServices,
-                                        ghuslExpertise: _ghuslExpertise,
-                                        otherServices: _otherServicesController.text.trim(),
-                                        lastDonatedAt: _lastDonationDate,
-                                      );
-                                    } else {
-                                      authController.register(
-                                        name: _nameController.text.trim(),
-                                        phone: _phoneController.text.trim(),
-                                        wilaya: _selectedWilaya!,
-                                        commune: _selectedCommune!,
-                                        address: _addressController.text.trim(),
-                                        email: _emailController.text.trim(),
-                                        password: _passwordController.text.trim(),
-                                        role: _selectedRole,
-                                        profileImage: _selectedAvatar,
-                                        bloodType: _selectedBloodType!,
-                                        gender: _selectedGender!,
-                                        workerRole: _selectedWorkerRole,
-                                        volunteerServices: _selectedServices,
-                                        ghuslExpertise: _ghuslExpertise,
-                                        otherServices: _otherServicesController.text.trim(),
-                                        lastDonatedAt: _lastDonationDate,
-                                      );
-                                    }
-                                }
-                              },
-                            ),
-                          )),
-                    const SizedBox(height: 20),
-                    TextButton(
-                      onPressed: () => Get.back(),
-                      child: RichText(
-                        text: TextSpan(
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal', fontSize: 13),
+                    // البطاقة 1: نوع الحساب
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 200),
+                      child: _buildCard(
+                        title: 'نوع الحساب',
+                        icon: Icons.supervised_user_circle_outlined,
+                        child: Column(
                           children: [
-                            const TextSpan(text: 'لديك حساب؟ '),
-                            TextSpan(
-                              text: 'سجل دخولك',
-                              style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
+                            _buildRoleSelection(),
+                            if (_selectedRole == UserRole.worker) ...[
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 20),
+                                child: Divider(height: 1, thickness: 1),
+                              ),
+                              _buildWorkerRoleSelection(),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // البطاقة 2: المعلومات الشخصية
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 300),
+                      child: _buildCard(
+                        title: 'المعلومات الشخصية',
+                        icon: Icons.person_outline_rounded,
+                        child: Column(
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: _buildTextField(
+                                  controller: _nameController,
+                                  label: 'الاسم الكامل',
+                                  hint: 'الاسم واللقب...',
+                                  icon: Icons.person_pin_rounded,
+                                  validator: (v) => v!.isEmpty ? 'حقل إجباري' : null,
+                                )),
+                                const SizedBox(width: 12),
+                                Expanded(child: _buildTextField(
+                                  controller: _phoneController,
+                                  label: 'رقم الهاتف',
+                                  hint: '0XXXXXXXXX',
+                                  icon: Icons.phone_android_rounded,
+                                  keyboardType: TextInputType.phone,
+                                  maxLength: 10,
+                                  validator: (v) => v!.length < 10 ? 'رقم غير صحيح' : null,
+                                )),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            _buildTextField(
+                              controller: _emailController,
+                              label: 'البريد الإلكتروني',
+                              hint: 'example@mail.com',
+                              icon: Icons.email_outlined,
+                              keyboardType: TextInputType.emailAddress,
+                              readOnly: _isCompletingProfile,
+                              validator: (v) => v!.isEmpty || !v.contains('@') ? 'بريد غير صالح' : null,
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: _buildBloodTypeDropdown()),
+                                const SizedBox(width: 12),
+                                Expanded(child: _buildGenderSelection()),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            _buildLastDonationDatePicker(),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // البطاقة 3: الموقع
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 400),
+                      child: _buildCard(
+                        title: 'الموقع والسكن',
+                        icon: Icons.location_on_outlined,
+                        child: Column(
+                          children: [
+                            _buildLocationDropdowns(),
+                            const SizedBox(height: 16),
+                            _buildTextField(
+                              controller: _addressController,
+                              label: 'العنوان التفصيلي',
+                              hint: 'الحي، الشارع، رقم المنزل...',
+                              icon: Icons.home_work_outlined,
+                              maxLines: 2,
+                              validator: (v) => v!.isEmpty ? 'حقل إجباري' : null,
                             ),
                           ],
                         ),
                       ),
                     ),
+
+                    // البطاقة 4: الأمان
+                    if (!_isCompletingProfile)
+                      FadeInUp(
+                        delay: const Duration(milliseconds: 500),
+                        child: _buildCard(
+                          title: 'الأمان',
+                          icon: Icons.lock_person_outlined,
+                          child: Column(
+                            children: [
+                              _buildTextField(
+                                controller: _passwordController,
+                                label: 'كلمة المرور',
+                                hint: 'أدخل كلمة مرور قوية...',
+                                icon: Icons.lock_outline_rounded,
+                                obscureText: _obscurePassword,
+                                suffixIcon: IconButton(
+                                  icon: Icon(_obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 20),
+                                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                ),
+                                validator: (v) => v!.length < 6 ? '6 رموز على الأقل' : null,
+                              ),
+                              const SizedBox(height: 16),
+                              _buildTextField(
+                                controller: _confirmPasswordController,
+                                label: 'تأكيد كلمة المرور',
+                                hint: 'أعد كتابة كلمة المرور...',
+                                icon: Icons.check_circle_outline_rounded,
+                                obscureText: _obscureConfirmPassword,
+                                suffixIcon: IconButton(
+                                  icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 20),
+                                  onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                                ),
+                                validator: (v) => v != _passwordController.text ? 'غير متطابقة' : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // البطاقة 5: الصورة الشخصية
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 600),
+                      child: _buildCard(
+                        title: 'الصورة الشخصية (اختياري)',
+                        icon: Icons.face_retouching_natural_rounded,
+                        child: _buildAvatarSelector(),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+                    // زر الإرسال
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 700),
+                      child: Obx(() => authController.isLoading.value
+                          ? const Center(child: CircularProgressIndicator())
+                          : SizedBox(
+                              width: double.infinity,
+                              child: AppTheme.gradientButton(
+                                text: _isCompletingProfile ? 'حفظ وإكمال الملف' : 'إنشاء حساب جديد',
+                                icon: _isCompletingProfile ? Icons.save_rounded : Icons.person_add_alt_1_rounded,
+                                onPressed: _submitForm,
+                              ),
+                            )),
+                    ),
+                    const SizedBox(height: 20),
+                    if (!_isCompletingProfile)
+                      FadeInUp(
+                        delay: const Duration(milliseconds: 800),
+                        child: TextButton(
+                          onPressed: () => Get.back(),
+                          child: RichText(
+                            text: TextSpan(
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'Tajawal', fontSize: 13),
+                              children: [
+                                const TextSpan(text: 'لديك حساب؟ '),
+                                TextSpan(
+                                  text: 'سجل دخولك',
+                                  style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 40),
                   ],
                 ),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _submitForm() {
+    if (_formKey.currentState!.validate()) {
+      if (_selectedGender == null) {
+        Get.snackbar('تنبيه', 'يرجى اختيار الجنس (إجباري)', backgroundColor: Colors.orange.withValues(alpha: 0.15));
+        return;
+      }
+      if (_selectedBloodType == null) {
+        Get.snackbar('تنبيه', 'يرجى اختيار فصيلة الدم (إجبارية)', backgroundColor: Colors.orange.withValues(alpha: 0.15));
+        return;
+      }
+      if (!_hasNeverDonated && _lastDonationDate == null) {
+        Get.snackbar('تنبيه', 'يرجى تحديد تاريخ آخر تبرع أو اختيار "لم يسبق لي التبرع"', backgroundColor: Colors.orange.withValues(alpha: 0.15));
+        return;
+      }
+
+      final authController = Get.find<AuthController>();
+      
+      if (_isCompletingProfile) {
+        authController.completeProfile(
+          uid: _existingUid!,
+          name: _nameController.text.trim(),
+          phone: _phoneController.text.trim(),
+          wilaya: _selectedWilaya!,
+          commune: _selectedCommune!,
+          address: _addressController.text.trim(),
+          email: _emailController.text.trim(),
+          gender: _selectedGender!,
+          role: _selectedRole,
+          profileImage: _selectedAvatar,
+          bloodType: _selectedBloodType!,
+          workerRole: _selectedWorkerRole,
+          volunteerServices: _selectedServices,
+          ghuslExpertise: _ghuslExpertise,
+          otherServices: _otherServicesController.text.trim(),
+          lastDonatedAt: _lastDonationDate,
+        );
+      } else {
+        authController.register(
+          name: _nameController.text.trim(),
+          phone: _phoneController.text.trim(),
+          wilaya: _selectedWilaya!,
+          commune: _selectedCommune!,
+          address: _addressController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+          role: _selectedRole,
+          profileImage: _selectedAvatar,
+          bloodType: _selectedBloodType!,
+          gender: _selectedGender!,
+          workerRole: _selectedWorkerRole,
+          volunteerServices: _selectedServices,
+          ghuslExpertise: _ghuslExpertise,
+          otherServices: _otherServicesController.text.trim(),
+          lastDonatedAt: _lastDonationDate,
+        );
+      }
+    }
+  }
+
+  Widget _buildCard({required String title, required IconData icon, required Widget child}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+              ),
+              const SizedBox(width: 12),
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+            ],
+          ),
+          const SizedBox(height: 20),
+          child,
         ],
       ),
     );
@@ -327,23 +422,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)),
-        const SizedBox(width: 8),
-        Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, fontFamily: 'Tajawal')),
-      ],
-    );
-  }
-
   Widget _buildRoleSelection() {
     return Row(
       children: [
-        _buildRoleCard(UserRole.beneficiary, 'مستفيد', Icons.volunteer_activism_outlined),
-        const SizedBox(width: 8),
         _buildRoleCard(UserRole.worker, 'متطوع', Icons.handyman_outlined),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         _buildRoleCard(UserRole.donor, 'متبرع', Icons.favorite_border_rounded),
       ],
     );
@@ -363,20 +446,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
           duration: const Duration(milliseconds: 300),
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.05) : Theme.of(context).cardColor,
+            color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.05) : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.05), 
+              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.1), 
               width: 1.5
             ),
-            boxShadow: isSelected ? [BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05), blurRadius: 10)] : null,
           ),
           child: Column(
             children: [
-              Icon(icon, color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5), size: 24),
+              Icon(icon, color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5), size: 28),
               const SizedBox(height: 8),
               Text(label, style: TextStyle(
-                fontSize: 11, 
+                fontSize: 13, 
                 fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold, 
                 color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
                 fontFamily: 'Tajawal'
@@ -392,56 +474,53 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FadeIn(
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 10,
-            children: _workerRoles.map((role) {
-              final isSelected = _selectedServices.contains(role['id']);
-              return FilterChip(
-                showCheckmark: false,
-                avatar: Icon(role['icon'], 
-                  size: 14, 
-                  color: isSelected ? Colors.white : AppTheme.primaryGreen),
-                label: Text(role['name'], 
-                  style: TextStyle(
-                    fontSize: 11, 
-                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
-                    color: isSelected ? Colors.white : AppTheme.textSecondary,
-                    fontFamily: 'Tajawal'
-                  )),
-                selected: isSelected,
-                onSelected: (val) {
-                  setState(() {
-                    if (val) {
-                      _selectedServices.add(role['id']);
-                    } else {
-                      _selectedServices.remove(role['id']);
-                      if (role['id'] == 'funeral_ghusl') _ghuslExpertise = null;
-                    }
-                  });
-                },
-                selectedColor: AppTheme.primaryGreen,
-                backgroundColor: Theme.of(context).cardColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder.withValues(alpha: 0.1))
-                ),
-                elevation: 0,
-                pressElevation: 4,
-              );
-            }).toList(),
-          ),
+        const Text('تخصص التطوع (اختر تخصصاً واحداً أو أكثر):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 10,
+          children: _workerRoles.map((role) {
+            final isSelected = _selectedServices.contains(role['id']);
+            return FilterChip(
+              showCheckmark: false,
+              avatar: Icon(role['icon'], size: 16, color: isSelected ? Colors.white : AppTheme.primaryGreen),
+              label: Text(role['name'], 
+                style: TextStyle(
+                  fontSize: 12, 
+                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+                  color: isSelected ? Colors.white : AppTheme.textSecondary,
+                  fontFamily: 'Tajawal'
+                )),
+              selected: isSelected,
+              onSelected: (val) {
+                setState(() {
+                  if (val) {
+                    _selectedServices.add(role['id']);
+                  } else {
+                    _selectedServices.remove(role['id']);
+                    if (role['id'] == 'funeral_ghusl') _ghuslExpertise = null;
+                  }
+                });
+              },
+              selectedColor: AppTheme.primaryGreen,
+              backgroundColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder.withValues(alpha: 0.2))
+              ),
+              elevation: 0,
+            );
+          }).toList(),
         ),
         if (_selectedServices.contains('funeral_ghusl')) ...[
           const SizedBox(height: 16),
-          _buildSectionHeader('مستوى الخبرة في التغسيل', Icons.star_outline_rounded),
-          const SizedBox(height: 12),
+          const Text('مستوى الخبرة في التغسيل:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+          const SizedBox(height: 8),
           Row(
             children: [
-              _buildExpertiseChip('خبير / قائد غسل', 'expert'),
-              const SizedBox(width: 10),
-              _buildExpertiseChip('مساعد متدرب', 'assistant'),
+              Expanded(child: _buildExpertiseChip('خبير / قائد غسل', 'expert')),
+              const SizedBox(width: 8),
+              Expanded(child: _buildExpertiseChip('مساعد متدرب', 'assistant')),
             ],
           ),
         ],
@@ -449,8 +528,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 16),
           _buildTextField(
             controller: _otherServicesController,
-            label: 'خدمات تطوعية أخرى',
-            hint: 'مثال: صيانة، دعم نفسي...',
+            label: 'تخصصات أخرى',
+            hint: 'مثال: صيانة، طبخ...',
             icon: Icons.add_task_rounded,
           ),
         ],
@@ -464,31 +543,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
       onTap: () => setState(() => _ghuslExpertise = value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.05) : Theme.of(context).cardColor,
+          color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.05) : Colors.transparent,
           borderRadius: BorderRadius.circular(15),
           border: Border.all(
-            color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder.withValues(alpha: 0.1),
+            color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder.withValues(alpha: 0.2),
             width: 1.5,
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               isSelected ? Icons.check_circle_rounded : Icons.radio_button_off_rounded,
               size: 16,
-              color: isSelected ? AppTheme.primaryGreen : AppTheme.textHint.withValues(alpha: 0.3),
+              color: isSelected ? AppTheme.primaryGreen : AppTheme.textHint.withValues(alpha: 0.5),
             ),
             const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? AppTheme.primaryGreen : AppTheme.textSecondary,
-                fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
-                fontSize: 12,
-                fontFamily: 'Tajawal'
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+                  fontSize: 12,
+                  fontFamily: 'Tajawal'
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -498,59 +581,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildGenderSelection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            _buildChoiceChip('ذكر', Icons.male_rounded),
-            const SizedBox(width: 10),
-            _buildChoiceChip('أنثى', Icons.female_rounded),
-          ],
-        ),
-        if (_selectedGender == null)
-          const Padding(
-            padding: EdgeInsets.only(top: 4, right: 12),
-            child: Text(
-              'يرجى اختيار الجنس (إجباري)',
-              style: TextStyle(color: Colors.red, fontSize: 11, fontFamily: 'Tajawal'),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildChoiceChip(String label, IconData icon) {
-    final isSelected = _selectedGender == label;
-    return ChoiceChip(
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: isSelected ? Colors.white : Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(color: isSelected ? Colors.white : null, fontSize: 12, fontFamily: 'Tajawal')),
-        ],
-      ),
-      selected: isSelected,
-      onSelected: (val) {
+    return DropdownButtonFormField<String>(
+      isExpanded: true,
+      initialValue: _selectedGender,
+      decoration: AppTheme.inputDecoration('الجنس', Icons.people_outline_rounded).copyWith(labelText: 'الجنس *', contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16)),
+      items: ['ذكر', 'أنثى'].map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
+      onChanged: (v) {
         setState(() {
-          _selectedGender = label;
+          _selectedGender = v;
           _selectedAvatar = DefaultAvatars.getRandomAvatar(_selectedRole, _selectedGender!);
         });
       },
-      selectedColor: Theme.of(context).colorScheme.primary,
-      backgroundColor: Theme.of(context).cardColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      validator: (v) => v == null ? 'إجباري' : null,
     );
   }
 
   Widget _buildBloodTypeDropdown() {
     return DropdownButtonFormField<String>(
+      isExpanded: true,
       initialValue: _selectedBloodType,
-      decoration: AppTheme.inputDecoration('فصيلة الدم (إجباري) *', Icons.bloodtype_outlined).copyWith(labelText: 'فصيلة الدم *'),
+      decoration: AppTheme.inputDecoration('فصيلة الدم', Icons.bloodtype_outlined).copyWith(labelText: 'فصيلة الدم *', contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16)),
       items: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
       onChanged: (v) => setState(() => _selectedBloodType = v),
-      validator: (v) => v == null ? 'فصيلة الدم حقل إجباري' : null,
+      validator: (v) => v == null ? 'إجباري' : null,
     );
   }
 
@@ -558,25 +611,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('تاريخ آخر تبرع', Icons.calendar_today_rounded),
-        const SizedBox(height: 8),
         Row(
           children: [
-            Checkbox(
-              value: _hasNeverDonated,
-              activeColor: Theme.of(context).colorScheme.primary,
-              onChanged: (val) {
-                setState(() {
-                  _hasNeverDonated = val ?? false;
-                  if (_hasNeverDonated) _lastDonationDate = null;
-                });
-              },
+            SizedBox(
+              height: 24,
+              width: 24,
+              child: Checkbox(
+                value: _hasNeverDonated,
+                activeColor: Theme.of(context).colorScheme.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                onChanged: (val) {
+                  setState(() {
+                    _hasNeverDonated = val ?? false;
+                    if (_hasNeverDonated) _lastDonationDate = null;
+                  });
+                },
+              ),
             ),
-            const Text('لم يسبق لي التبرع بالدم', style: TextStyle(fontSize: 13, fontFamily: 'Tajawal')),
+            const SizedBox(width: 8),
+            const Text('لم يسبق لي التبرع بالدم', style: TextStyle(fontSize: 13, fontFamily: 'Tajawal', fontWeight: FontWeight.bold)),
           ],
         ),
         if (!_hasNeverDonated) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           InkWell(
             onTap: () async {
               final date = await showDatePicker(
@@ -602,11 +659,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               if (date != null) setState(() => _lastDonationDate = date);
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
+                color: Colors.transparent,
                 borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: [
@@ -614,12 +671,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(width: 12),
                   Text(
                     _lastDonationDate == null 
-                        ? 'انقر لاختيار تاريخ آخر تبرع *' 
-                        : 'تاريخ آخر تبرع: ${DateFormat('yyyy-MM-dd').format(_lastDonationDate!)}',
+                        ? 'تاريخ آخر تبرع *' 
+                        : DateFormat('yyyy-MM-dd').format(_lastDonationDate!),
                     style: TextStyle(
                       fontSize: 13,
                       color: _lastDonationDate == null ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.onSurface,
-                      fontFamily: 'Tajawal'
+                      fontFamily: 'Tajawal',
+                      fontWeight: FontWeight.bold
                     ),
                   ),
                 ],
@@ -651,47 +709,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
       obscureText: obscureText,
       maxLines: maxLines,
       maxLength: maxLength,
-      style: const TextStyle(fontSize: 14),
+      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
       decoration: AppTheme.inputDecoration(hint, icon).copyWith(
         labelText: label, 
         suffixIcon: suffixIcon, 
         counterText: '',
-        labelStyle: const TextStyle(fontSize: 13)
+        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.normal),
+        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       ),
       validator: validator,
     );
   }
 
   Widget _buildLocationDropdowns() {
-    return Column(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        DropdownButtonFormField<String>(
-          initialValue: _selectedWilaya,
-          decoration: AppTheme.inputDecoration('اختر الولاية...', Icons.map_outlined).copyWith(labelText: 'الولاية'),
-          items: AppConstants.algeriaWilayas.map((w) => DropdownMenuItem(value: w, child: Text(w, style: const TextStyle(fontSize: 14)))).toList(),
-          onChanged: (v) {
-            setState(() {
-              _selectedWilaya = v;
-              _selectedCommune = null;
-            });
-          },
-          validator: (v) => v == null ? 'يرجى تحديد الولاية' : null,
-        ),
-        if (_selectedWilaya != null) ...[
-          const SizedBox(height: 12),
-          FadeInDown(
-            duration: const Duration(milliseconds: 300),
-            child: DropdownButtonFormField<String>(
-              initialValue: _selectedCommune,
-              decoration: AppTheme.inputDecoration('اختر البلدية...', Icons.location_city_rounded).copyWith(labelText: 'البلدية'),
-              items: AppConstants.getCommunesForWilaya(_selectedWilaya!)
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 14))))
-                  .toList(),
-              onChanged: (v) => setState(() => _selectedCommune = v),
-              validator: (v) => v == null ? 'يرجى تحديد البلدية' : null,
-            ),
+        Expanded(
+          child: DropdownButtonFormField<String>(
+            isExpanded: true,
+            initialValue: _selectedWilaya,
+            decoration: AppTheme.inputDecoration('الولاية', Icons.map_outlined).copyWith(labelText: 'الولاية *', contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16)),
+            items: AppConstants.algeriaWilayas.map((w) => DropdownMenuItem(value: w, child: Text(w, style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis))).toList(),
+            onChanged: (v) {
+              setState(() {
+                _selectedWilaya = v;
+                _selectedCommune = null;
+              });
+            },
+            validator: (v) => v == null ? 'إجباري' : null,
           ),
-        ],
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: DropdownButtonFormField<String>(
+            isExpanded: true,
+            initialValue: _selectedCommune,
+            decoration: AppTheme.inputDecoration('البلدية', Icons.location_city_rounded).copyWith(labelText: 'البلدية *', contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16)),
+            items: _selectedWilaya == null ? [] : AppConstants.getCommunesForWilaya(_selectedWilaya!)
+                .map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis)))
+                .toList(),
+            onChanged: (v) => setState(() => _selectedCommune = v),
+            validator: (v) => v == null ? 'إجباري' : null,
+          ),
+        ),
       ],
     );
   }
@@ -710,13 +771,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             onTap: () => setState(() => _selectedAvatar = avatarUrl),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsetsDirectional.only(start: 12),
+              margin: const EdgeInsetsDirectional.only(end: 12),
               decoration: BoxDecoration(
                 shape: BoxShape.circle, 
-                border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent, width: 2.5)
+                border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent, width: 3)
               ),
               child: CircleAvatar(
-                radius: 28, 
+                radius: 30, 
                 backgroundColor: Theme.of(context).cardColor, 
                 backgroundImage: CachedNetworkImageProvider(avatarUrl)
               ),
@@ -727,4 +788,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
-

@@ -5,7 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/auth_service.dart';
-import '../../../data/services/battery_optimizer_service.dart';
 import '../../../data/services/review_prompt_service.dart';
 import '../../../data/services/notification_service.dart';
 import 'dart:async';
@@ -171,7 +170,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       debugPrint("AuthController: Login Error: $e");
       final message = _authErrorMessage(e, fallback: 'تعذر تسجيل الدخول حالياً. يرجى المحاولة مرة أخرى.');
       Get.snackbar('تعذر تسجيل الدخول', message,
-        backgroundColor: Colors.red.withOpacity(0.15),
+        backgroundColor: Colors.red.withValues(alpha: 0.15),
         duration: const Duration(seconds: 5));
     } finally {
       isLoading.value = false;
@@ -256,7 +255,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
         errorMessage = 'هذا البريد مسجل مسبقاً. إذا كان ملفك الشخصي غير مكتمل، سجّل الدخول أولاً لإكمال بياناتك.';
       }
       Get.snackbar("تنبيه", errorMessage, 
-        backgroundColor: Colors.orange.withOpacity(0.15),
+        backgroundColor: Colors.orange.withValues(alpha: 0.15),
         duration: const Duration(seconds: 5)
       );
     } finally {
@@ -394,7 +393,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
         '🔄 تم تبديل الوضع',
         'أنت الآن في وضع ${targetRole.displayName}',
         snackPosition: SnackPosition.TOP,
-        backgroundColor: AppTheme.primaryGreen.withOpacity(0.15),
+        backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
         colorText: AppTheme.primaryGreen,
         duration: const Duration(seconds: 2),
       );
@@ -402,7 +401,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       Get.snackbar(
         '⚠️ عذراً',
         'لا تملك صلاحية الوصول لوضع ${targetRole.displayName}',
-        backgroundColor: Colors.orange.withOpacity(0.15),
+        backgroundColor: Colors.orange.withValues(alpha: 0.15),
       );
     }
   }
@@ -529,10 +528,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
     Future.delayed(const Duration(milliseconds: 1500), () {
       final context = Get.context;
       if (context != null && context.mounted) {
-        // 1. طلب تجاوز تحسين البطارية (مخصص للطوارئ)
-        BatteryOptimizerService.requestOptimizations(context);
-        
-        // 2. تتبع فتح التطبيق لطلب التقييم
+        // 1. تتبع فتح التطبيق لطلب التقييم
         ReviewPromptService.trackLaunchAndPrompt();
       }
     });
@@ -634,7 +630,7 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       Get.snackbar(
         join ? '✅ تم الانضمام بنجاح' : '🔔 تم إلغاء الاشتراك',
         join ? 'أنت الآن جزء من حزب المائة ألف، جزاك الله خيراً' : 'نتمنى عودتك إلينا قريباً، شكراً لمساهماتك السابقة',
-        backgroundColor: join ? AppTheme.primaryGreen.withOpacity(0.2) : Colors.orange.withOpacity(0.1),
+        backgroundColor: join ? AppTheme.primaryGreen.withValues(alpha: 0.2) : Colors.orange.withValues(alpha: 0.1),
         snackPosition: SnackPosition.TOP,
         duration: const Duration(seconds: 4),
       );
@@ -645,10 +641,43 @@ class AuthController extends GetxController with WidgetsBindingObserver {
       Get.snackbar(
         '❌ خطأ',
         'تعذر تحديث حالة الاشتراك: ${_authErrorMessage(e)}',
-        backgroundColor: Colors.red.withOpacity(0.1),
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
         colorText: Colors.red,
       );
       return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// 🗑️ حذف حساب المستخدم نهائياً
+  Future<void> deleteAccount() async {
+    try {
+      isLoading.value = true;
+      await _authService.deleteAccount();
+      
+      _userSubscription?.cancel();
+      _userSubscription = null;
+      currentUser.value = null;
+      activeRoleOverride.value = null;
+
+      Get.offAllNamed(AppRoutes.login);
+      
+      Get.snackbar(
+        '✅ نجاح',
+        'تم حذف حسابك وبياناتك نهائياً.',
+        backgroundColor: Colors.green.withValues(alpha: 0.1),
+        colorText: Colors.green,
+      );
+    } catch (e) {
+      debugPrint("AuthController: Error deleting account: $e");
+      Get.snackbar(
+        '❌ خطأ',
+        'تعذر حذف الحساب. قد تحتاج إلى تسجيل الدخول مجدداً أولاً. ${_authErrorMessage(e)}',
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red,
+        duration: const Duration(seconds: 5),
+      );
     } finally {
       isLoading.value = false;
     }

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -378,13 +377,13 @@ class AdminController extends GetxController {
       _firestore
           .collection(AppConstants.usersCollection)
           .where('isApproved', isEqualTo: true)
-          .where('isVerified', isEqualTo: false)
           .snapshots()
           .listen((snap) {
-            // تصفية المحتوى الذي يحتوي على صورة بطاقة الهوية فقط
+            // تصفية المحتوى الذي يحتوي على صورة بطاقة الهوية فقط وغير موثق
             pendingVerificationsCount.value = snap.docs.where((doc) {
               final data = doc.data();
-              return data['nationalIdUrl'] != null && data['nationalIdUrl'].toString().isNotEmpty;
+              final isVerified = data['isVerified'] ?? false;
+              return !isVerified && data['nationalIdUrl'] != null && data['nationalIdUrl'].toString().isNotEmpty;
             }).length;
           }),
     );
@@ -1831,9 +1830,11 @@ class AdminController extends GetxController {
                           child: RadioListTile<bool>(
                             title: const Text('مشروع', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                             value: true,
+                            // ignore: deprecated_member_use
                             groupValue: isProjectSelected,
                             contentPadding: EdgeInsets.zero,
                             activeColor: AppTheme.goldAccent,
+                            // ignore: deprecated_member_use
                             onChanged: (val) {
                               setState(() {
                                 isProjectSelected = val!;
@@ -1846,9 +1847,11 @@ class AdminController extends GetxController {
                           child: RadioListTile<bool>(
                             title: const Text('طلب حالة', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                             value: false,
+                            // ignore: deprecated_member_use
                             groupValue: isProjectSelected,
                             contentPadding: EdgeInsets.zero,
                             activeColor: AppTheme.goldAccent,
+                            // ignore: deprecated_member_use
                             onChanged: (val) {
                               setState(() {
                                 isProjectSelected = val!;

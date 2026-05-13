@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../../data/services/cloudinary_service.dart';
+import '../../../data/services/image_compression_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -677,7 +678,9 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                               
                               if (imageFile != null) {
                                 try {
-                                  final result = await CloudinaryService.uploadMedia(imageFile!);
+                                  // ضغط صورة المركبة قبل الرفع
+                                  final compressedFile = await ImageCompressionService.compressImage(imageFile!);
+                                  final result = await CloudinaryService.uploadMedia(compressedFile ?? imageFile!);
                                   if (result != null) {
                                     finalImageUrl = result;
                                   }

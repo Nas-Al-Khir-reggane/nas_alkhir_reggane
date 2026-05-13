@@ -230,7 +230,7 @@ service cloud.firestore {
       allow update: if isSuperAdmin() || 
                        (isAdmin() && resource.data.role != 'superAdmin' && resource.data.role != 'superadmin' && request.resource.data.role != 'superAdmin' && request.resource.data.role != 'superadmin') || 
                        (isOwner(userId) && ownerSafeUserUpdate());
-      allow delete: if isSuperAdmin();
+      allow delete: if isSuperAdmin() || isOwner(userId);
     }
 
     // ─── الإشعارات ──────────────────────────────────────────
@@ -294,12 +294,23 @@ service cloud.firestore {
 
     // ─── التبرعات ─────────────────────────────────────────
     match /donations/{donId} {
-      allow read:          if isLoggedIn() && (
+      allow read: if isLoggedIn() && (
         resource.data.donorId == request.auth.uid || isAdmin()
       );
-      allow create:        if isLoggedIn();
-      allow update:        if isAdmin();
-      allow delete:        if isSuperAdmin();
+
+      // ✅ المسؤول يستطيع التسجيل إدارياً بدون إثبات (registeredByAdmin = true)
+      // ✅ المتبرع العادي يجب أن يرفع proofImageUrl — هذا القيد يُطبَّق على جميع
+      //    نسخ التطبيق (القديمة والجديدة) لأنه في مستوى قاعدة البيانات
+      allow create: if isLoggedIn() && (
+        isAdmin() ||
+        (
+          request.resource.data.get('proofImageUrl', '') != '' &&
+          request.resource.data.get('proofImageUrl', null) != null
+        )
+      );
+
+      allow update: if isAdmin();
+      allow delete: if isSuperAdmin();
     }
 
     // ─── المشاريع ─────────────────────────────────────────
@@ -421,6 +432,13 @@ service cloud.firestore {
     // ─── نداءات حزب المائة ألف (Hizb Alerts) ──────────────────
     match /hizb_alerts/{alertId} {
       allow read, write: if isAdmin();
+    }
+
+    // ─── البلاغات (Reports) ───────────────────────────────────
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isLoggedIn();
+      allow update, delete: if isAdmin();
     }
 
     // ─── البيانات الوصفية (Counters and Metadata) ────────────

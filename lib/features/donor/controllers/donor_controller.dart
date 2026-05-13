@@ -17,6 +17,7 @@ import '../../auth/controllers/auth_controller.dart';
 import '../widgets/donation_certificate_widget.dart';
 import '../screens/donate_screen.dart';
 import '../../../data/services/cloudinary_service.dart';
+import '../../../data/services/image_compression_service.dart';
 import '../../../data/services/notification_service.dart';
 
 class DonorController extends GetxController {
@@ -104,7 +105,7 @@ class DonorController extends GetxController {
   void showCertificate() {
     if (totalDonated.value <= 0) {
       Get.snackbar('تنبيه', 'يجب أن تساهم في تبرع واحد على الأقل للحصول على شهادة.',
-          backgroundColor: AppTheme.warningColor.withOpacity(0.15),
+          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15),
           colorText: Colors.black);
       return;
     }
@@ -283,7 +284,9 @@ class DonorController extends GetxController {
 
       // رفع الصورة إلى Cloudinary إذا وجدت
       if (selectedProofImage.value != null) {
-        proofUrl = await CloudinaryService.uploadMedia(selectedProofImage.value!);
+        // ضغط الصورة قبل الرفع
+        final compressedFile = await ImageCompressionService.compressImage(selectedProofImage.value!);
+        proofUrl = await CloudinaryService.uploadMedia(compressedFile ?? selectedProofImage.value!);
         
         if (proofUrl != null) {
           donationData['proofImageUrl'] = proofUrl;
