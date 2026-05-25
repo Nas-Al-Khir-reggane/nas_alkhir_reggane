@@ -3,7 +3,7 @@ import 'package:share_plus/share_plus.dart';
 /// أداة مشاركة التطبيق مع الأصدقاء
 class ShareHelper {
   static const String _appUrl =
-      'https://github.com/ahmed-majija/nas_alkhir_reggane/releases';
+      'https://play.google.com/store/apps/details?id=com.nasalkheir.dz.app';
 
   static Future<void> shareApp() async {
     const message = '🌿 تطبيق جمعية ناس الخير - رقان\n\n'

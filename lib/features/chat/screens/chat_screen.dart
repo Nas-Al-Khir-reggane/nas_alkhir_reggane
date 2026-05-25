@@ -23,7 +23,7 @@ import 'package:path/path.dart' as p;
 
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/services/notification_service.dart';
-import '../../../data/services/cloudinary_service.dart';
+import '../../../data/services/firebase_storage_service.dart';
 import '../../../data/services/image_compression_service.dart';
 import '../../../data/models/chat_message_model.dart';
 import '../../../data/models/user_model.dart';
@@ -2254,15 +2254,78 @@ class _ChatScreenState extends State<ChatScreen> {
       );
       
       if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-        });
-        // إرسال الصورة مباشرة بعد الاختيار لتجربة أكثر سلاسة (مثل واتساب)
-        _sendMessage();
+        _showImageConfirmDialog(File(image.path));
       }
     } catch (e) {
       _handleError('اختيار الصورة', e);
     }
+  }
+
+  void _showImageConfirmDialog(File imageFile) {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'تأكيد إرسال الصورة',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.tajawal(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              constraints: const BoxConstraints(maxHeight: 250),
+              width: double.infinity,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: Image.file(
+                  imageFile,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'هل أنت متأكد من رغبتك في إرسال هذه الصورة للمحادثات؟',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.tajawal(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Get.back(),
+                  child: Text('إلغاء', style: GoogleFonts.tajawal(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onPressed: () {
+                    Get.back();
+                    setState(() {
+                      _selectedImage = imageFile;
+                    });
+                    _sendMessage();
+                  },
+                  icon: const Icon(Icons.send_rounded, color: Colors.white, size: 16),
+                  label: Text('إرسال', style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _startRecording() async {
@@ -2396,9 +2459,17 @@ class _ChatScreenState extends State<ChatScreen> {
           if (_selectedImage != null) {
             // ضغط الصورة قبل الرفع
             final compressedFile = await ImageCompressionService.compressImage(_selectedImage!);
-            imageUrl = await CloudinaryService.uploadMedia(compressedFile ?? _selectedImage!);
+            final fileName = 'img_${DateTime.now().millisecondsSinceEpoch}.png';
+            imageUrl = await FirebaseStorageService.uploadMedia(
+              compressedFile ?? _selectedImage!,
+              'chats/$chatId/$fileName',
+            );
           } else if (audioPath != null) {
-            audioUrl = await CloudinaryService.uploadMedia(File(audioPath));
+            final fileName = 'audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
+            audioUrl = await FirebaseStorageService.uploadMedia(
+              File(audioPath),
+              'chats/$chatId/$fileName',
+            );
           }
         } catch (e) {
           _handleError('رفع الوسائط', e);

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -8,7 +9,11 @@ import 'package:get/get.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../controllers/admin_controller.dart';
+import '../widgets/blood_stats_graphic.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 
@@ -21,8 +26,10 @@ class ReportsScreen extends StatefulWidget {
 
 class _ReportsScreenState extends State<ReportsScreen> {
   final AdminController controller = Get.find<AdminController>();
+  final ScreenshotController _screenshotController = ScreenshotController();
   String _filter = 'شهري';
   bool _isGeneratingPdf = false;
+  bool _isSharingBlood = false;
 
   String _translateServiceType(String type) => AppConstants.translateServiceType(type);
 
@@ -62,12 +69,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final monthlyReqCount = controller.monthlyRequests.isEmpty ? 0 : controller.monthlyRequests.map((e) => e['count'] as int).fold(0, (a, b) => a + b);
       final activeProj = controller.activeProjects.value;
 
-      // Fetch all logs
-      final logsSnapshot = await FirebaseFirestore.instance
-          .collection('notifications')
-          .orderBy('createdAt', descending: true)
-          .get();
-      final logs = logsSnapshot.docs.map((e) => e.data()).toList();
+
 
       pdf.addPage(
         pw.MultiPage(
@@ -82,24 +84,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 child: pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text("تقرير الإحصاءات والأداء", style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: const PdfColor(0, 0.5, 0.2))),
-                    pw.Text("جمعية ناس الخير", style: pw.TextStyle(fontSize: 18, color: PdfColors.grey700)),
+                    pw.Text("تقرير الإحصاءات والأداء الشامل", style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: const PdfColor(0, 0.5, 0.2))),
+                    pw.Text("جمعية ناس الخير رغان", style: pw.TextStyle(fontSize: 16, color: PdfColors.grey700)),
                   ],
                 )
               ),
-              pw.SizedBox(height: 20),
+              pw.SizedBox(height: 15),
               pw.Container(
-                padding: const pw.EdgeInsets.all(16),
+                padding: const pw.EdgeInsets.all(12),
                 decoration: pw.BoxDecoration(
                   color: PdfColors.grey100,
-                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
                   border: pw.Border.all(color: PdfColors.grey300),
                 ),
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text("مخصل عام:", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-                    pw.SizedBox(height: 10),
+                    pw.Text("ملخص المؤشرات العامة:", style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 8),
                     pw.Table(
                       border: pw.TableBorder.all(color: PdfColors.grey300),
                       columnWidths: {
@@ -107,125 +109,170 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         1: const pw.FlexColumnWidth(1),
                       },
                       children: [
-                        _buildPdfRow("إجمالي التبرعات (المؤكدة)", "$totalDons د.ج"),
-                        _buildPdfRow("عدد الطلبات والمشوارع", "$monthlyReqCount طلب مسجل حديثاً"),
+                        _buildPdfRow("إجمالي التبرعات المالية (دج)", "$totalDons د.ج"),
+                        _buildPdfRow("عدد الطلبات المسجلة", "$monthlyReqCount طلب"),
                         _buildPdfRow("المشاريع النشطة والجارية", "$activeProj مشروع قائم"),
+                        _buildPdfRow("المستفيدين التقريبي", "${monthlyReqCount * 3} مستفيد"),
                       ],
                     ),
                   ],
                 ),
               ),
-              pw.SizedBox(height: 30),
-              pw.SizedBox(height: 30),
-              pw.Text("توزيع الخدمات:", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: const PdfColor(0, 0.5, 0.2))),
-              pw.SizedBox(height: 10),
+              pw.SizedBox(height: 20),
+              pw.Text("توزيع طلبات الخدمات التنموية:", style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: const PdfColor(0, 0.5, 0.2))),
+              pw.SizedBox(height: 8),
               pw.Table(
                 border: pw.TableBorder.all(color: PdfColors.grey300),
                 children: [
                   pw.TableRow(
                     decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                     children: [
-                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text("نوع الخدمة", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text("عدد الطلبات", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text("النسبة", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text("نوع الخدمة", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text("عدد الطلبات", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text("النسبة المئوية", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
                     ]
                   ),
                   ...controller.serviceTypeDistribution.map((e) => pw.TableRow(
                     children: [
-                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(_translateServiceType(e['name']))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(e['count'].toString())),
-                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text("${e['percentage']}%")),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(_translateServiceType(e['name']), style: const pw.TextStyle(fontSize: 9))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(e['count'].toString(), style: const pw.TextStyle(fontSize: 9))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text("${e['percentage']}%", style: const pw.TextStyle(fontSize: 9))),
                     ]
                   ))
                 ]
               ),
               if (controller.activeGoals.isNotEmpty) ...[
-                pw.SizedBox(height: 30),
-                pw.Text("الأهداف الإستراتيجية والتشغيلية:", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: const PdfColor(0, 0.5, 0.2))),
-                pw.SizedBox(height: 10),
+                pw.SizedBox(height: 20),
+                pw.Text("تقدم الأهداف الإستراتيجية والتشغيلية:", style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: const PdfColor(0, 0.5, 0.2))),
+                pw.SizedBox(height: 8),
                 ...controller.activeGoals.map((goal) => pw.Container(
-                  margin: const pw.EdgeInsets.only(bottom: 8),
-                  padding: const pw.EdgeInsets.all(10),
-                  decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6))),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  margin: const pw.EdgeInsets.only(bottom: 6),
+                  padding: const pw.EdgeInsets.all(8),
+                  decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4))),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text(goal.title, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
-                      pw.SizedBox(height: 4),
-                      pw.Text("الهدف: ${goal.targetValue} | المُحقق: ${goal.currentValue} (${(goal.progressPercentage * 100).toStringAsFixed(1)}%)", style: pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+                      pw.Text(goal.title, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                      pw.Text("المستهدف: ${goal.targetValue} | الحالي: ${goal.currentValue} (${(goal.progressPercentage * 100).toStringAsFixed(1)}%)", style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
                     ]
                   )
                 ))
               ],
               if (controller.activeProjectsList.isNotEmpty) ...[
-                pw.SizedBox(height: 30),
-                pw.Text("المشاريع القائمة وتفاصيلها المادية:", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: const PdfColor(0, 0.5, 0.2))),
-                pw.SizedBox(height: 10),
+                pw.SizedBox(height: 20),
+                pw.Text("المشاريع القائمة وتفاصيلها المادية:", style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: const PdfColor(0, 0.5, 0.2))),
+                pw.SizedBox(height: 8),
                 pw.Table(
                   border: pw.TableBorder.all(color: PdfColors.grey300),
                   children: [
                     pw.TableRow(
                       decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                       children: [
-                        pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text("اسم المشروع", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-                        pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text("الميزانية المستهدفة", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-                        pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text("المبلغ المجموع", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text("اسم المشروع", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text("الميزانية المستهدفة", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text("المبلغ المجموع", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
                       ]
                     ),
                     ...controller.activeProjectsList.map((p) => pw.TableRow(
                       children: [
-                        pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(p.name)),
-                        pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text("${p.budget} دج")),
-                        pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text("${p.collected} دج", style: pw.TextStyle(color: const PdfColor(0, 0.5, 0)))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(p.name, style: const pw.TextStyle(fontSize: 9))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text("${p.budget} دج", style: const pw.TextStyle(fontSize: 9))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text("${p.collected} دج", style: pw.TextStyle(color: const PdfColor(0, 0.5, 0), fontSize: 9))),
                       ]
                     ))
                   ]
                 ),
               ],
-              pw.SizedBox(height: 40),
-              pw.Text("سجل النشاط العام (العمليات التفصيلية):", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: const PdfColor(0, 0.5, 0.2))),
-              pw.SizedBox(height: 10),
-              ...logs.map((log) {
-                final date = (log['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
-                final dateStr = DateFormat('yyyy/MM/dd HH:mm').format(date);
-                final title = log['title'] ?? 'عملية';
-                final senderName = log['senderName'] ?? 'النظام';
-                final body = log['body'] ?? '';
-
-                return pw.Container(
-                  margin: const pw.EdgeInsets.only(bottom: 12),
-                  padding: const pw.EdgeInsets.all(12),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.grey50,
-                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
-                    border: pw.Border.all(color: PdfColors.grey300),
-                  ),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Row(
-                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                        children: [
-                          pw.Text(title, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
-                          pw.Text(dateStr, style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
-                        ],
+              if (controller.totalBloodUnits.value > 0 || controller.userCountByBloodType.isNotEmpty) ...[
+                pw.SizedBox(height: 20),
+                pw.Text("إحصائيات الدم الشاملة:", style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: const PdfColor(0.7, 0, 0))),
+                pw.SizedBox(height: 8),
+                pw.Table(
+                  border: pw.TableBorder.all(color: PdfColors.grey300),
+                  children: [
+                    _buildPdfRow("إجمالي وحدات بنك الدم المتوفرة", "${controller.totalBloodUnits.value} وحدة"),
+                    _buildPdfRow("عدد الأرواح التي تم إنقاذها", "${controller.livesSaved.value} شخص"),
+                    _buildPdfRow("إجمالي الأعضاء المسجلين فصائلهم", "${controller.totalRegisteredUsers.value} عضو"),
+                  ],
+                ),
+                pw.SizedBox(height: 10),
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    if (controller.totalBloodUnits.value > 0)
+                      pw.Expanded(
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text("مخزون بنك الدم بالوحدات:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: const PdfColor(0.7, 0, 0))),
+                            pw.SizedBox(height: 4),
+                            pw.Table(
+                              border: pw.TableBorder.all(color: PdfColors.grey300),
+                              children: [
+                                pw.TableRow(
+                                  decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                                  children: [
+                                    pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text("الفصيلة", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
+                                    pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text("الكمية", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
+                                  ]
+                                ),
+                                ...controller.bloodStatsByType.entries.map((e) => pw.TableRow(
+                                  children: [
+                                    pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(e.key.replaceAll('_pos', '+').replaceAll('_neg', '-').toUpperCase(), style: const pw.TextStyle(fontSize: 8))),
+                                    pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text("${e.value} وحدة", style: const pw.TextStyle(fontSize: 8))),
+                                  ]
+                                ))
+                              ]
+                            ),
+                          ],
+                        ),
                       ),
-                      pw.SizedBox(height: 4),
-                      pw.Text("بواسطة: $senderName", style: pw.TextStyle(fontSize: 12, color: const PdfColor(0, 0.4, 0.1))),
-                      pw.SizedBox(height: 6),
-                      pw.Text(body, style: pw.TextStyle(fontSize: 12)),
-                    ],
-                  ),
-                );
-              }),
-              pw.SizedBox(height: 40),
-              pw.Divider(color: PdfColors.grey400),
-              pw.SizedBox(height: 10),
+                    if (controller.totalBloodUnits.value > 0 && controller.userCountByBloodType.isNotEmpty)
+                      pw.SizedBox(width: 15),
+                    if (controller.userCountByBloodType.isNotEmpty)
+                      pw.Expanded(
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text("توزيع الأعضاء المسجلين حسب الزمرة:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: const PdfColor(0, 0.4, 0.8))),
+                            pw.SizedBox(height: 4),
+                            pw.Table(
+                              border: pw.TableBorder.all(color: PdfColors.grey300),
+                              children: [
+                                pw.TableRow(
+                                  decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                                  children: [
+                                    pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text("الزمرة", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
+                                    pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text("الأعضاء", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
+                                  ]
+                                ),
+                                ...controller.userCountByBloodType.entries.map((e) {
+                                  final totalUsers = controller.totalRegisteredUsers.value;
+                                  final pct = totalUsers > 0 ? (e.value / totalUsers * 100).toStringAsFixed(1) : '0';
+                                  return pw.TableRow(
+                                    children: [
+                                      pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(e.key, style: const pw.TextStyle(fontSize: 8))),
+                                      pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text("${e.value} (%$pct)", style: const pw.TextStyle(fontSize: 8))),
+                                    ]
+                                  );
+                                })
+                              ]
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+
+              pw.SizedBox(height: 30),
+              pw.Divider(color: PdfColors.grey400, thickness: 0.5),
+              pw.SizedBox(height: 8),
               pw.Center(
-                child: pw.Text("نشكر جميع المحسنين وفاعلي الخير على المساهمة.", style: pw.TextStyle(fontSize: 14, color: PdfColors.grey600)),
+                child: pw.Text("نسأل الله القبول والبركة في عمل الجميع.", style: pw.TextStyle(fontSize: 12, color: PdfColors.grey600)),
               ),
               pw.Center(
-                child: pw.Text("تم استخراج هذا التقرير آلياً عبر نظام إدارة ناس الخير.", style: pw.TextStyle(fontSize: 10, color: PdfColors.grey500)),
+                child: pw.Text("تم استخراج التقرير آلياً - نظام ناس الخير رغان الإداري الذكي.", style: pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
               ),
             ];
           },
@@ -244,8 +291,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
   pw.TableRow _buildPdfRow(String label, String value) {
     return pw.TableRow(
       children: [
-        pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(label)),
-        pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(value, style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+        pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(label, style: const pw.TextStyle(fontSize: 9))),
+        pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(value, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
       ]
     );
   }
@@ -310,7 +357,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
         children: [
           Container(width: 4, height: 20, decoration: BoxDecoration(color: AppTheme.primaryGreen, borderRadius: BorderRadius.circular(2))),
           const SizedBox(width: 8),
-          Text(title, style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+          Expanded(
+            child: Text(
+              title, 
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
         ],
       ),
     );
@@ -464,7 +516,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         backgroundColor: AppTheme.backgroundColor,
         body: SafeArea(
@@ -506,6 +558,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         child: Text("سجل النشاطات المفصل", style: const TextStyle(fontFamily: 'Tajawal')),
                       ),
                     ),
+                    Tab(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text("إحصائيات الدم", style: const TextStyle(fontFamily: 'Tajawal')),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -514,6 +572,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   children: [
                     _buildStatsTab(),
                     _buildDetailedLogsTab(),
+                    _buildBloodStatsTab(),
                   ],
                 ),
               ),
@@ -598,13 +657,28 @@ class _ReportsScreenState extends State<ReportsScreen> {
           return const Center(child: Text('حدث خطأ في تحميل السجل', style: TextStyle(color: AppTheme.errorColor)));
         }
 
-        final docs = snapshot.data?.docs ?? [];
+        // فلترة الرسائل والمحادثات اليومية لتقليل الفوضى
+        final docs = (snapshot.data?.docs ?? []).where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final type = (data['type'] ?? '').toString();
+          return type != 'new_message' && type != 'message';
+        }).toList();
+
         if (docs.isEmpty) {
-          return Center(child: Text('لا توجد نشاطات مسجلة', style: TextStyle(color: AppTheme.textHint)));
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.assignment_turned_in_rounded, size: 64, color: AppTheme.textHint.withValues(alpha: 0.2)),
+                const SizedBox(height: 16),
+                Text('لا توجد نشاطات مسجلة حالياً', style: TextStyle(color: AppTheme.textHint, fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'Tajawal')),
+              ],
+            ),
+          );
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.only(left: 20, right: 20, bottom: 80, top: 10),
+          padding: const EdgeInsets.only(left: 20, right: 20, bottom: 100, top: 10),
           itemCount: docs.length,
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
@@ -612,79 +686,71 @@ class _ReportsScreenState extends State<ReportsScreen> {
             final title = data['title'] ?? 'عملية بالنظام';
             final body = data['body'] ?? '';
             final senderName = data['senderName'] ?? 'النظام';
+            final logType = data['type'] as String?;
+            final color = _getLogColor(logType);
             
             return FadeInUp(
-              delay: Duration(milliseconds: (index % 10) * 50),
+              delay: Duration(milliseconds: (index % 10) * 40),
               child: Container(
-                margin: const EdgeInsets.only(bottom: 16),
+                margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
                   color: AppTheme.surfaceColor,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.glassBorder),
+                  border: Border.all(color: color.withValues(alpha: 0.15)),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4)),
+                    BoxShadow(color: color.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 3)),
                   ],
                 ),
-                child: IntrinsicHeight(
-                  child: Row(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 8,
-                        decoration: BoxDecoration(
-                          color: _getLogColor(data['type']),
-                          borderRadius: const BorderRadius.horizontal(right: Radius.circular(16)),
-                        ),
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: _getLogColor(data['type']).withValues(alpha: 0.15),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(_getLogIcon(data['type']), color: _getLogColor(data['type']), size: 20),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary)),
-                                        const SizedBox(height: 4),
-                                        Text('القائم بالعملية: $senderName', style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12, fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(DateFormat('dd/MM/yyyy').format(date), style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
-                                      Text(DateFormat('HH:mm').format(date), style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.backgroundColor,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: AppTheme.glassBorder),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(_getLogIcon(logType), color: color, size: 18),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary, fontFamily: 'Tajawal')),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    Text('بواسطة: ', style: TextStyle(color: AppTheme.textHint, fontSize: 11, fontFamily: 'Tajawal')),
+                                    Text(senderName, style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+                                  ],
                                 ),
-                                child: Text(body, style: TextStyle(color: AppTheme.textSecondary, fontSize: 14, height: 1.5)),
-                              ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(DateFormat('yyyy/MM/dd').format(date), style: TextStyle(color: AppTheme.textHint, fontSize: 10, fontFamily: 'Tajawal')),
+                              Text(DateFormat('HH:mm').format(date), style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
                             ],
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Get.isDarkMode ? AppTheme.backgroundColor : Colors.black.withValues(alpha: 0.02),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppTheme.glassBorder),
                         ),
+                        child: Text(body, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, height: 1.4, fontFamily: 'Tajawal')),
                       ),
                     ],
                   ),
@@ -770,6 +836,218 @@ class _ReportsScreenState extends State<ReportsScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildBloodStatsTab() {
+    return Obx(() {
+      if (controller.isLoading.value) {
+        return const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen));
+      }
+
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildBloodHeader(),
+            const SizedBox(height: 16),
+            _buildBloodSummaryCards(),
+            const SizedBox(height: 30),
+            _buildRegisteredUsersBloodStatsSection(),
+            const SizedBox(height: 120),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildRegisteredUsersBloodStatsSection() {
+    final userCounts = controller.userCountByBloodType;
+    final totalUsers = controller.totalRegisteredUsers.value;
+    
+    if (userCounts.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle('توزيع زمر دم الأعضاء المسجلين'),
+          _buildChartEmptyState(),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('توزيع فصائل دم الأعضاء المسجلين (إجمالي: $totalUsers عضو)'),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: AppTheme.glassDecoration,
+          child: Column(
+            children: [
+              // رسم بياني دائري مبسط لزمر الأعضاء المسجلين
+              SizedBox(
+                height: 200,
+                child: PieChart(
+                  PieChartData(
+                    sectionsSpace: 3,
+                    centerSpaceRadius: 35,
+                    sections: userCounts.entries.map((e) {
+                      final percentage = totalUsers > 0 ? (e.value / totalUsers * 100).toStringAsFixed(1) : '0';
+                      final color = _getBloodTypeColor(e.key);
+                      return PieChartSectionData(
+                        value: e.value.toDouble(),
+                        title: '${e.key}\n$percentage%',
+                        color: color,
+                        radius: 50,
+                        titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Tajawal'),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // قائمة تفصيلية بالأعداد والنسب المئوية
+              Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.glassBorder),
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: userCounts.length,
+                  separatorBuilder: (context, index) => Divider(height: 1, color: AppTheme.glassBorder),
+                  itemBuilder: (context, index) {
+                    final entry = userCounts.entries.toList()[index];
+                    final label = entry.key;
+                    final count = entry.value;
+                    final pct = totalUsers > 0 ? (count / totalUsers * 100).toStringAsFixed(1) : '0';
+                    final color = _getBloodTypeColor(label);
+                    
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: color.withValues(alpha: 0.1),
+                        child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Tajawal')),
+                      ),
+                      title: Text('فصيلة $label', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontFamily: 'Tajawal')),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: LinearProgressIndicator(
+                          value: totalUsers > 0 ? count / totalUsers : 0,
+                          backgroundColor: AppTheme.glassBorder,
+                          color: color,
+                          minHeight: 6,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('$count عضو', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontFamily: 'Tajawal', fontSize: 14)),
+                          Text('%$pct', style: TextStyle(color: AppTheme.textHint, fontSize: 12, fontFamily: 'Tajawal')),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _getBloodTypeColor(String bloodType) {
+    switch (bloodType.toUpperCase()) {
+      case 'A+': return Colors.red[800]!;
+      case 'A-': return Colors.red[400]!;
+      case 'B+': return Colors.pink[800]!;
+      case 'B-': return Colors.pink[400]!;
+      case 'AB+': return Colors.purple[800]!;
+      case 'AB-': return Colors.purple[400]!;
+      case 'O+': return Colors.orange[800]!;
+      case 'O-': return Colors.orange[500]!;
+      default: return Colors.red[600]!;
+    }
+  }
+
+  Widget _buildBloodHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text("تحليلات فصائل الدم", style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+        IconButton(
+          icon: _isSharingBlood 
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryGreen))
+              : const Icon(Icons.share_rounded, color: AppTheme.primaryGreen),
+          onPressed: _shareBloodStats,
+          tooltip: 'مشاركة الإحصائيات كصورة',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBloodSummaryCards() {
+    final totalDonors = controller.userCountByBloodType.values.fold(0, (a, b) => a + b);
+    return GridView.count(
+      crossAxisCount: 2,
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 1.2,
+      children: [
+        _buildMetricCard(
+          'المتبرعون المسجلين',
+          totalDonors.toString(),
+          Icons.people_alt_rounded,
+          Colors.blue,
+          100,
+        ),
+        _buildMetricCard(
+          'عمليات إنقاذ ميسرة',
+          controller.livesSaved.value.toString(),
+          Icons.favorite,
+          Colors.green,
+          200,
+        ),
+      ],
+    );
+  }
+
+
+
+  Future<void> _shareBloodStats() async {
+    setState(() => _isSharingBlood = true);
+    try {
+      final image = await _screenshotController.captureFromWidget(
+        Material(
+          child: BloodStatsGraphic(
+            userCounts: controller.userCountByBloodType,
+            totalRegisteredUsers: controller.totalRegisteredUsers.value,
+            livesSaved: controller.livesSaved.value,
+          ),
+        ),
+      );
+
+      final directory = await getTemporaryDirectory();
+      final imagePath = await File('${directory.path}/blood_stats.png').create();
+      await imagePath.writeAsBytes(image);
+
+      final shareText = 'إحصائيات مجتمع متبرعي الدم - جمعية ناس الخير رغان 🩸\n\n'
+          'ساهم معنا في إنقاذ الأرواح بالتسجيل وتحديد فصيلة دمك في تطبيق ناس الخير رقان.\n'
+          'رابط تحميل التطبيق المباشر على متجر قوقل بلاي:\n'
+          'https://play.google.com/store/apps/details?id=com.nasalkheir.dz.app';
+
+      await Share.shareXFiles([XFile(imagePath.path)], text: shareText);
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل تصدير الإحصائيات: $e', backgroundColor: AppTheme.errorColor, colorText: Colors.white);
+    } finally {
+      setState(() => _isSharingBlood = false);
+    }
   }
 }
 

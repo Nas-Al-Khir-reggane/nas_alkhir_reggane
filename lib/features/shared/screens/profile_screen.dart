@@ -10,15 +10,15 @@ import '../../../data/models/user_model.dart';
 import '../../../core/services/theme_service.dart';
 import '../../../core/routes/app_routes.dart';
 import '../widgets/user_avatar.dart';
-import '../../../data/services/cloudinary_service.dart';
+import '../../../data/services/firebase_storage_service.dart';
 import '../../../data/services/image_compression_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import '../widgets/role_switcher_widget.dart';
 import '../widgets/membership_card_dialog.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:in_app_review/in_app_review.dart';
 import '../../../core/utils/share_helper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../data/services/abuse_report_service.dart';
@@ -129,26 +129,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
 
-                // شريط التحويل بين الأدوار
-                if (ownProfile) ...[
-                  FadeInUp(delay: const Duration(milliseconds: 50), child: const RoleSwitcherWidget()),
-                  const SizedBox(height: 16),
-                ],
-
-                // ─── تذكير دوري برفع بطاقة الهوية ───────────────────
-                if (ownProfile && !user.isVerified && (user.nationalIdUrl == null || user.nationalIdUrl!.isEmpty)) ...[
+                // ─── توثيق الهوية (المدمج والمحدث بطابع أحمر) ────────
+                if (ownProfile && !user.isVerified) ...[
                   FadeInUp(
                     delay: const Duration(milliseconds: 60),
-                    child: _buildIdVerificationReminderBanner(),
-                  ),
-                  const SizedBox(height: 14),
-                ],
-
-                // ─── تلميح للمتطوع بتغيير الصفة ──────────────────────
-                if (ownProfile && user.role == UserRole.worker) ...[
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 70),
-                    child: _buildWorkerRoleHintBanner(),
+                    child: _buildVerificationCard(user),
                   ),
                   const SizedBox(height: 14),
                 ],
@@ -220,14 +205,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 14),
                 ],
 
-                // ─── توثيق الهوية ─────────────────────────────────────
-                if (ownProfile) ...[
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 240),
-                    child: _buildVerificationCard(user),
-                  ),
-                  const SizedBox(height: 14),
-                ],
+
 
                 // ─── الإعدادات (للملف الشخصي فقط) ───────────────────
                 if (ownProfile) ...[
@@ -716,47 +694,154 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // =====================================================================
-  // بطاقة توثيق الهوية
+  // بطاقة توثيق الهوية الرسمية (محدثة بطابع أحمر مدمج)
   // =====================================================================
   Widget _buildVerificationCard(UserModel user) {
     if (user.isVerified) return const SizedBox.shrink();
     final hasPendingId = user.nationalIdUrl != null && user.nationalIdUrl!.isNotEmpty;
 
-    return _buildSectionCard(
-      icon: Icons.verified_user_outlined,
-      title: 'توثيق الهوية الرسمية',
-      children: [
-        if (hasPendingId)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-            child: Row(children: [
-              const Icon(Icons.timer_outlined, color: Colors.orange, size: 18),
-              const SizedBox(width: 8),
-              Expanded(child: Text(
-                'تم رفع البطاقة · بانتظار المراجعة',
-                style: GoogleFonts.tajawal(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.bold),
-              )),
-            ]),
-          )
-        else ...[
-          Text(
-            'ارفع بطاقتك الوطنية للحصول على رقم العضوية والتوثيق الرسمي.',
-            style: GoogleFonts.tajawal(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppTheme.cardShadow,
+        border: Border.all(
+          color: hasPendingId ? Colors.orange.withValues(alpha: 0.4) : Colors.redAccent.withValues(alpha: 0.4),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: (hasPendingId ? Colors.orange : Colors.redAccent).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  hasPendingId ? Icons.hourglass_empty_rounded : Icons.gpp_maybe_rounded,
+                  color: hasPendingId ? Colors.orange : Colors.redAccent,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'توثيق الهوية الرسمية',
+                style: GoogleFonts.tajawal(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  color: hasPendingId ? Colors.orange : Colors.redAccent,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: AppTheme.gradientButton(
-              text: 'رفع بطاقة التعريف الوطنية',
-              icon: Icons.upload_file_rounded,
-              onPressed: _pickAndUploadNationalId,
+          Divider(color: Theme.of(context).dividerColor, height: 1),
+          const SizedBox(height: 12),
+          if (hasPendingId) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.timer_outlined, color: Colors.orange, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'تم رفع بطاقة الهوية بنجاح',
+                          style: GoogleFonts.tajawal(
+                            fontSize: 13,
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'طلب التوثيق قيد المراجعة حالياً من قبل الإدارة. سيتم تفعيل حسابك وحذف صورة البطاقة فور التحقق لحفظ خصوصيتك.',
+                          style: GoogleFonts.tajawal(
+                            fontSize: 11,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ] else ...[
+            Text(
+              'حسابك غير موثق حالياً. يرجى رفع صورة واضحة لبطاقة التعريف الوطنية للحصول على رقم العضوية والتوثيق الرسمي والاستفادة من كامل الميزات.',
+              style: GoogleFonts.tajawal(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.15)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.shield_outlined, color: Colors.redAccent, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'رسالة طمأنينة: البطاقة تُستخدم فقط للتأكد من الهوية، وسيتم حذف صورتها نهائياً من خوادمنا فور تفعيل التوثيق لحفظ خصوصيتك وأمان بياناتك.',
+                      style: GoogleFonts.tajawal(
+                        fontSize: 11,
+                        color: Colors.redAccent[700] ?? Colors.red,
+                        fontWeight: FontWeight.w700,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _pickAndUploadNationalId,
+                icon: const Icon(Icons.upload_file_rounded, color: Colors.white, size: 20),
+                label: Text(
+                  'رفع بطاقة التعريف الوطنية',
+                  style: GoogleFonts.tajawal(fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  shadowColor: Colors.redAccent.withValues(alpha: 0.3),
+                  elevation: 2,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -792,6 +877,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           iconColor: Colors.green,
           title: 'سياسة الخصوصية',
           onTap: () => Get.toNamed(AppRoutes.privacyPolicy),
+        ),
+        AppTheme.listItem(
+          icon: Icons.star_rate_rounded,
+          iconColor: Colors.amber,
+          title: 'تقييم التطبيق',
+          onTap: () => _openReview(),
         ),
         AppTheme.listItem(
           icon: Icons.share_rounded,
@@ -1176,123 +1267,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // =====================================================================
-  // بانر تذكير رفع بطاقة الهوية الوطنية (دوري)
-  // =====================================================================
-  Widget _buildIdVerificationReminderBanner() {
-    return GestureDetector(
-      onTap: () async {
-        // التمرير إلى قسم التوثيق أو تشغيل رفع البطاقة مباشرة
-        _pickAndUploadNationalId();
-      },
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFFF6B35), Color(0xFFFF4444)],
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-          ),
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.red.withValues(alpha: 0.25),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.badge_rounded, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '⚠️ حسابك لم يُوثَّق بعد',
-                    style: GoogleFonts.tajawal(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'ارفع بطاقتك الوطنية للحصول على رقم العضوية والتوثيق الرسمي. اضغط هنا للرفع الآن.',
-                    style: GoogleFonts.tajawal(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.upload_rounded, color: Colors.white, size: 22),
-          ],
-        ),
-      ),
-    );
-  }
 
-  // =====================================================================
-  // تلميح المتطوع بإمكانية تغيير الصفة
-  // =====================================================================
-  Widget _buildWorkerRoleHintBanner() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryGreen.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryGreen.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(Icons.swap_horiz_rounded, color: AppTheme.primaryGreen, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'تغيير الصفة متاح',
-                  style: GoogleFonts.tajawal(
-                    color: AppTheme.primaryGreen,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'يمكنك التبديل بين صفة "متطوع" و"مستفيد" من شريط الأدوار أعلاه في أي وقت.',
-                  style: GoogleFonts.tajawal(
-                    color: AppTheme.textSecondary,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(Icons.info_outline_rounded, color: AppTheme.primaryGreen.withValues(alpha: 0.5), size: 18),
-        ],
-      ),
-    );
-  }
 
   // =====================================================================
   // حقل بلدية معطّل (قبل اختيار الولاية)
@@ -1334,7 +1309,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
 
       // 2. رفع الملف المضغوط
-      final url = await CloudinaryService.uploadMedia(compressedFile);
+      final userId = authController.currentUser.value?.id ?? 'unknown';
+      final fileName = 'national_id_${DateTime.now().millisecondsSinceEpoch}.png';
+      final url = await FirebaseStorageService.uploadMedia(compressedFile, 'users/$userId/$fileName');
       if (url != null) {
         await FirebaseFirestore.instance.collection('users').doc(authController.currentUser.value?.id).update({
           'nationalIdUrl': url,
@@ -1350,6 +1327,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (Get.isDialogOpen ?? false) Get.back();
       Get.snackbar('خطأ', 'حدث خطأ أثناء الرفع: $e');
+    }
+  }
+
+  // =====================================================================
+  // التقييم وفتح المتجر
+  // =====================================================================
+  Future<void> _openReview() async {
+    final InAppReview inAppReview = InAppReview.instance;
+    try {
+      if (await inAppReview.isAvailable()) {
+        await inAppReview.requestReview();
+      } else {
+        await inAppReview.openStoreListing(appStoreId: 'com.nasalkheir.dz.app');
+      }
+    } catch (e) {
+      // Fallback in case of error
+      await inAppReview.openStoreListing(appStoreId: 'com.nasalkheir.dz.app');
     }
   }
 

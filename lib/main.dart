@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -22,6 +23,18 @@ final FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ✅ دعم Android 15 - Edge-to-Edge Display
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
   
   // تهيئة Firebase أولاً لتفعيل Crashlytics
   if (Firebase.apps.isEmpty) {
@@ -127,8 +140,15 @@ class NasAlKheirApp extends StatelessWidget {
       initialRoute: AppRoutes.splash,
       getPages: AppRoutes.getPages(),
       builder: (context, child) {
-        return Scaffold(
-          body: child,
+        // ✅ دعم Edge-to-Edge: لا نستخدم Scaffold لتجنب التعارض مع شريط الحالة
+        // تقييد حجم الخط بين 0.85 و 1.15 لضمان ثبات الواجهة
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(
+              MediaQuery.of(context).textScaler.scale(1.0).clamp(0.85, 1.15),
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
         );
       },
     );

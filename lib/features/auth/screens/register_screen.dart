@@ -50,9 +50,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     {'id': 'funeral_transport', 'name': 'جنائز (نقل)', 'icon': Icons.airport_shuttle_rounded},
     {'id': 'funeral_ghusl', 'name': 'تغسيل الموتى', 'icon': Icons.wash_rounded},
     {'id': 'medical_aid', 'name': 'تمريض / إسعاف', 'icon': Icons.medical_services_rounded},
+    {'id': 'blood_donation', 'name': 'تبرع بالدم', 'icon': Icons.bloodtype_rounded},
     {'id': 'food_aid', 'name': 'توزيع مساعدات', 'icon': Icons.shopping_bag_rounded},
     {'id': 'construction', 'name': 'ترميم وصيانة', 'icon': Icons.construction_rounded},
-    {'id': 'blood_donation', 'name': 'تبرع بالدم', 'icon': Icons.bloodtype_rounded},
     {'id': 'other', 'name': 'تخصصات أخرى', 'icon': Icons.more_horiz_rounded},
   ];
 
@@ -474,52 +474,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('تخصص التطوع (اختر تخصصاً واحداً أو أكثر):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 10,
-          children: _workerRoles.map((role) {
-            final isSelected = _selectedServices.contains(role['id']);
-            return FilterChip(
-              showCheckmark: false,
-              avatar: Icon(role['icon'], size: 16, color: isSelected ? Colors.white : AppTheme.primaryGreen),
-              label: Text(role['name'], 
-                style: TextStyle(
-                  fontSize: 12, 
-                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
-                  color: isSelected ? Colors.white : AppTheme.textSecondary,
-                  fontFamily: 'Tajawal'
-                )),
-              selected: isSelected,
-              onSelected: (val) {
-                setState(() {
-                  if (val) {
-                    _selectedServices.add(role['id']);
-                  } else {
-                    _selectedServices.remove(role['id']);
-                    if (role['id'] == 'funeral_ghusl') _ghuslExpertise = null;
-                  }
-                });
-              },
-              selectedColor: AppTheme.primaryGreen,
-              backgroundColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder.withValues(alpha: 0.2))
-              ),
-              elevation: 0,
-            );
-          }).toList(),
+        const Text('تخصص التطوع (اختر تخصصاً واحداً أو أكثر):', 
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+        const SizedBox(height: 16),
+        
+        // استخدام GridView لتنظيم الخيارات بشكل متناظر (2 في كل صف)
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 2.8,
+          ),
+          itemCount: 6, // أول 6 تخصصات (أزواج منطقية)
+          itemBuilder: (context, index) => _buildServiceItem(_workerRoles[index]),
         ),
+        const SizedBox(height: 12),
+        // التخصص الأخير "أخرى" يأخذ العرض كاملاً للتوازن
+        _buildServiceItem(_workerRoles[6]),
+
         if (_selectedServices.contains('funeral_ghusl')) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           const Text('مستوى الخبرة في التغسيل:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(child: _buildExpertiseChip('خبير / قائد غسل', 'expert')),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Expanded(child: _buildExpertiseChip('مساعد متدرب', 'assistant')),
             ],
           ),
@@ -534,6 +517,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildServiceItem(Map<String, dynamic> role) {
+    final id = role['id'];
+    final name = role['name'];
+    final icon = role['icon'];
+    final isSelected = _selectedServices.contains(id);
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          if (isSelected) {
+            _selectedServices.remove(id);
+            if (id == 'funeral_ghusl') _ghuslExpertise = null;
+          } else {
+            _selectedServices.add(id);
+          }
+        });
+      },
+      borderRadius: BorderRadius.circular(15),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.08) : Colors.transparent,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            color: isSelected ? AppTheme.primaryGreen : Theme.of(context).dividerColor.withValues(alpha: 0.1),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon, 
+              size: 20, 
+              color: isSelected ? AppTheme.primaryGreen : Colors.grey[500]
+            ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                name,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+                  color: isSelected ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                  fontFamily: 'Tajawal',
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:in_app_review/in_app_review.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_logo.dart';
 import '../../../core/routes/app_routes.dart';
@@ -176,6 +177,15 @@ class AboutScreen extends StatelessWidget {
                         _divider(context),
                         _buildLinkTile(
                           context,
+                          icon: Icons.star_rate_rounded,
+                          title: 'تقييم التطبيق',
+                          subtitle: 'ساعدنا في تحسين الخدمة بتقييمك',
+                          color: Colors.amber,
+                          onTap: () => _openReview(),
+                        ),
+                        _divider(context),
+                        _buildLinkTile(
+                          context,
                           icon: Icons.share_rounded,
                           title: 'شارك التطبيق',
                           subtitle: 'ادعُ أصدقاءك لاستخدام التطبيق',
@@ -280,6 +290,19 @@ class AboutScreen extends StatelessWidget {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _openReview() async {
+    final InAppReview inAppReview = InAppReview.instance;
+    try {
+      if (await inAppReview.isAvailable()) {
+        await inAppReview.requestReview();
+      } else {
+        await inAppReview.openStoreListing(appStoreId: 'com.nasalkheir.dz.app');
+      }
+    } catch (e) {
+      await inAppReview.openStoreListing(appStoreId: 'com.nasalkheir.dz.app');
     }
   }
 }

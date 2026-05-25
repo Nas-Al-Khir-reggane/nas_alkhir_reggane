@@ -16,6 +16,8 @@ class ServiceRequestModel {
   final String? assignedTo;
   final String? assignedToName;
   final String? assignedCarId;
+  final String? assignedDriverId;
+  final String? assignedDriverName;
   final Map<String, dynamic> details;
   final bool isSeenByAdmin;
   final String bloodType;
@@ -48,6 +50,8 @@ class ServiceRequestModel {
     this.assignedTo,
     this.assignedToName,
     this.assignedCarId,
+    this.assignedDriverId,
+    this.assignedDriverName,
     this.details = const {},
     this.isSeenByAdmin = false,
     this.bloodType = '',
@@ -82,6 +86,8 @@ class ServiceRequestModel {
       'assignedTo': assignedTo,
       'assignedToName': assignedToName,
       'assignedCarId': assignedCarId,
+      'assignedDriverId': assignedDriverId,
+      'assignedDriverName': assignedDriverName,
       'details': details,
       'isSeenByAdmin': isSeenByAdmin,
       'bloodType': bloodType,
@@ -120,6 +126,8 @@ class ServiceRequestModel {
       assignedTo: map['assignedTo'] ?? map['assigned_to'],
       assignedToName: map['assignedToName'] ?? map['assigned_to_name'],
       assignedCarId: map['assignedCarId'] ?? map['assigned_car_id'],
+      assignedDriverId: map['assignedDriverId'] ?? map['assigned_driver_id'],
+      assignedDriverName: map['assignedDriverName'] ?? map['assigned_driver_name'],
       details: Map<String, dynamic>.from(map['details'] ?? {}),
       isSeenByAdmin: map['isSeenByAdmin'] ?? map['is_seen_by_admin'] ?? false,
         bloodType: map['bloodType'] ?? map['details']?['الفصيلة'] ?? map['details']?['فصيلة الدم'] ?? map['details']?['bloodType'] ?? '',
@@ -174,6 +182,8 @@ class ServiceRequestModel {
     String? assignedTo,
     String? assignedToName,
     String? assignedCarId,
+    String? assignedDriverId,
+    String? assignedDriverName,
     Map<String, dynamic>? details,
     bool? isSeenByAdmin,
     String? bloodType,
@@ -204,6 +214,8 @@ class ServiceRequestModel {
       assignedTo: assignedTo ?? this.assignedTo,
       assignedToName: assignedToName ?? this.assignedToName,
       assignedCarId: assignedCarId ?? this.assignedCarId,
+      assignedDriverId: assignedDriverId ?? this.assignedDriverId,
+      assignedDriverName: assignedDriverName ?? this.assignedDriverName,
       details: details ?? this.details,
       isSeenByAdmin: isSeenByAdmin ?? this.isSeenByAdmin,
       bloodType: bloodType ?? this.bloodType,

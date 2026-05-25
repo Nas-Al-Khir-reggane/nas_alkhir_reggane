@@ -446,6 +446,12 @@ class WorkersScreen extends StatelessWidget {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           itemBuilder: (context) => [
                             const PopupMenuItem(
+                                value: 'change_role',
+                                child: Row(children: [
+                                  Icon(Icons.manage_accounts, color: AppTheme.primaryGreen, size: 18),
+                                  Text(' تغيير الدور')
+                                ])),
+                            const PopupMenuItem(
                                 value: 'edit',
                                 child: Row(children: [
                                   Icon(Icons.edit, color: AppTheme.primaryGreen, size: 18),
@@ -478,6 +484,10 @@ class WorkersScreen extends StatelessWidget {
                               controller.toggleWorkerStatus(worker.id, worker.isActive);
                             } else if (val == 'rate') {
                               _showRateWorkerDialog(context, worker, controller);
+                            } else if (val == 'change_role') {
+                              _showChangeRoleSheet(context, worker, controller);
+                            } else if (val == 'edit') {
+                               // TODO: Handle full edit
                             }
                           },
                         ),
@@ -688,6 +698,7 @@ class WorkersScreen extends StatelessWidget {
                             'phone': phoneController.text,
                             'wilaya': selectedWilaya,
                             'workerRole': selectedWorkerRole.value,
+                            'additionalRoles': selectedWorkerRole.value == 'funeral_driver' ? ['driver'] : [],
                             'email': emailController.text,
                             'password': passwordController.text,
                             'notes': notesController.text,
@@ -838,6 +849,121 @@ class WorkersScreen extends StatelessWidget {
           ),
         );
       }),
+    );
+  }
+
+  static void _showChangeRoleSheet(BuildContext context, UserModel worker, WorkerManagementController controller) {
+    RxString selectedWorkerRole = (worker.workerRole ?? '').obs;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        maxChildSize: 0.8,
+        minChildSize: 0.4,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+          child: SingleChildScrollView(
+            controller: scrollController,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('تغيير دور ${worker.name}',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+                    const Spacer(),
+                    IconButton(icon: const Icon(Icons.close), onPressed: () => Get.back()),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _buildLabel('الدور الحالي: ${WorkerManagementController.workerRoles.firstWhere((r) => r['id'] == worker.workerRole, orElse: () => {'name': 'غير محدد'})['name']}'),
+                const SizedBox(height: 16),
+                _buildLabel('اختر الدور الجديد:'),
+                const SizedBox(height: 8),
+                GridView.count(
+                  crossAxisCount: 3,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  childAspectRatio: 1.1,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  children: WorkerManagementController.workerRoles.map((role) {
+                    return Obx(() {
+                      final isSelected = selectedWorkerRole.value == role['id'];
+                      final color = role['color'] as Color;
+                      return GestureDetector(
+                        onTap: () => selectedWorkerRole.value = role['id'] as String,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          decoration: BoxDecoration(
+                            color: isSelected ? color.withValues(alpha: 0.15) : Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                                color: isSelected ? color : AppTheme.glassBorder, width: isSelected ? 2 : 1),
+                          ),
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(role['icon'] as IconData,
+                                  color: isSelected ? color : AppTheme.textHint, size: 22),
+                              const SizedBox(height: 6),
+                              Text(role['name'] as String,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  style: TextStyle(
+                                      color: isSelected ? color : AppTheme.textSecondary,
+                                      fontSize: 10,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                            ],
+                          ),
+                        ),
+                      );
+                    });
+                  }).toList(),
+                ),
+                const SizedBox(height: 30),
+                AppTheme.gradientButton(
+                  text: 'حفظ الدور الجديد',
+                  icon: Icons.save,
+                  onPressed: () {
+                    if (selectedWorkerRole.isEmpty) {
+                      Get.snackbar('تنبيه', 'يرجى اختيار دور جديد',
+                          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15));
+                      return;
+                    }
+                    
+                    // تجهيز البيانات للتحديث
+                    Map<String, dynamic> updateData = {
+                      'workerRole': selectedWorkerRole.value,
+                    };
+
+                    // إذا تم اختيار دور السائق، نضمن إضافته للأدوار الإضافية ليظهر في شاشة السيارات
+                    List<String> roles = List<String>.from(worker.additionalRoles);
+                    if (selectedWorkerRole.value == 'funeral_driver') {
+                      if (!roles.contains('driver')) roles.add('driver');
+                    } else {
+                      roles.remove('driver');
+                    }
+                    updateData['additionalRoles'] = roles;
+
+                    // إغلاق النافذة أولاً لتجنب تداخل الـ Snackbar
+                    Get.back();
+                    
+                    controller.updateWorker(worker.id, updateData);
+                  },
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

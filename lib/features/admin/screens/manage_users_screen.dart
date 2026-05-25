@@ -545,7 +545,19 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                                     _adminCtl.verifyUserIdentity(user.id),
                               )),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: () => _showRejectVerificationDialog(user),
+                              icon: const Icon(Icons.close, color: AppTheme.errorColor),
+                              tooltip: 'رفض طلب التوثيق',
+                              style: IconButton.styleFrom(
+                                backgroundColor: AppTheme.errorColor.withValues(alpha: 0.1),
+                                padding: const EdgeInsets.all(12),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
                             IconButton(
                               onPressed: () => _showUserDetails(user),
                               icon: Icon(Icons.info_outline,
@@ -815,11 +827,15 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                             if (val == 'disable') _adminCtl.rejectUser(user.id);
                             if (val == 'change_role') _showChangeRoleDialog(user);
                             if (val == 'view_details') _showUserDetails(user);
+                            if (val == 'unverify') _showUnverifyConfirmation(user);
                           },
                           itemBuilder: (context) => [
                             PopupMenuItem(value: 'view_details', child: Row(children: [Icon(Icons.info_outline, color: AppTheme.goldAccent, size: 18), const SizedBox(width: 8), Text("تفاصيل العضو", style: TextStyle(color: AppTheme.textPrimary))])),
-                            if (isSuperAdmin)
+                            if (isSuperAdmin) ...[
                               PopupMenuItem(value: 'change_role', child: Row(children: [Icon(Icons.edit_outlined, color: AppTheme.primaryGreen, size: 18), const SizedBox(width: 8), Text("تغيير الصلاحية", style: TextStyle(color: AppTheme.textPrimary))])),
+                              if (user.isVerified)
+                                PopupMenuItem(value: 'unverify', child: Row(children: [Icon(Icons.verified_user_outlined, color: Colors.orange, size: 18), const SizedBox(width: 8), Text("إلغاء التوثيق", style: TextStyle(color: AppTheme.textPrimary))])),
+                            ],
                             PopupMenuItem(value: 'disable', child: Row(children: [Icon(Icons.block_flipped, color: AppTheme.errorColor, size: 18), const SizedBox(width: 8), Text("إيقاف الحساب", style: TextStyle(color: AppTheme.errorColor))])),
                           ],
                         ),
@@ -1226,18 +1242,64 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                 ),
                 if (!user.isVerified && _adminCtl.currentUser?.role == UserRole.superAdmin) ...[
                   const SizedBox(height: 16),
-                  Obx(() => AppTheme.gradientButton(
-                    text: "توثيق الهوية وتعيين كود العضوية",
-                    icon: Icons.verified_rounded,
-                    isLoading: _adminCtl.isLoading.value,
-                    onPressed: () async {
-                      await _adminCtl.verifyUserIdentity(user.id);
-                      Get.back();
-                    },
-                  )),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Obx(() => AppTheme.gradientButton(
+                          text: "توثيق وتوليد رقم العضوية",
+                          icon: Icons.verified_rounded,
+                          isLoading: _adminCtl.isLoading.value,
+                          onPressed: () async {
+                            await _adminCtl.verifyUserIdentity(user.id);
+                            Get.back();
+                          },
+                        )),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                          side: const BorderSide(color: AppTheme.errorColor),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        onPressed: () {
+                          Get.back();
+                          _showRejectVerificationDialog(user);
+                        },
+                        icon: const Icon(Icons.close, color: AppTheme.errorColor, size: 20),
+                        label: const Text(
+                          "رفض",
+                          style: TextStyle(
+                            fontFamily: 'Tajawal',
+                            color: AppTheme.errorColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ],
               const SizedBox(height: 30),
+              if (user.isVerified && _adminCtl.currentUser?.role == UserRole.superAdmin) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Get.back();
+                      _showUnverifyConfirmation(user);
+                    },
+                    icon: const Icon(Icons.verified_user_outlined, color: Colors.orange),
+                    label: const Text("إلغاء توثيق الهوية", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: const BorderSide(color: Colors.orange),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               SizedBox(
                 width: double.infinity,
                 child: AppTheme.gradientButton(
@@ -1252,6 +1314,91 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       ),
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+    );
+  }
+
+  void _showUnverifyConfirmation(UserModel user) {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: AppTheme.glassBorder)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            const SizedBox(width: 10),
+            Text("تأكيد إلغاء التوثيق", style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          "هل أنت متأكد من إلغاء توثيق هوية المستخدم '${user.name}'؟\nسيتم سحب شارة التوثيق وإرسال إشعار للمستخدم.",
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text("تراجع", style: TextStyle(color: AppTheme.textHint)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              _adminCtl.unverifyUserIdentity(user.id);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange.withValues(alpha: 0.1),
+              foregroundColor: Colors.orange,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: const BorderSide(color: Colors.orange)),
+            ),
+            child: const Text("إلغاء التوثيق الآن", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRejectVerificationDialog(UserModel user) {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: AppTheme.glassBorder)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_rounded, color: AppTheme.errorColor),
+            const SizedBox(width: 8),
+            Text('رفض وثيقة التحقق', style: TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.w900, color: AppTheme.errorColor, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'هل أنت متأكد من رفض وثيقة الهوية الخاصة بالمستخدم (${user.name})؟ سيؤدي هذا الإجراء إلى حذف الصورة المرفوعة وإخطاره بإعادة رفع بطاقة الهوية الوطنية بشكل صحيح.',
+          style: TextStyle(fontFamily: 'Tajawal', fontSize: 13, color: AppTheme.textSecondary),
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Get.back(),
+                  child: Text('إلغاء', style: TextStyle(fontFamily: 'Tajawal', color: AppTheme.textHint, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.errorColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    Get.back();
+                    _adminCtl.rejectVerificationRequest(user.id);
+                  },
+                  child: Text('تأكيد الرفض', style: TextStyle(fontFamily: 'Tajawal', color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

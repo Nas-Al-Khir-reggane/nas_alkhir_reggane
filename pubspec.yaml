@@ -2,7 +2,7 @@ name: nas_al_kheir
 description: "Nas Al Kheir Charity App"
 publish_to: 'none'
 
-version: 1.0.0+5
+version: 1.0.0+6
 
 environment:
   sdk: ^3.11.0
@@ -51,6 +51,7 @@ dependencies:
   latlong2: ^0.9.1
   geolocator: ^14.0.2
   flutter_animate: ^4.5.2
+  in_app_review: ^2.0.9
   http: ^1.6.0
   path: ^1.9.1
   record: ^5.1.0

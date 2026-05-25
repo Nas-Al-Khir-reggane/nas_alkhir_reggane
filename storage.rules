@@ -30,7 +30,7 @@ service firebase.storage {
 
     function isValidFile() {
       return request.resource.size < 5 * 1024 * 1024 // أقل من 5 ميجابايت
-          && request.resource.contentType.matches('image/.*|application/pdf');
+          && request.resource.contentType.matches('image/.*|application/pdf|audio/.*');
     }
 
     // ─── ملفات المستخدمين (صور الملف الشخصي) ──
@@ -61,6 +61,18 @@ service firebase.storage {
     match /chats/{chatId}/{allPaths=**} {
       allow read:  if isAdmin() || isChatParticipant(chatId);
       allow write: if (isAdmin() || isChatParticipant(chatId)) && isValidFile();
+    }
+
+    // ─── إثباتات التبرعات ──────────────────────
+    match /donations/{donationId}/{allPaths=**} {
+      allow read:  if isLoggedIn();
+      allow write: if isLoggedIn() && isValidFile();
+    }
+
+    // ─── صور المركبات ─────────────────────────
+    match /vehicles/{vehicleId}/{allPaths=**} {
+      allow read:  if isLoggedIn();
+      allow write: if isAdmin() && isValidFile();
     }
 
     // ─── حظر كامل لكل ما لم يُذكر ────────────

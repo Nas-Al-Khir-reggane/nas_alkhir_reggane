@@ -167,7 +167,7 @@ class RequestDetailScreen extends StatelessWidget {
                   mainAxisSpacing: 12,
                   childAspectRatio: 1.5,
                   children: [
-                    if (liveReq.type != 'blood_donation' && liveReq.typeName != 'إغاثة بقطرة دم') ...[
+                    if (adminController.isSuperAdmin && liveReq.type != 'blood_donation' && liveReq.typeName != 'إغاثة بقطرة دم') ...[
                       _buildActionButton(
                         'إسناد لمتطوع',
                         Icons.person_add_alt_1_outlined,
@@ -179,6 +179,12 @@ class RequestDetailScreen extends StatelessWidget {
                         Icons.directions_car_filled_outlined,
                         AppTheme.goldAccent,
                         isTerminal ? null : () => _showAssignVehicleDialog(context, liveReq),
+                      ),
+                      _buildActionButton(
+                        'تعيين سائق',
+                        Icons.airline_seat_recline_extra_rounded,
+                        Colors.blueAccent,
+                        isTerminal ? null : () => _showAssignDriverDialog(context, liveReq),
                       ),
                     ],
                     if (liveReq.type == 'blood_donation' || liveReq.typeName == 'إغاثة بقطرة دم')
@@ -409,6 +415,16 @@ class RequestDetailScreen extends StatelessWidget {
             _buildAssignedWorkerRow(req),
           ],
           
+          if (req.assignedCarId != null && req.assignedCarId!.isNotEmpty) ...[
+            const Divider(color: Colors.white10),
+            _buildAssignedVehicleRow(req),
+          ],
+          
+          if (req.assignedDriverName != null && req.assignedDriverName!.isNotEmpty) ...[
+            const Divider(color: Colors.white10),
+            _buildAssignedDriverRow(req),
+          ],
+          
           if (req.details.isNotEmpty) ...[
             const Divider(color: Colors.white10),
             const SizedBox(height: 8),
@@ -570,6 +586,91 @@ class RequestDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(req.assignedToName!, style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAssignedVehicleRow(ServiceRequestModel req) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(Icons.directions_car_filled_outlined, color: AppTheme.goldAccent, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('المركبة المخصصة', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                const SizedBox(height: 4),
+                StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance.collection(AppConstants.vehiclesCollection).doc(req.assignedCarId).snapshots(),
+                  builder: (context, snapshot) {
+                    String vehicleName = 'جاري التحميل...';
+                    if (snapshot.hasData && snapshot.data!.exists) {
+                      final vData = snapshot.data!.data() as Map<String, dynamic>;
+                      vehicleName = '${vData['nickname'] ?? vData['plateNumber'] ?? 'مركبة بدون اسم'}';
+                    } else if (snapshot.hasError || (snapshot.connectionState == ConnectionState.active && !snapshot.data!.exists)) {
+                      vehicleName = 'مركبة غير موجودة';
+                    }
+                    
+                    return Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 12,
+                          backgroundColor: AppTheme.goldAccent.withValues(alpha: 0.15),
+                          child: const Icon(Icons.airport_shuttle_rounded, color: AppTheme.goldAccent, size: 14),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(vehicleName, style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
+                      ],
+                    );
+                  }
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAssignedDriverRow(ServiceRequestModel req) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          const Icon(Icons.airline_seat_recline_extra_rounded, color: Colors.blueAccent, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('السائق المخصص', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: () {
+                    if (adminController.currentUser?.role == UserRole.superAdmin && req.assignedDriverId != null) {
+                      Get.toNamed('/profile', arguments: req.assignedDriverId);
+                    }
+                  },
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 12,
+                        backgroundColor: Colors.blueAccent.withValues(alpha: 0.15),
+                        child: Text(req.assignedDriverName!.isNotEmpty ? req.assignedDriverName![0] : '؟', 
+                          style: const TextStyle(color: Colors.blueAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(req.assignedDriverName!, style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -894,6 +995,122 @@ class RequestDetailScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showAssignDriverDialog(BuildContext context, ServiceRequestModel req) {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Icon(Icons.airline_seat_recline_extra_rounded, color: Colors.blueAccent, size: 24),
+                const SizedBox(width: 8),
+                Text('تعيين سائق للطلب', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            if (req.assignedDriverName != null && req.assignedDriverName!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.person, color: Colors.blueAccent, size: 16),
+                    const SizedBox(width: 6),
+                    Text('السائق الحالي: ${req.assignedDriverName}',
+                      style: const TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+            Flexible(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection(AppConstants.usersCollection)
+                    .where('role', isEqualTo: 'worker')
+                    .where('isApproved', isEqualTo: true)
+                    .where('additionalRoles', arrayContains: 'driver')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  if (snapshot.data!.docs.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.no_accounts_rounded, color: AppTheme.textHint, size: 48),
+                          const SizedBox(height: 12),
+                          Text('لا يوجد سائقون معيّنون حالياً',
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                          const SizedBox(height: 8),
+                          Text('يمكنك تعيين سائقين من شاشة إدارة المركبات',
+                            style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
+                        ],
+                      ),
+                    );
+                  }
+                  
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: snapshot.data!.docs.length,
+                    itemBuilder: (context, index) {
+                      var driver = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                      final driverId = snapshot.data!.docs[index].id;
+                      final driverName = driver['name'] ?? 'بدون اسم';
+                      final isCurrentDriver = req.assignedDriverId == driverId;
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: isCurrentDriver 
+                            ? Colors.blueAccent.withValues(alpha: 0.2) 
+                            : AppTheme.primaryGreen.withValues(alpha: 0.15),
+                          child: Icon(
+                            isCurrentDriver ? Icons.check : Icons.airline_seat_recline_extra_rounded,
+                            color: isCurrentDriver ? Colors.blueAccent : AppTheme.primaryGreen,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(driverName, 
+                          style: TextStyle(
+                            color: isCurrentDriver ? Colors.blueAccent : AppTheme.textPrimary,
+                            fontWeight: FontWeight.bold, fontSize: 14)),
+                        subtitle: Text(
+                          driver['phone'] ?? '',
+                          style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.7), fontSize: 11),
+                        ),
+                        trailing: isCurrentDriver 
+                          ? const Chip(label: Text('معيّن', style: TextStyle(fontSize: 10, color: Colors.blueAccent)), 
+                              backgroundColor: Color(0x1A448AFF))
+                          : Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.textHint),
+                        onTap: isCurrentDriver ? null : () {
+                          adminController.assignDriverToRequest(req.id, driverId, driverName);
+                          Get.back();
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
     );
   }
 

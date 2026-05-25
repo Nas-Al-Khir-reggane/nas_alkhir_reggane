@@ -9,7 +9,7 @@ import '../../../data/models/chat_message_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/services/notification_service.dart';
 import '../../../data/services/os_tracking_service.dart';
-import '../../../data/services/cloudinary_service.dart';
+import '../../../data/services/firebase_storage_service.dart';
 import '../../../data/services/image_compression_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
@@ -131,7 +131,12 @@ class WorkerController extends GetxController {
       if (imageFile != null) {
         // ضغط الصورة قبل الرفع
         final compressedFile = await ImageCompressionService.compressImage(imageFile);
-        mediaUrl = await CloudinaryService.uploadMedia(compressedFile ?? imageFile);
+        final workerId = currentWorker.value?.id ?? 'unknown';
+        final fileName = 'update_${DateTime.now().millisecondsSinceEpoch}.png';
+        mediaUrl = await FirebaseStorageService.uploadMedia(
+          compressedFile ?? imageFile,
+          'service_requests/$requestId/$workerId/$fileName',
+        );
       }
 
       final updateData = {

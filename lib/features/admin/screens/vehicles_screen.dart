@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import '../../../data/services/cloudinary_service.dart';
+import '../../../data/services/firebase_storage_service.dart';
 import '../../../data/services/image_compression_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +12,8 @@ import 'full_screen_map_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/vehicle_model.dart';
+import '../../../core/constants/app_constants.dart';
+import '../controllers/admin_controller.dart';
 
 class VehiclesScreen extends StatefulWidget {
   const VehiclesScreen({super.key});
@@ -487,6 +489,9 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                ),
             ),
 
+          // 🚗 قسم السائق المعيّن
+          _buildDriverSection(v),
+
           // الإحصائيات السريعة في الأسفل
           Padding(
             padding: const EdgeInsets.all(20),
@@ -512,6 +517,229 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
         Text(label, style: TextStyle(color: AppTheme.textHint, fontSize: 10)),
       ],
+    );
+  }
+
+  Widget _buildDriverSection(VehicleModel v) {
+    final adminController = Get.find<AdminController>();
+    
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection(AppConstants.vehiclesCollection)
+          .doc(v.id)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data() as Map<String, dynamic>?;
+        final driverId = data?['assignedDriverId'];
+        final driverName = data?['assignedDriverName'];
+        final hasDriver = driverId != null && driverId.toString().isNotEmpty;
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: hasDriver 
+              ? Colors.blueAccent.withValues(alpha: 0.05) 
+              : Colors.white.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: hasDriver 
+                ? Colors.blueAccent.withValues(alpha: 0.15)
+                : AppTheme.glassBorder,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: hasDriver 
+                    ? Colors.blueAccent.withValues(alpha: 0.1)
+                    : Colors.white10,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  hasDriver ? Icons.airline_seat_recline_extra_rounded : Icons.person_off_rounded,
+                  color: hasDriver ? Colors.blueAccent : AppTheme.textHint,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasDriver ? 'السائق المعيّن' : 'لا يوجد سائق',
+                      style: TextStyle(
+                        color: hasDriver ? Colors.blueAccent : AppTheme.textHint,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (hasDriver) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        driverName ?? 'غير معروف',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (adminController.isSuperAdmin) ...[
+                if (hasDriver)
+                  IconButton(
+                    icon: const Icon(Icons.link_off_rounded, color: Colors.orange, size: 20),
+                    tooltip: 'فك ربط السائق',
+                    onPressed: () {
+                      Get.dialog(
+                        AlertDialog(
+                          backgroundColor: AppTheme.surfaceColor,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          title: const Text('فك ربط السائق', style: TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.bold, fontSize: 16)),
+                          content: Text('هل تريد إزالة السائق ($driverName) من هذه السيارة؟', style: const TextStyle(fontFamily: 'Tajawal', fontSize: 13)),
+                          actions: [
+                            TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                              onPressed: () {
+                                Get.back();
+                                adminController.assignDriverToVehicle(v.id, null, null);
+                              },
+                              child: const Text('تأكيد', style: TextStyle(color: Colors.white)),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                IconButton(
+                  icon: Icon(
+                    hasDriver ? Icons.swap_horiz_rounded : Icons.person_add_alt_1_rounded,
+                    color: Colors.blueAccent,
+                    size: 20,
+                  ),
+                  tooltip: hasDriver ? 'تغيير السائق' : 'تعيين سائق',
+                  onPressed: () => _showAssignDriverToVehicleDialog(v),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAssignDriverToVehicleDialog(VehicleModel v) {
+    final adminController = Get.find<AdminController>();
+    
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Icon(Icons.airline_seat_recline_extra_rounded, color: Colors.blueAccent, size: 24),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('تعيين سائق للسيارة ${v.nickname ?? v.plateNumber}',
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Flexible(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection(AppConstants.usersCollection)
+                    .where('role', isEqualTo: 'worker')
+                    .where('isApproved', isEqualTo: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  
+                  // تصفية السائقين برمجياً لدعم البيانات القديمة والجديدة
+                  final allWorkers = snapshot.data!.docs;
+                  final driverDocs = allWorkers.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final additionalRoles = List<String>.from(data['additionalRoles'] ?? []);
+                    final workerRole = data['workerRole'];
+                    return additionalRoles.contains('driver') || workerRole == 'funeral_driver';
+                  }).toList();
+
+                  if (driverDocs.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.no_accounts_rounded, color: AppTheme.textHint, size: 48),
+                          const SizedBox(height: 12),
+                          Text('لا يوجد سائقون معيّنون',
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                          const SizedBox(height: 8),
+                          Text('عيّن متطوعين كسائقين أولاً من إدارة المتطوعين',
+                            style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
+                        ],
+                      ),
+                    );
+                  }
+                  
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: driverDocs.length,
+                    itemBuilder: (context, index) {
+                      var driver = driverDocs[index].data() as Map<String, dynamic>;
+                      final driverId = driverDocs[index].id;
+                      final driverName = driver['name'] ?? 'بدون اسم';
+                      final isCurrentDriver = v.assignedDriverId == driverId;
+                      
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: isCurrentDriver 
+                            ? Colors.blueAccent.withValues(alpha: 0.2)
+                            : AppTheme.primaryGreen.withValues(alpha: 0.15),
+                          child: Icon(
+                            isCurrentDriver ? Icons.check : Icons.person,
+                            color: isCurrentDriver ? Colors.blueAccent : AppTheme.primaryGreen,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(driverName, style: TextStyle(
+                          color: isCurrentDriver ? Colors.blueAccent : AppTheme.textPrimary,
+                          fontWeight: FontWeight.bold, fontSize: 14)),
+                        subtitle: Text(driver['phone'] ?? '', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                        trailing: isCurrentDriver
+                          ? const Chip(label: Text('معيّن', style: TextStyle(fontSize: 10, color: Colors.blueAccent)),
+                              backgroundColor: Color(0x1A448AFF))
+                          : Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.textHint),
+                        onTap: isCurrentDriver ? null : () {
+                          adminController.assignDriverToVehicle(v.id, driverId, driverName);
+                          Get.back();
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
     );
   }
 
@@ -680,7 +908,11 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                                 try {
                                   // ضغط صورة المركبة قبل الرفع
                                   final compressedFile = await ImageCompressionService.compressImage(imageFile!);
-                                  final result = await CloudinaryService.uploadMedia(compressedFile ?? imageFile!);
+                                  final fileName = 'vehicle_${DateTime.now().millisecondsSinceEpoch}.png';
+                                  final result = await FirebaseStorageService.uploadMedia(
+                                    compressedFile ?? imageFile!,
+                                    'vehicles/${v.id}/$fileName',
+                                  );
                                   if (result != null) {
                                     finalImageUrl = result;
                                   }

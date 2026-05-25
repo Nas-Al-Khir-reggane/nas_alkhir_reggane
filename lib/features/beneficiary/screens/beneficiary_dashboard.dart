@@ -21,6 +21,9 @@ import '../../../core/routes/app_routes.dart';
 import '../../admin/screens/dar_al_sabil_management_screen.dart';
 import '../../../core/widgets/update_banner.dart';
 import '../../../core/animations/micro_interactions.dart';
+import '../../shared/widgets/role_switcher_widget.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:animate_do/animate_do.dart';
 
 
 class BeneficiaryDashboard extends StatefulWidget {
@@ -36,6 +39,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
   final NotificationService notificationService = Get.find<NotificationService>();
   late final Stream<QuerySnapshot> _adminsStream;
   int _currentIndex = 0;
+  bool _showPeriodicRoleSwitchBanner = false;
 
   @override
   void initState() {
@@ -44,6 +48,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
         .collection('users')
       .where('role', whereIn: ['admin', 'superAdmin'])
         .snapshots();
+    _checkPeriodicBannerStatus();
   }
 
   Future<void> _openDirectAdminChat(UserModel admin) async {
@@ -218,43 +223,14 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                   ],
                 ),
               ),
+              _buildRoleSwitcherIcon(),
+              const SizedBox(width: 8),
               IconButton(
                 icon: Icon(Icons.person, color: Theme.of(context).colorScheme.primary, size: 24),
                 onPressed: () => Get.toNamed('/profile'),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
-              Obx(() {
-                final chatController = Get.find<ChatController>();
-                final count = chatController.totalUnreadCount.value;
-                return Stack(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.mail_outline_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
-                      onPressed: () => Get.toNamed('/inbox'), // Adjust route if needed
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                    if (count > 0)
-                      Positioned(
-                        right: -2,
-                        top: -2,
-                        child: MicroInteractions.pulse(
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(color: AppTheme.emergencyColor, shape: BoxShape.circle),
-                            constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
-                            child: Text(
-                              count.toString(),
-                              style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                      )
-                  ],
-                );
-              }),
               const SizedBox(width: 12),
               Obx(() => Stack(
                 children: [
@@ -316,6 +292,7 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
             ],
           ),
           const SizedBox(height: 20),
+          _buildPeriodicRoleSwitchBanner(),
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [Theme.of(context).cardColor, Theme.of(context).colorScheme.surface]),
@@ -1138,6 +1115,200 @@ class _BeneficiaryDashboardState extends State<BeneficiaryDashboard> {
                   color: Theme.of(context).colorScheme.onSurfaceVariant, size: 16),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _checkPeriodicBannerStatus() async {
+    final user = authController.currentUser.value;
+    if (user == null) return;
+    
+    final rolesCount = _getAvailableRolesCount(user);
+    if (rolesCount <= 1) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final lastShownStr = prefs.getString('last_role_switch_banner_date') ?? '';
+    if (lastShownStr.isEmpty) {
+      if (mounted) setState(() => _showPeriodicRoleSwitchBanner = true);
+    } else {
+      final lastShown = DateTime.tryParse(lastShownStr);
+      if (lastShown != null) {
+        final diff = DateTime.now().difference(lastShown).inDays;
+        if (diff >= 3) {
+          if (mounted) setState(() => _showPeriodicRoleSwitchBanner = true);
+        }
+      }
+    }
+  }
+
+  int _getAvailableRolesCount(UserModel user) {
+    Set<UserRole> roles = {user.role};
+    if (user.additionalRoles.contains('canDonate')) roles.add(UserRole.donor);
+    if (user.additionalRoles.contains('canRequestService')) roles.add(UserRole.beneficiary);
+    if (user.role == UserRole.superAdmin || user.role == UserRole.admin) {
+      roles.addAll([UserRole.donor, UserRole.beneficiary, UserRole.worker]);
+    }
+    return roles.length;
+  }
+
+  Future<void> _dismissPeriodicBanner() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('last_role_switch_banner_date', DateTime.now().toIso8601String());
+    if (mounted) setState(() => _showPeriodicRoleSwitchBanner = false);
+  }
+
+  void _showRoleSwitcherBottomSheet() {
+    Get.bottomSheet(
+      Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const RoleSwitcherWidget(),
+            ],
+          ),
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  Widget _buildRoleSwitcherIcon() {
+    return Obx(() {
+      final user = authController.currentUser.value;
+      if (user == null) return const SizedBox.shrink();
+      if (_getAvailableRolesCount(user) <= 1) return const SizedBox.shrink();
+
+      return FadeInRight(
+        child: Container(
+          margin: const EdgeInsets.only(left: 4),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+              width: 1.5,
+            ),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.swap_horiz_rounded, size: 22),
+            color: Theme.of(context).colorScheme.primary,
+            onPressed: _showRoleSwitcherBottomSheet,
+            tooltip: 'تبديل وضع الحساب',
+            constraints: const BoxConstraints(),
+            padding: const EdgeInsets.all(6),
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildPeriodicRoleSwitchBanner() {
+    if (!_showPeriodicRoleSwitchBanner) return const SizedBox.shrink();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return FadeInDown(
+      duration: const Duration(milliseconds: 600),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isDark 
+                ? [AppTheme.primaryGreen.withValues(alpha: 0.15), Colors.black.withValues(alpha: 0.2)] 
+                : [AppTheme.primaryGreen.withValues(alpha: 0.1), Colors.white],
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: AppTheme.primaryGreen.withValues(alpha: 0.25),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryGreen.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.lightbulb_outline_rounded, color: AppTheme.primaryGreen, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'تنويه ذكي: تبديل الأدوار',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppTheme.textPrimaryLight,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      fontFamily: 'Tajawal',
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'يمكنك الآن الانتقال السريع بين أدوارك المختلفة (متطوع، متبرع، إلخ) عبر زر التبديل الجديد في شريط الترحيب العلوي للاستفادة من كافة الصلاحيات المتاحة لك.',
+                    style: TextStyle(
+                      color: isDark ? Colors.white70 : AppTheme.textSecondaryLight,
+                      fontSize: 12,
+                      height: 1.4,
+                      fontFamily: 'Tajawal',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: _showRoleSwitcherBottomSheet,
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppTheme.primaryGreen,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        ),
+                        child: const Text('تبديل الآن 🔄', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, fontFamily: 'Tajawal')),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: _dismissPeriodicBanner,
+                        style: TextButton.styleFrom(
+                          foregroundColor: isDark ? Colors.white70 : AppTheme.textSecondaryLight,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        ),
+                        child: const Text('حسناً، فهمت', style: TextStyle(fontSize: 12, fontFamily: 'Tajawal')),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

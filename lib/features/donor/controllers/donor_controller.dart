@@ -16,7 +16,7 @@ import '../../../data/models/user_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../widgets/donation_certificate_widget.dart';
 import '../screens/donate_screen.dart';
-import '../../../data/services/cloudinary_service.dart';
+import '../../../data/services/firebase_storage_service.dart';
 import '../../../data/services/image_compression_service.dart';
 import '../../../data/services/notification_service.dart';
 
@@ -280,21 +280,25 @@ class DonorController extends GetxController {
         'date': FieldValue.serverTimestamp(),
       };
 
+      final donationsRef = FirebaseFirestore.instance.collection('donations');
+      final docRef = donationsRef.doc();
+
       String? proofUrl;
 
-      // رفع الصورة إلى Cloudinary إذا وجدت
+      // رفع الصورة إلى Firebase Storage إذا وجدت
       if (selectedProofImage.value != null) {
         // ضغط الصورة قبل الرفع
         final compressedFile = await ImageCompressionService.compressImage(selectedProofImage.value!);
-        proofUrl = await CloudinaryService.uploadMedia(compressedFile ?? selectedProofImage.value!);
+        final fileName = 'proof_${DateTime.now().millisecondsSinceEpoch}.png';
+        proofUrl = await FirebaseStorageService.uploadMedia(
+          compressedFile ?? selectedProofImage.value!,
+          'donations/${docRef.id}/$fileName',
+        );
         
         if (proofUrl != null) {
           donationData['proofImageUrl'] = proofUrl;
         }
       }
-
-      final donationsRef = FirebaseFirestore.instance.collection('donations');
-      final docRef = donationsRef.doc();
 
       if (projectId != 'general') {
         final projectRef = FirebaseFirestore.instance.collection('projects').doc(projectId);

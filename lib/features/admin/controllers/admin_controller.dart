@@ -19,6 +19,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import '../../../data/services/firebase_storage_service.dart';
 
 enum MetricType { donations, requests, projects, team }
 
@@ -36,8 +37,15 @@ class AdminController extends GetxController {
   RxInt availableVehicles = 0.obs;
   RxInt totalBeneficiaries = 0.obs;
   RxInt totalRegisteredUsers = 0.obs; // العداد الإجمالي الجديد
+  RxMap<String, int> userCountByBloodType = <String, int>{}.obs; // توزيع زمر الدم للمستخدمين المسجلين
   RxInt pendingVerificationsCount = 0.obs; // عداد التوثيقات المعلقة
   RxInt unseenUrgentCount = 0.obs;
+  
+  // --- Blood Stats ---
+  RxInt totalBloodUnits = 0.obs;
+  RxInt livesSaved = 0.obs;
+  RxMap<String, int> bloodStatsByType = <String, int>{}.obs;
+  
   RxBool isLoading = false.obs;
   RxBool shouldShowSwipeHint = false.obs;
   RxList<BroadcastModel> activeBroadcasts = <BroadcastModel>[].obs;
@@ -368,7 +376,20 @@ class AdminController extends GetxController {
           .snapshots()
           .listen((snap) {
         totalRegisteredUsers.value = snap.docs.length;
+        
+        final Map<String, int> counts = {};
+        for (var doc in snap.docs) {
+          final data = doc.data();
+          final bType = data['bloodType'] as String?;
+          if (bType != null && bType.trim().isNotEmpty) {
+            final cleanedType = bType.trim().toUpperCase();
+            counts[cleanedType] = (counts[cleanedType] ?? 0) + 1;
+          }
+        }
+        userCountByBloodType.value = counts;
+        
         debugPrint('📊 AdminController: Total Registered Users: ${snap.docs.length}');
+        debugPrint('📊 AdminController: User Blood Type Counts: $counts');
       }),
     );
 
@@ -449,6 +470,20 @@ class AdminController extends GetxController {
         // ترتيب حسب حقل order إذا وجد، أو حسب ترتيب الإضافة
         activeGoals.assignAll(goals);
       }, onError: (e) => debugPrint('Live activeGoals error: $e')),
+    );
+
+    // --- 11. إحصائيات الدم التفصيلية ---
+    _statsSubs.add(
+      _firestore.collection('stats').doc('blood_stats').snapshots().listen((snap) {
+        if (snap.exists && snap.data() != null) {
+          final data = snap.data()!;
+          totalBloodUnits.value = (data['totalUnits'] ?? 0) as int;
+          livesSaved.value = (data['livesSaved'] ?? 0) as int;
+          
+          final byType = data['byType'] as Map<String, dynamic>? ?? {};
+          bloodStatsByType.value = byType.map((key, value) => MapEntry(key, (value as num).toInt()));
+        }
+      })
     );
 
     _listenToDarSabilData();
@@ -1163,6 +1198,7 @@ class AdminController extends GetxController {
       
       final userData = userSnap.data() as Map<String, dynamic>;
       String? currentMemberId = userData['memberId'];
+      final String? nationalIdUrl = userData['nationalIdUrl'];
       
       await _firestore.runTransaction((tx) async {
         // إذا لم يكن لديه كود عضوية، نقوم بتوليد واحد
@@ -1185,8 +1221,14 @@ class AdminController extends GetxController {
           'isVerified': true,
           'memberId': currentMemberId,
           'verifiedAt': FieldValue.serverTimestamp(),
+          'nationalIdUrl': FieldValue.delete(), // حذف الصورة من قاعدة البيانات بمجرد تأكيد التوثيق
         });
       });
+
+      // حذف صورة بطاقة الهوية من التخزين السحابي فوراً لحماية الخصوصية وتوفير المساحة
+      if (nationalIdUrl != null && nationalIdUrl.isNotEmpty) {
+        await FirebaseStorageService.deleteMedia(nationalIdUrl);
+      }
 
       // إرسال إشعار للمستخدم
       await NotificationService.sendNotification(
@@ -1211,6 +1253,94 @@ class AdminController extends GetxController {
       );
     } catch (e) {
       Get.snackbar('خطأ', 'فشل عملية التوثيق: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ✨ إلغاء توثيق هوية المستخدم
+  Future<void> unverifyUserIdentity(String userId) async {
+    if (!_requireSuperAdmin('إلغاء التوثيق')) return;
+    isLoading.value = true;
+    try {
+      final userRef = _firestore.collection(AppConstants.usersCollection).doc(userId);
+      
+      await userRef.update({
+        'isVerified': false,
+        'unverifiedAt': FieldValue.serverTimestamp(),
+        // ملاحظة: نحتفظ بـ memberId في السجل لكن نلغي حالة التوثيق النشطة
+      });
+
+      // إرسال إشعار للمستخدم لتوضيح الإجراء
+      await NotificationService.sendNotification(
+        userId: userId,
+        type: 'status_change',
+        title: '⚠️ تنبيه: تحديث حالة الحساب',
+        body: 'تم إلغاء حالة التوثيق لحسابك من قبل الإدارة. يرجى التواصل مع المنسق العام للمزيد من التفاصيل.',
+        data: {
+          'type': 'verification_revoked',
+        },
+      );
+
+      Get.snackbar(
+        '✅ تم إلغاء التوثيق', 
+        'تم إلغاء توثيق هوية المستخدم بنجاح وإرسال إشعار توضيحي.',
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(15),
+      );
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل عملية إلغاء التوثيق: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ✨ رفض طلب التوثيق (بسبب صورة غير صالحة مثلاً)
+  Future<void> rejectVerificationRequest(String userId) async {
+    if (!_requireSuperAdmin('رفض طلب التوثيق')) return;
+    isLoading.value = true;
+    try {
+      final userRef = _firestore.collection(AppConstants.usersCollection).doc(userId);
+      final userSnap = await userRef.get();
+      String? nationalIdUrl;
+      if (userSnap.exists) {
+        nationalIdUrl = (userSnap.data() as Map<String, dynamic>)['nationalIdUrl'];
+      }
+      
+      await userRef.update({
+        'nationalIdUrl': FieldValue.delete(), // حذف رابط الصورة الخاطئة
+        'isVerified': false,
+        'verificationRejectedAt': FieldValue.serverTimestamp(),
+      });
+
+      // حذف صورة بطاقة الهوية الخاطئة من التخزين السحابي فور الرفض
+      if (nationalIdUrl != null && nationalIdUrl.isNotEmpty) {
+        await FirebaseStorageService.deleteMedia(nationalIdUrl);
+      }
+
+      // إرسال إشعار للمستخدم لتوضيح الإجراء وطلب إعادة الرفع
+      await NotificationService.sendNotification(
+        userId: userId,
+        type: 'status_change',
+        title: '⚠️ تنبيه: رفض وثيقة التحقق من الهوية',
+        body: 'تم رفض وثيقة الهوية المرفوعة لأن الصورة غير صالحة أو لا تطابق الشروط (مثال: رفع صورة شخصية بدلاً من بطاقة التعريف). يرجى إعادة رفع بطاقة التعريف الوطنية لتتمكن الإدارة من توثيق حسابك.',
+        data: {
+          'type': 'verification_rejected',
+        },
+      );
+
+      Get.snackbar(
+        '❌ تم رفض الطلب', 
+        'تم رفض طلب التوثيق وحذف الوثيقة الخاطئة بنجاح، وتم إرسال إشعار للمستخدم للمطالبة بإعادة الرفع.',
+        backgroundColor: AppTheme.errorColor,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(15),
+      );
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل رفض طلب التوثيق: $e');
     } finally {
       isLoading.value = false;
     }
@@ -1335,6 +1465,125 @@ class AdminController extends GetxController {
       isLoading.value = false;
     }
     }
+
+  // ==================== 🚗 إدارة السائقين ====================
+
+  /// تعيين/إزالة دور سائق لمتطوع (عبر additionalRoles)
+  Future<void> toggleDriverRole(String userId, {required bool makeDriver}) async {
+    if (!isSuperAdmin) {
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية تعيين السائقين محصورة للمنسق العام فقط.',
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red);
+      return;
+    }
+    if (isLoading.value) return;
+    isLoading.value = true;
+    try {
+      final userRef = _firestore.collection(AppConstants.usersCollection).doc(userId);
+      if (makeDriver) {
+        await userRef.update({
+          'additionalRoles': FieldValue.arrayUnion(['driver']),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        Get.snackbar('✅ تم التعيين', 'تم تعيين المتطوع كسائق بنجاح',
+          backgroundColor: AppTheme.successColor.withValues(alpha: 0.1),
+          colorText: AppTheme.successColor);
+      } else {
+        // التحقق من عدم ارتباط السائق بسيارة قبل إزالة الدور
+        final vehiclesWithDriver = await _firestore.collection(AppConstants.vehiclesCollection)
+            .where('assignedDriverId', isEqualTo: userId).get();
+        if (vehiclesWithDriver.docs.isNotEmpty) {
+          Get.snackbar('⚠️ تنبيه', 'لا يمكن إزالة دور السائق لأنه مرتبط بسيارة. قم بفك ارتباطه أولاً.',
+            backgroundColor: Colors.orange.withValues(alpha: 0.1),
+            colorText: Colors.orange);
+          return;
+        }
+        await userRef.update({
+          'additionalRoles': FieldValue.arrayRemove(['driver']),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        Get.snackbar('تم الإزالة', 'تم إزالة دور السائق من المتطوع');
+      }
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل تحديث دور السائق: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// إسناد سائق لطلب خدمة (منفصل عن السيارة)
+  Future<void> assignDriverToRequest(String requestId, String driverId, String driverName) async {
+    if (!isSuperAdmin) {
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية إسناد السائقين محصورة للمنسق العام فقط.',
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red);
+      return;
+    }
+    if (isLoading.value) return;
+    isLoading.value = true;
+    try {
+      String collection = AppConstants.serviceRequestsCollection;
+      await _firestore.collection(collection).doc(requestId).update({
+        'assignedDriverId': driverId,
+        'assignedDriverName': driverName,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      await _sendNotificationToUser(driverId, 'مهمة قيادة جديدة', 'تم تعيينك كسائق لطلب خدمة', type: 'request_update', data: {'requestId': requestId});
+      Get.snackbar('✅ تم التعيين', 'تم تعيين السائق $driverName للطلب بنجاح',
+        backgroundColor: AppTheme.successColor.withValues(alpha: 0.1),
+        colorText: AppTheme.successColor);
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل تعيين السائق: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// ربط/فك ربط سائق بسيارة (في شاشة إدارة المركبات)
+  Future<void> assignDriverToVehicle(String vehicleId, String? driverId, String? driverName) async {
+    if (!isSuperAdmin) {
+      Get.snackbar('❌ وصول مرفوض', 'عذراً، صلاحية ربط السائقين بالسيارات محصورة للمنسق العام فقط.',
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red);
+      return;
+    }
+    if (isLoading.value) return;
+    isLoading.value = true;
+    try {
+      // فك ربط السائق السابق إن وُجد
+      if (driverId != null) {
+        final existingVehicle = await _firestore.collection(AppConstants.vehiclesCollection)
+            .where('assignedDriverId', isEqualTo: driverId).get();
+        for (var doc in existingVehicle.docs) {
+          if (doc.id != vehicleId) {
+            await doc.reference.update({
+              'assignedDriverId': FieldValue.delete(),
+              'assignedDriverName': FieldValue.delete(),
+            });
+          }
+        }
+      }
+
+      await _firestore.collection(AppConstants.vehiclesCollection).doc(vehicleId).update({
+        'assignedDriverId': driverId,
+        'assignedDriverName': driverName,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      if (driverId != null) {
+        Get.snackbar('✅ تم الربط', 'تم ربط السائق $driverName بالسيارة',
+          backgroundColor: AppTheme.successColor.withValues(alpha: 0.1),
+          colorText: AppTheme.successColor);
+      } else {
+        Get.snackbar('تم فك الربط', 'تم إزالة السائق من السيارة');
+      }
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل ربط السائق بالسيارة: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
 
     Future<void> updateRequestStatus(String id, String status, {bool? isGuest}) async {
     if (!isSuperAdmin) {
@@ -2832,6 +3081,25 @@ class AdminController extends GetxController {
       });
     } catch (e) {
       debugPrint('ConfirmDonation Error: $e');
+    }
+  }
+
+  Future<void> fetchBloodDistribution() async {
+    try {
+      isLoading.value = true;
+      final doc = await _firestore.collection('stats').doc('blood_stats').get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        totalBloodUnits.value = (data['totalUnits'] ?? 0) as int;
+        livesSaved.value = (data['livesSaved'] ?? 0) as int;
+        
+        final byType = data['byType'] as Map<String, dynamic>? ?? {};
+        bloodStatsByType.value = byType.map((key, value) => MapEntry(key, (value as num).toInt()));
+      }
+    } catch (e) {
+      debugPrint('Error fetching blood distribution: $e');
+    } finally {
+      isLoading.value = false;
     }
   }
 
