@@ -57,10 +57,8 @@ class VersionService extends GetxService {
         // 3. Compare build numbers
         if (latestBuildNumber > currentBuildNumber) {
           hasUpdate.value = true;
-          debugPrint("✨ New version available! showing update indicator...");
-          if (isRequired.value) {
-            _showUpdateDialog();
-          }
+          debugPrint("✨ New version available! showing update dialog...");
+          _showUpdateDialog();
         } else {
           hasUpdate.value = false;
           debugPrint("✅ App is up to date.");
